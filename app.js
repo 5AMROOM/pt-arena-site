@@ -97,13 +97,16 @@ function queue(clsId){const r=curRound(clsId);if(!r)return[];return eligible(cls
 
 function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('on'),2400)}
 
-/* ---------- roles: the link decides what a device sees (#staff, #judge-A, #timer-A, #screen, #mc, none = viewers) ---------- */
+/* ---------- roles: the link decides what a device sees (#staff, #judge, #judge-A, #timer-A, #screen, #mc, none = viewers) ---------- */
 const ROLE_TABS={view:['team','board'],judge:['judge','board'],timer:['timer'],screen:['screen'],mc:['mc','board'],staff:TABS.map(t=>t[0])};
-const STAFF_KEY='ptarena:staffcode',MYTEAM_KEY='ptarena:myteam';
+const STAFF_KEY='ptarena:staffcode',MYTEAM_KEY='ptarena:myteam',FIELD_KEY='ptarena:field';
+const rememberField=()=>{if(ROLE==='judge')try{localStorage.setItem(FIELD_KEY,S.ui.field)}catch(e){}};
 let ROLE='view',LOCK=null;
 function readHash(){
   const h=decodeURIComponent(location.hash.slice(1)).trim(),m=/^(judge|timer)-(.+)$/i.exec(h);
-  if(m){ROLE=m[1].toLowerCase();LOCK=m[2].toUpperCase()}else{LOCK=null;ROLE=h==='staff'||h==='screen'||h==='mc'?h:'view'}
+  if(m){ROLE=m[1].toLowerCase();LOCK=m[2].toUpperCase()}else{LOCK=null;ROLE=h==='staff'||h==='screen'||h==='mc'||h==='judge'?h:'view'}
+  // #judge without a field: the judge picks the field on the page, and this phone remembers it
+  if(ROLE==='judge'&&!LOCK){try{S.ui.field=localStorage.getItem(FIELD_KEY)||S.ui.field}catch(e){}}
   if(ROLE!=='staff'){let q='';try{q=localStorage.getItem(MYTEAM_KEY)||''}catch(e){}S.ui.teamQuery=q}
 }
 const staffOk=()=>{if(CLOUD)return CLOUD_STAFF;try{return localStorage.getItem(STAFF_KEY)===S.staffPin}catch(e){return false}};
@@ -114,6 +117,7 @@ const rememberTeam=q=>{if(ROLE!=='staff')try{localStorage.setItem(MYTEAM_KEY,q)}
 const eyeIcon=shown=>`<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>${shown?'':'<path d="M4 4l16 16"/>'}</svg>`;
 function vGate(){return`<div class="panel" style="max-width:420px;margin:0 auto;width:100%"><h2>สำหรับเจ้าหน้าที่</h2>
   <div class="row"><input type="password" id="sc" placeholder="รหัสเจ้าหน้าที่" autocapitalize="none" autocomplete="off" autocorrect="off" spellcheck="false" style="flex:1"><button class="btn" data-act="eye" aria-label="แสดงรหัส" aria-pressed="false" style="padding:7px 10px">${eyeIcon(false)}</button><button class="btn pri" data-act="gate">เข้า</button></div></div>`}
+document.addEventListener('fullscreenchange',()=>{if(S.ui.view==='timer'&&!document.fullscreenElement)render()});
 window.addEventListener('hashchange',()=>{readHash();window.PT_BACKEND?.role?.();render()});
 
 /* ---------- shell ---------- */
@@ -139,6 +143,9 @@ function render(){
   if(!clsOfField(S.ui.field))S.ui.field=fieldsSorted()[0].field;
   const v=S.ui.view;
   syncRec();
+  // the timer picture in full screen must stay where it is: moving it in the page would drop out of full screen,
+  // and everything it shows is drawn on it anyway
+  if(S.ui.view==='timer'&&CV&&document.fullscreenElement===CV)return;
   // in full screen only the inside is swapped: replacing the element itself would drop out of full screen
   const fs=document.fullscreenElement;
   if(S.ui.view==='screen'&&fs&&fs.id==='stage'){const tmp=document.createElement('div');tmp.innerHTML=vScreen();fs.innerHTML=tmp.querySelector('#stage').innerHTML;clock();return}
@@ -218,21 +225,25 @@ function ensureForm(){
   return S.ui.form;
 }
 /* One clock per field, shared by the judge's phone and the timer laptop. Whoever starts it stamps its own clock;
-   other devices shift that by SKEW (their clock minus the sender's, measured when a live update arrives). */
+   every device works out how far its own clock is from the server's (OFFSET), so a start time means the same instant
+   on the laptop and on the phone, and the phone does not trail behind by the network delay. */
 let DEVICE;try{DEVICE=sessionStorage.getItem('ptarena:device')||Math.random().toString(36).slice(2,8);sessionStorage.setItem('ptarena:device',DEVICE)}catch(e){DEVICE=Math.random().toString(36).slice(2,8)}
-let SKEW=0;
+let OFFSET=0,OFFSET_OK=false;            // server clock minus this device's clock; set by sync.js
+const nowS=()=>Date.now()+OFFSET;        // "now" on the shared clock
+const MYSTART={};                        // this device's own clock at the moment it started a run: exact, whatever OFFSET does later
 const timerOf=field=>S.timers[field]||{state:'idle',ms:0};
-const tElapsed=t=>t.state==='run'?Math.max(0,Date.now()-t.startAt-(t.by===DEVICE?0:SKEW)):t.ms||0;
+const tElapsed=t=>t.state!=='run'?t.ms||0:Math.max(0,t.by===DEVICE&&MYSTART[t.startAt]!=null?Date.now()-MYSTART[t.startAt]:nowS()-t.startAt);
 const limitOf=field=>S.comps[clsOfField(field).comp].timeLimit*1000;
 function tStart(field){
   const c=clsOfField(field),q=queue(c.id),t=timerOf(field);if(!q.length)return false;
   // a stopped clock stays until the judge submits or resets, so a stray press cannot wipe a result
   if(t.state!=='idle'&&t.team===q[0].id&&t.round===curRound(c.id))return false;
   const same=t.team===q[0].id&&t.round===curRound(c.id);
-  S.timers[field]={state:'run',team:q[0].id,round:curRound(c.id),startAt:Date.now(),sentAt:Date.now(),by:DEVICE,ms:0,live:same&&t.live||null,ev:same&&t.ev||null};return true}
+  const at=nowS();MYSTART[at]=Date.now();
+  S.timers[field]={state:'run',team:q[0].id,round:curRound(c.id),startAt:at,sentAt:at,by:DEVICE,ms:0,live:same&&t.live||null,ev:same&&t.ev||null};return true}
 function tStop(field,ms){const t=timerOf(field);if(t.state!=='run')return false;
   // kept to the hundredth that is shown, so two times that look equal are equal when ranking
-  S.timers[field]={...t,state:'stop',ms:Math.floor(Math.min(ms??tElapsed(t),limitOf(field))/10)*10,sentAt:Date.now()};return true}
+  S.timers[field]={...t,state:'stop',ms:Math.floor(Math.min(ms??tElapsed(t),limitOf(field))/10)*10,sentAt:nowS()};return true}
 function tReset(field){S.timers[field]={state:'idle',ms:0}}
 // The judge's taps ride on the field clock, so the timer laptop and the big screen show the score as it happens.
 // ev is the last tap (what was scored), n makes each one distinct for the on-screen pop.
@@ -308,9 +319,16 @@ function vTimer(){
     <div class="stage-grid tgrid">
       <div style="position:relative"><div id="cvbox"></div>${REC?'<span class="pill bad" style="position:absolute;top:10px;left:50%;transform:translateX(-50%)">● กำลังอัด</span>':''}</div>
       <div class="tbox"><button class="tbig mono ${t.state}" id="tm" data-act="tpress" aria-label="เริ่มหรือหยุดเวลา">${fmtMs(tElapsed(t))}</button>
-        <div style="font-size:18px">${label}</div><div class="sub2">ปุ่มล่าสุดที่รับได้: <b>${esc(LASTKEY||'ยังไม่มี')}</b></div>
+        <div style="font-size:18px">${label}</div>
+        <div><button class="btn" data-act="tfull">⛶ เต็มจอ</button></div><div class="sub2">ปุ่มล่าสุดที่รับได้: <b>${esc(LASTKEY||'ยังไม่มี')}</b></div>
         ${CAMERR?`<div><b>เปิดกล้องไม่ได้</b><ol style="margin:4px 0;padding-left:20px"><li>เช็กว่าเสียบเว็บแคมแล้ว</li><li>กดรูปกล้องบนแถบที่อยู่เว็บ แล้วเลือกอนุญาต</li><li>กดปุ่มข้างล่าง</li></ol><button class="btn sm" data-act="camon">เปิดกล้องอีกครั้ง</button></div>`:''}
         ${RECERR?`<div><b>อัดวิดีโอไม่ได้</b> <span class="sub2">${esc(RECERR)}</span></div>`:''}
+        ${CAMS.length?`<label class="tset"><span>กล้อง</span><select id="camsel" ${t.state==='run'?'disabled':''}>${CAMS.map((d,n)=>`<option value="${esc(d.deviceId)}" ${d.deviceId===CAMID?'selected':''}>${esc(d.label||'กล้อง '+(n+1))}</option>`).join('')}</select></label>`:''}
+        <label class="tset"><span>ความชัด</span><select id="qsel" ${t.state==='run'?'disabled':''}>${Object.entries(CAMQ).map(([k,q])=>`<option value="${k}" ${k===QUAL?'selected':''}>${q.label}</option>`).join('')}</select></label>
+        ${CAMREAL?`<div class="sub2">กล้องส่งภาพมา ${CAMREAL}</div>`:''}
+        <div class="tset"><span>รูปแบบกราฟิก · ${Object.keys(GFX_LIST).length} แบบ</span><div class="glist" id="glist">${Object.entries(GFX_LIST).map(([k,v])=>{const [nm,ds]=v.split(' · '),w=GFX_SW[k]||['#333','#999'];return`<button class="gopt" data-act="gfx" data-v="${k}" aria-pressed="${k===GFX}"><i style="background:linear-gradient(135deg,${w[0]} 50%,${w[1]} 50%)"></i><b>${esc(nm)}</b><small>${esc(ds||'')}</small></button>`}).join('')}</div></div>
+        ${CAM?`<label class="tset"><span>ครอปภาพ: เลื่อนเพื่อซูม แล้วลากบนภาพเพื่อเลือกส่วนที่จะเอา</span><input type="range" id="czoom" min="1" max="3" step="0.05" value="${CROP.z}"></label>
+        <div><button class="btn sm" data-act="cropreset">ภาพเต็ม</button></div>`:''}
         <div class="sub2">วิดีโอเก็บที่: <b>${esc(DIR&&DIRSTATE==='ok'?DIR.name:'Downloads')}</b>${SAVED?`<br>ล่าสุด: ${esc(SAVED)}`:''}</div>
         ${canPick?`<div class="row">${DIR&&DIRSTATE==='ask'?`<button class="btn sm pri" data-act="dirpick">ใช้โฟลเดอร์ ${esc(DIR.name)} ต่อ</button>`:''}<button class="btn sm" data-act="dirnew">เลือกโฟลเดอร์</button></div>`:''}
         ${CLIP&&t.state!=='run'?`<div class="sub2">ดูย้อนหลัง · ${esc(CLIP.name)}</div><video id="clip" controls src="${CLIP.url}"></video>`:''}</div>
@@ -325,17 +343,242 @@ function timerAfter(){
 /* The picture shown on the timer laptop and written into the recording: webcam frame with broadcast graphics on top.
    Drawing is fenced off from the clock: if a frame fails it is skipped, timing and scoring carry on. */
 const LOGO=new Image();LOGO.src='logo-mark.png';
+// Camera choices made on the timer laptop, remembered on that laptop. The graphics are laid out for 1280 x 720 and
+// scaled to whichever size is picked; the sizes per run are for a full 3 minute match.
+const CAMQ={low:{w:854,h:480,bps:1200000,label:'ประหยัด 480p · ราว 25 MB ต่อรอบ'},mid:{w:1280,h:720,bps:2500000,label:'ปกติ 720p · ราว 55 MB ต่อรอบ'},high:{w:1920,h:1080,bps:5000000,label:'ชัดมาก 1080p · ราว 110 MB ต่อรอบ'}};
+const keep=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k)||'';localStorage.setItem(k,v)}catch(e){return''}};
+// which part of the camera picture is used: z = zoom (1 = as much as fits), x and y = where the window sits (0..1)
+let CROP={z:1,x:.5,y:.5};try{const c=JSON.parse(keep('ptarena:crop')||'null');if(c&&c.z>=1&&c.z<=4)CROP={z:+c.z,x:Math.min(1,Math.max(0,+c.x)),y:Math.min(1,Math.max(0,+c.y))}}catch(e){}
+const saveCrop=()=>keep('ptarena:crop',JSON.stringify(CROP));
+// Graphic layouts the timer laptop can switch between. BAR holds the looks that share the bottom-bar layout of drawBar.
+const GFX_LIST={strip:'Midnight · แถบล่าง น้ำเงินม่วง',tower:'Pit Lane · แถบข้างซ้าย แดงดำ',clean:'Arctic · แถบล่าง สีขาว',neon:'Neon · แถบล่าง ฟ้าม่วง',gold:'Champion · แถบล่าง ดำทอง',cast:'Broadcast · แถบเดียวเต็มขอบล่าง',head:'Headline · แถบเดียวเต็มขอบบน',bug:'Scorebug · กล่องเล็กมุมซ้ายบน',carbon:'Carbon · แถบล่าง เทาแดง',mono:'Mono · แถบล่าง ขาวดำ',sunset:'Sunset · แถบล่าง ส้มชมพู',emerald:'Emerald · แถบล่าง เขียว',royal:'Royal · แถบข้างซ้าย น้ำเงินทอง',day:'Daylight · กล่องเล็กมุมซ้ายบน สีขาว',studio:'Studio · แถบเดียวขอบล่าง สีขาว'};
+// two colours that stand for each look in the picker
+const GFX_SW={strip:['#3B6FE8','#7A4FE0'],tower:['#E10600','#0C0C10'],clean:['#FFFFFF','#1F5BD6'],neon:['#00E0FF','#7A4FE0'],gold:['#F5D06B','#0C0C0E'],cast:['#0E1218','#2F6BFF'],head:['#0E1218','#12B886'],bug:['#2F6BFF','#FFFFFF'],carbon:['#1B1E22','#E5383B'],mono:['#000000','#FFFFFF'],sunset:['#FF8A00','#E52E71'],emerald:['#19C37D','#06181A'],royal:['#1B2A6B','#F5D06B'],day:['#FFFFFF','#10151F'],studio:['#FFFFFF','#1F5BD6']};
+const BAR={
+  clean:{panel:'#FFFFFF',ink:'#10151F',dim:'#5B6677',a:'#1F5BD6',b:'#1F5BD6',on:'#FFFFFF',ok:'#1C8A57',warn:'#B86E05',r:10,skew:0,pips:false,shade:.3,glow:null},
+  neon:{panel:'rgba(8,10,26,.9)',ink:'#FFFFFF',dim:'#A9B4D0',a:'#00E0FF',b:'#7A4FE0',on:'#FFFFFF',ok:'#00E0FF',warn:'#FFC857',r:0,skew:16,pips:true,shade:.75,glow:'#00E0FF'},
+  carbon:{panel:'rgba(27,30,34,.95)',ink:'#FFFFFF',dim:'#A3ABB5',a:'#E5383B',b:'#E5383B',on:'#FFFFFF',ok:'#FFFFFF',warn:'#FFB454',r:3,skew:0,pips:false,shade:.6,glow:null},
+  mono:{panel:'rgba(0,0,0,.92)',ink:'#FFFFFF',dim:'#9A9A9A',a:'#FFFFFF',b:'#FFFFFF',on:'#000000',ok:'#FFFFFF',warn:'#FFFFFF',r:0,skew:0,pips:true,shade:.6,glow:null},
+  sunset:{panel:'rgba(22,10,24,.9)',ink:'#FFFFFF',dim:'#D9BCCB',a:'#FF8A00',b:'#E52E71',on:'#FFFFFF',ok:'#FFB36B',warn:'#FFD166',r:0,skew:16,pips:true,shade:.7,glow:null},
+  emerald:{panel:'rgba(6,24,20,.93)',ink:'#FFFFFF',dim:'#A8C9BE',a:'#19C37D',b:'#0E9F6E',on:'#FFFFFF',ok:'#3EE6A0',warn:'#FFC857',r:12,skew:0,pips:false,shade:.65,glow:null},
+  gold:{panel:'rgba(12,12,14,.92)',ink:'#FFFFFF',dim:'#B9B4A6',a:'#F5D06B',b:'#C99A2E',on:'#14110A',ok:'#F5D06B',warn:'#FF9F5A',r:4,skew:0,pips:true,shade:.7,glow:null}};
+let GFX=GFX_LIST[keep('ptarena:gfx')]?keep('ptarena:gfx'):'strip';
+let CAMID=keep('ptarena:cam'),QUAL=CAMQ[keep('ptarena:camq')]?keep('ptarena:camq'):'mid',CAMS=[],CAMREAL='';
 let CV=null,CX=null,VID=null,CSTREAM=null,G={score:0,target:0,bump:0,evn:null,pop:null};
 const FONT={ui:'"IBM Plex Sans Thai",sans-serif',head:'"Chakra Petch","IBM Plex Sans Thai",sans-serif',num:'"IBM Plex Sans Thai",sans-serif'};
 function stageCanvas(){
   if(CV)return CV;
-  CV=document.createElement('canvas');CV.width=1280;CV.height=720;CX=CV.getContext('2d');
+  CV=document.createElement('canvas');CV.width=CAMQ[QUAL].w;CV.height=CAMQ[QUAL].h;CX=CV.getContext('2d');
   ['500 20px '+FONT.ui,'600 20px '+FONT.ui,'700 20px '+FONT.head,'600 20px '+FONT.num].forEach(f=>document.fonts?.load(f,'ทีม 0'));
   setInterval(()=>{try{drawStage()}catch(e){}},40);
+  // drag on the picture to move the cropped window
+  let drag=null;CV.style.touchAction='none';CV.style.cursor='grab';
+  CV.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY};CV.setPointerCapture(e.pointerId);CV.style.cursor='grabbing'});
+  CV.addEventListener('pointermove',e=>{if(!drag)return;const k=1280/CV.clientWidth,dx=(e.clientX-drag.x)*k,dy=(e.clientY-drag.y)*k;drag={x:e.clientX,y:e.clientY};
+    if(G.ex>0)CROP.x=Math.min(1,Math.max(0,CROP.x-dx/G.ex));if(G.ey>0)CROP.y=Math.min(1,Math.max(0,CROP.y-dy/G.ey))});
+  const drop=()=>{if(drag){drag=null;CV.style.cursor='grab';saveCrop()}};CV.addEventListener('pointerup',drop);CV.addEventListener('pointercancel',drop);
   return CV;
+}
+// camera picture into one region of the frame, cropped as chosen; false when there is no picture yet
+function drawCam(x,rx,ry,rw,rh){
+  x.fillStyle='#0A0F1A';x.fillRect(rx,ry,rw,rh);
+  if(!(VID&&VID.readyState>=2&&VID.videoWidth))return false;
+  const k=Math.max(rw/VID.videoWidth,rh/VID.videoHeight)*CROP.z,vw=VID.videoWidth*k,vh=VID.videoHeight*k;G.ex=vw-rw;G.ey=vh-rh;
+  x.save();x.beginPath();x.rect(rx,ry,rw,rh);x.clip();x.drawImage(VID,rx-G.ex*CROP.x,ry-G.ey*CROP.y,vw,vh);x.restore();return true;
+}
+// bottom-bar layout drawn from a look in BAR: separate blocks for team, missions, retries and score
+function drawBar(x,c,t,tm,cp,lim,now,T){
+  const W=1280,H=720,M=36,GAP=6;
+  const text=(str,px,py,font,color,align='left',glow)=>{x.save();x.font=font;x.fillStyle=color;x.textAlign=align;x.textBaseline='alphabetic';if(glow){x.shadowColor=glow;x.shadowBlur=16}x.fillText(str,px,py);x.restore()};
+  const width=(str,font)=>{x.font=font;return x.measureText(str).width};
+  const fit=(str,font,max)=>{if(width(str,font)<=max)return str;while(str.length>1&&width(str+'…',font)>max)str=str.slice(0,-1);return str+'…'};
+  const grad=(px,pw)=>{const g=x.createLinearGradient(px,0,px+pw,0);g.addColorStop(0,T.a);g.addColorStop(1,T.b);return g};
+  const box=(px,py,pw,ph,fill,l=T.skew,r=T.skew)=>{x.fillStyle=fill;x.beginPath();if(T.skew){x.moveTo(px+l,py);x.lineTo(px+pw,py);x.lineTo(px+pw-r,py+ph);x.lineTo(px,py+ph);x.closePath()}else x.roundRect(px,py,pw,ph,T.r);x.fill()};
+  if(!drawCam(x,0,0,W,H))text(CAMERR?'ไม่มีภาพจากกล้อง':'กำลังเปิดกล้อง…',W/2,H/2,'500 26px '+FONT.ui,'#4D5B74','center');
+  let g=x.createLinearGradient(0,0,0,160);g.addColorStop(0,`rgba(0,0,0,${T.shade*.7})`);g.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=g;x.fillRect(0,0,W,160);
+  g=x.createLinearGradient(0,H-240,0,H);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,`rgba(0,0,0,${T.shade})`);x.fillStyle=g;x.fillRect(0,H-240,W,240);
+
+  // top left: mark, then what and where
+  const n1='700 23px '+FONT.head,n2='500 18px '+FONT.ui,where=`สนาม ${c.field}  ·  ${c.level}${t.round&&t.state!=='idle'?'  ·  รอบ '+t.round:''}`;
+  box(M,M,66,64,grad(M,66));
+  if(LOGO.complete&&LOGO.naturalWidth){const lh=40,lw=lh*LOGO.naturalWidth/LOGO.naturalHeight;x.save();if(T.on!=='#FFFFFF')x.filter='brightness(0)';x.drawImage(LOGO,M+33-lw/2,M+32-lh/2,lw,lh);x.restore()}
+  const lw2=Math.max(width(cp.name,n1),width(where,n2))+38+T.skew;
+  box(M+66+GAP-T.skew,M,lw2,64,T.panel);text(cp.name,M+66+GAP+18,M+28,n1,T.ink);text(where,M+66+GAP+18,M+52,n2,T.dim);
+
+  // top right: clock, with the time left under it
+  const ms=Math.min(tElapsed(t),lim),late=t.state==='run'&&lim-ms<30000,cw=300,cx=W-M-cw;
+  box(cx,M,cw,86,T.panel,T.skew,0);
+  text(t.state==='stop'?'หยุดเวลา':'เวลา',cx+20+T.skew,M+27,'600 15px '+FONT.ui,T.dim);
+  text(fmtMs(ms),W-M-18,M+66,'600 50px '+FONT.num,late?'#E5484D':T.ink,'right',t.state==='run'&&!late?T.glow:null);
+  x.save();x.globalAlpha=.16;x.fillStyle=T.ink;x.fillRect(cx+20,M+75,cw-38,4);x.restore();
+  x.fillStyle=late?'#E5484D':grad(cx+20,cw-38);x.fillRect(cx+20,M+75,(cw-38)*(1-ms/lim),4);
+
+  // bottom: team | missions | retries | score
+  const bh=100,by=H-M-bh,items=t.live?.items||{},retry=t.live?.pen||0,scW=200,rtW=104,fl='600 15px '+FONT.ui,fv='600 28px '+FONT.num,PIP=20;
+  const cols=cp.missions.map(m=>({m,name:m.short||m.label,w:Math.max(width(m.short||m.label,fl),T.pips?m.max*(PIP+6)-6:width(m.max+'/'+m.max,fv))+28}));
+  const misW=cols.reduce((a,k)=>a+k.w,0)+20+T.skew,scX=W-M-scW,rtX=scX-GAP-rtW+T.skew,misX=rtX-GAP-misW+T.skew,teamW=misX-GAP-M+T.skew;
+  box(M,by,teamW,bh,T.panel,0,T.skew);x.fillStyle=grad(M,8);x.beginPath();if(T.skew)x.rect(M,by,8,bh);else x.roundRect(M,by,8,bh,[T.r,0,0,T.r]);x.fill();
+  if(tm){
+    const fi='600 21px '+FONT.num,fn='700 34px '+FONT.head,iw=width(tm.id,fi)+24;
+    x.save();x.globalAlpha=.1;x.fillStyle=T.ink;x.fillRect(M+26,by+17,iw,36);x.restore();text(tm.id,M+38,by+43,fi,T.ink);
+    text(fit(tm.name,fn,teamW-iw-86),M+26+iw+14,by+47,fn,T.ink);text(fit(tm.school,'500 19px '+FONT.ui,teamW-70),M+26,by+81,'500 19px '+FONT.ui,T.dim);
+  }else text('รอทีมถัดไป',M+26,by+60,'600 26px '+FONT.ui,T.dim);
+  box(misX,by,misW,bh,T.panel);
+  let px=misX+14+T.skew;
+  cols.forEach(k=>{
+    const n=Math.min(items[k.m.id]||0,k.m.max),hot=!!G.pop&&G.pop.id===k.m.id;
+    text(k.name,px,by+36,fl,n>=k.m.max?T.ok:T.dim);
+    if(T.pips)for(let q=0;q<k.m.max;q++){const qx=px+q*(PIP+6),qy=by+52;if(q<n){x.fillStyle=T.ok;x.fillRect(qx,qy,PIP,PIP)}else{x.save();x.globalAlpha=.4;x.strokeStyle=T.ink;x.lineWidth=2;x.strokeRect(qx+1,qy+1,PIP-2,PIP-2);x.restore()}}
+    else text(n+'/'+k.m.max,px,by+76,fv,hot?T.ok:n?T.ink:T.dim);
+    px+=k.w;
+  });
+  box(rtX,by,rtW,bh,T.panel);
+  text('Retry',rtX+rtW/2,by+36,fl,retry?T.warn:T.dim,'center');text(String(retry),rtX+rtW/2,by+78,'600 34px '+FONT.num,retry?T.warn:T.ink,'center');
+  box(scX,by,scW,bh,grad(scX,scW),T.skew,0);
+  text('คะแนน',scX+22+T.skew,by+34,'600 16px '+FONT.ui,T.on);
+  const bump=Math.max(0,1-(now-(G.bump||0))/320);
+  text(String(Math.round(G.score)),W-M-20,by+86,`600 ${Math.round(64+10*bump)}px ${FONT.num}`,T.on,'right');
+
+  // the judge's last tap, above the score
+  if(G.pop){
+    const age=now-G.pop.at,fa='600 25px '+FONT.ui,fp='700 28px '+FONT.num,lw=width(G.pop.label,fa)+44+T.skew,vw=width(G.pop.value,fp)+40+T.skew,inn=Math.min(1,age/260),e=1-Math.pow(1-inn,3),out=age>2200?(2600-age)/400:1,dx=(1-e)*90,ph=56,py=by-ph-10,rx=W-M;
+    x.save();x.globalAlpha=Math.max(0,out)*inn;
+    box(rx-vw-GAP-lw+T.skew+dx,py,lw,ph,T.panel);text(G.pop.label,rx-vw-GAP-lw+T.skew+dx+22+T.skew,py+37,fa,T.ink);
+    box(rx-vw+dx,py,vw,ph,G.pop.color,T.skew,0);text(G.pop.value,rx-18+dx,py+39,fp,'#fff','right');
+    x.restore();
+  }
+}
+// television layout: one bar edge to edge along the bottom carrying everything, clock included, so the picture stays clear
+function drawCast(x,c,t,tm,cp,lim,now,o){
+  const W=1280,H=720,BH=96,y0=o.top?0:H-BH,INK=o.ink||'#FFFFFF',DIM=o.dim||'#98A6B9',BG=o.bg||'rgba(14,18,24,.96)',AC=o.ac,OK=o.ok||'#36D07F',WARN=o.warn||'#FFB454',RULE=o.rule||'rgba(255,255,255,.13)',OFF=o.off||'#5F6B7C';
+  const text=(str,px,py,font,color,align='left')=>{x.font=font;x.fillStyle=color;x.textAlign=align;x.textBaseline='alphabetic';x.fillText(str,px,py)};
+  const width=(str,font)=>{x.font=font;return x.measureText(str).width};
+  const fit=(str,font,max)=>{if(width(str,font)<=max)return str;while(str.length>1&&width(str+'…',font)>max)str=str.slice(0,-1);return str+'…'};
+  const rule=px=>{x.fillStyle=RULE;x.fillRect(px,y0+18,1,BH-36)};
+  if(!drawCam(x,0,0,W,H))text(CAMERR?'ไม่มีภาพจากกล้อง':'กำลังเปิดกล้อง…',W/2,H/2-40,'500 26px '+FONT.ui,'#4D5B74','center');
+  // top left: a small tag saying what is on
+  const tag=`${cp.name}  ·  สนาม ${c.field}  ·  ${c.level}${t.round&&t.state!=='idle'?'  ·  รอบ '+t.round:''}`,ft='600 18px '+FONT.ui,tw=width(tag,ft)+36;
+  const ty=o.top?H-72:32;x.fillStyle=BG;x.fillRect(32,ty,tw,40);x.fillStyle=AC;x.fillRect(32,ty,4,40);text(tag,52,ty+27,ft,INK);
+  // the bar
+  x.fillStyle=BG;x.fillRect(0,y0,W,BH);x.fillStyle=AC;x.fillRect(0,o.top?BH:y0-3,W,3);
+  const LW=104,SW=176,CW=214,RW=96,fl='600 14px '+FONT.ui,fv='600 30px '+FONT.num;
+  x.fillStyle=AC;x.fillRect(0,y0,LW,BH);
+  if(LOGO.complete&&LOGO.naturalWidth){const lh=54,lw=lh*LOGO.naturalWidth/LOGO.naturalHeight;x.drawImage(LOGO,LW/2-lw/2,y0+BH/2-lh/2,lw,lh)}
+  const items=t.live?.items||{},retry=t.live?.pen||0;
+  const cols=cp.missions.map(m=>({m,name:m.short||m.label,w:Math.max(width(m.short||m.label,fl),width(m.max+'/'+m.max,fv))+36}));
+  const misW=cols.reduce((a,k)=>a+k.w,0),scX=W-SW,ckX=scX-CW,rtX=ckX-RW,misX=rtX-misW,teamW=misX-LW;
+  // team
+  if(tm){const fn='700 32px '+FONT.head,fi='600 16px '+FONT.num;
+    text(fit(tm.name,fn,teamW-48),LW+24,y0+46,fn,INK);text(fit(tm.id+'  ·  '+tm.school,'500 17px '+FONT.ui,teamW-48),LW+24,y0+74,'500 17px '+FONT.ui,DIM)}
+  else text('รอทีมถัดไป',LW+24,y0+58,'600 26px '+FONT.ui,DIM);
+  // missions: name on top, how many of how many under it; the one just scored turns green
+  let px=misX;
+  cols.forEach(k=>{rule(px);const n=Math.min(items[k.m.id]||0,k.m.max),hot=!!G.pop&&G.pop.id===k.m.id,cx=px+k.w/2;
+    text(k.name,cx,y0+34,fl,DIM,'center');text(n+'/'+k.m.max,cx,y0+72,fv,hot||n>=k.m.max?OK:n?INK:OFF,'center');px+=k.w});
+  rule(rtX);text('RETRY',rtX+RW/2,y0+34,fl,DIM,'center');text(String(retry),rtX+RW/2,y0+72,fv,retry?WARN:OFF,'center');
+  // clock, with the time left as a line under the digits
+  const ms=Math.min(tElapsed(t),lim),late=t.state==='run'&&lim-ms<30000;
+  rule(ckX);text(t.state==='stop'?'หยุดเวลา':'เวลา',ckX+CW/2,y0+30,fl,t.state==='stop'?WARN:DIM,'center');
+  text(fmtMs(ms),ckX+CW/2,y0+68,'600 36px '+FONT.num,late?'#FF6B6B':INK,'center');
+  x.fillStyle=RULE;x.fillRect(ckX+24,y0+80,CW-48,3);x.fillStyle=late?'#FF6B6B':AC;x.fillRect(ckX+24,y0+80,(CW-48)*(1-ms/lim),3);
+  // score: the one light block on the bar
+  x.fillStyle=o.sbg||'#FFFFFF';x.fillRect(scX,y0,SW,BH);text('คะแนน',scX+20,y0+30,fl,o.slab||'#5B6677');
+  const bump=Math.max(0,1-(now-(G.bump||0))/320);
+  text(String(Math.round(G.score)),W-22,y0+82,`600 ${Math.round(62+8*bump)}px ${FONT.num}`,o.sink||'#0E1218','right');
+  // the judge's last tap rises from the bar on the right
+  if(G.pop){
+    const age=now-G.pop.at,fa='600 24px '+FONT.ui,fp='700 26px '+FONT.num,lw=width(G.pop.label,fa)+40,vw=width(G.pop.value,fp)+34,inn=Math.min(1,age/240),e=1-Math.pow(1-inn,3),out=age>2200?(2600-age)/400:1,ph=52,py=o.top?BH+13-(1-e)*30:y0-3-ph-10+(1-e)*30;
+    x.save();x.globalAlpha=Math.max(0,out)*inn;
+    x.fillStyle=BG;x.fillRect(W-32-vw-lw,py,lw,ph);text(G.pop.label,W-32-vw-lw+20,py+35,fa,INK);
+    x.fillStyle=G.pop.color;x.fillRect(W-32-vw,py,vw,ph);text(G.pop.value,W-32-17,py+36,fp,'#fff','right');
+    x.restore();
+  }
+}
+// scorebug: one small box in the top left corner, the way a match score sits on a sports broadcast
+function drawBug(x,c,t,tm,cp,lim,now,o){
+  const W=1280,H=720,BX=32,BY=32,BW=470,INK=o.ink||'#FFFFFF',DIM=o.dim||'#9FACBD',BG=o.bg||'rgba(13,17,24,.95)',BG2=o.bg2||'rgba(24,30,40,.95)',AC=o.ac||'#2F6BFF',OK=o.ok||'#36D07F',WARN=o.warn||'#FFB454',RULE=o.rule||'rgba(255,255,255,.12)',OFF=o.off||'#5F6B7C';
+  const text=(str,px,py,font,color,align='left')=>{x.font=font;x.fillStyle=color;x.textAlign=align;x.textBaseline='alphabetic';x.fillText(str,px,py)};
+  const width=(str,font)=>{x.font=font;return x.measureText(str).width};
+  const fit=(str,font,max)=>{if(width(str,font)<=max)return str;while(str.length>1&&width(str+'…',font)>max)str=str.slice(0,-1);return str+'…'};
+  if(!drawCam(x,0,0,W,H))text(CAMERR?'ไม่มีภาพจากกล้อง':'กำลังเปิดกล้อง…',W/2,H/2,'500 26px '+FONT.ui,'#4D5B74','center');
+  const items=t.live?.items||{},retry=t.live?.pen||0,ms=Math.min(tElapsed(t),lim),late=t.state==='run'&&lim-ms<30000;
+  // row 1: mark, team, score
+  const R1=64,SW=112;
+  x.fillStyle=AC;x.fillRect(BX,BY,R1,R1);
+  if(LOGO.complete&&LOGO.naturalWidth){const lh=40,lw=lh*LOGO.naturalWidth/LOGO.naturalHeight;x.drawImage(LOGO,BX+R1/2-lw/2,BY+R1/2-lh/2,lw,lh)}
+  x.fillStyle=BG;x.fillRect(BX+R1,BY,BW-R1-SW,R1);
+  if(tm){text(fit(tm.name,'700 27px '+FONT.head,BW-R1-SW-32),BX+R1+16,BY+31,'700 27px '+FONT.head,INK);text(fit(tm.id+'  ·  '+tm.school,'500 15px '+FONT.ui,BW-R1-SW-32),BX+R1+16,BY+53,'500 15px '+FONT.ui,DIM)}
+  else text('รอทีมถัดไป',BX+R1+16,BY+40,'600 22px '+FONT.ui,DIM);
+  x.fillStyle=o.sbg||'#FFFFFF';x.fillRect(BX+BW-SW,BY,SW,R1);
+  const bump=Math.max(0,1-(now-(G.bump||0))/320);
+  text(String(Math.round(G.score)),BX+BW-SW/2,BY+48,`600 ${Math.round(42+6*bump)}px ${FONT.num}`,o.sink||'#0E1218','center');
+  // row 2: clock on the left, where and which round on the right, the time left as a line along the bottom
+  const R2=42,y2=BY+R1;
+  x.fillStyle=BG2;x.fillRect(BX,y2,BW,R2);
+  text(fmtMs(ms),BX+16,y2+30,'600 25px '+FONT.num,late?'#FF6B6B':t.state==='stop'?WARN:INK);
+  text(`สนาม ${c.field} · ${c.level}${t.round&&t.state!=='idle'?' · รอบ '+t.round:''}`,BX+BW-16,y2+28,'500 16px '+FONT.ui,DIM,'right');
+  x.fillStyle=RULE;x.fillRect(BX,y2+R2-3,BW,3);x.fillStyle=late?'#FF6B6B':AC;x.fillRect(BX,y2+R2-3,BW*(1-ms/lim),3);
+  // row 3: every mission and the retries, evenly spaced
+  const R3=54,y3=y2+R2,cells=[...cp.missions.map(m=>({id:m.id,name:m.short||m.label,val:Math.min(items[m.id]||0,m.max)+'/'+m.max,on:(items[m.id]||0)>0,full:(items[m.id]||0)>=m.max,color:OK})),{id:'retry',name:'Retry',val:String(retry),on:retry>0,full:false,color:WARN}],cw=BW/cells.length;
+  x.fillStyle=BG;x.fillRect(BX,y3,BW,R3);
+  cells.forEach((k,n)=>{const cx=BX+cw*n+cw/2,hot=!!G.pop&&G.pop.id===k.id;
+    if(hot){x.fillStyle=k.id==='retry'?'rgba(255,180,84,.2)':'rgba(54,208,127,.2)';x.fillRect(BX+cw*n,y3,cw,R3)}
+    if(n){x.fillStyle=RULE;x.fillRect(BX+cw*n,y3+10,1,R3-20)}
+    text(fit(k.name,'600 12px '+FONT.ui,cw-10),cx,y3+20,'600 12px '+FONT.ui,DIM,'center');
+    text(k.val,cx,y3+44,'600 20px '+FONT.num,k.id==='retry'?(k.on?WARN:OFF):hot||k.full?OK:k.on?INK:OFF,'center')});
+  // top right: what is being played
+  const ft='600 18px '+FONT.ui,tw=width(cp.name,ft)+36;
+  x.fillStyle=BG;x.fillRect(W-32-tw,32,tw,40);x.fillStyle=AC;x.fillRect(W-36,32,4,40);text(cp.name,W-32-tw+16,59,ft,INK);
+  // the judge's last tap drops out from under the box
+  if(G.pop){
+    const age=now-G.pop.at,fa='600 22px '+FONT.ui,fp='700 24px '+FONT.num,lw=width(G.pop.label,fa)+36,vw=width(G.pop.value,fp)+30,inn=Math.min(1,age/240),e=1-Math.pow(1-inn,3),out=age>2200?(2600-age)/400:1,ph=46,py=y3+R3+8-(1-e)*24;
+    x.save();x.globalAlpha=Math.max(0,out)*inn;
+    x.fillStyle=BG;x.fillRect(BX,py,lw,ph);text(G.pop.label,BX+18,py+31,fa,INK);
+    x.fillStyle=G.pop.color;x.fillRect(BX+lw,py,vw,ph);text(G.pop.value,BX+lw+vw/2,py+32,fp,'#fff','center');
+    x.restore();
+  }
+}
+// side layout: a column down the left with everything in rows, the camera picture keeps the rest of the frame clear
+function drawTower(x,c,t,tm,cp,lim,now,o){
+  const W=1280,H=720,TW=292,P=22,RED=o.head||'#E10600',DIM='#9AA3B5',INK='#fff',ROW=46,OKC=o.ok||'#39D98A';
+  const text=(str,px,py,font,color,align='left')=>{x.font=font;x.fillStyle=color;x.textAlign=align;x.textBaseline='alphabetic';x.fillText(str,px,py)};
+  const width=(str,font)=>{x.font=font;return x.measureText(str).width};
+  const fit=(str,font,max)=>{if(width(str,font)<=max)return str;while(str.length>1&&width(str+'…',font)>max)str=str.slice(0,-1);return str+'…'};
+  if(!drawCam(x,TW,0,W-TW,H))text(CAMERR?'ไม่มีภาพจากกล้อง':'กำลังเปิดกล้อง…',TW+(W-TW)/2,H/2,'500 26px '+FONT.ui,'#4D5B74','center');
+  x.fillStyle=o.bg||'#0C0C10';x.fillRect(0,0,TW,H);
+  // what and where
+  x.fillStyle=RED;x.fillRect(0,0,TW,94);
+  let tx=P;if(LOGO.complete&&LOGO.naturalWidth){const lh=40,lw=lh*LOGO.naturalWidth/LOGO.naturalHeight;x.drawImage(LOGO,P,27,lw,lh);tx=P+lw+12}
+  text(fit(cp.name,'700 20px '+FONT.head,TW-tx-P),tx,42,'700 20px '+FONT.head,INK);
+  text(`สนาม ${c.field} · ${c.level}${t.round&&t.state!=='idle'?' · รอบ '+t.round:''}`,tx,68,'500 16px '+FONT.ui,'rgba(255,255,255,.92)');
+  // who
+  let y=94;
+  if(tm){text(tm.id,P,y+34,'600 17px '+FONT.num,DIM);text(fit(tm.name,'700 30px '+FONT.head,TW-P*2),P,y+72,'700 30px '+FONT.head,INK);text(fit(tm.school,'500 16px '+FONT.ui,TW-P*2),P,y+100,'500 16px '+FONT.ui,DIM)}
+  else text('รอทีมถัดไป',P,y+66,'600 24px '+FONT.ui,DIM);
+  y+=120;
+  // one row per mission; the row the judge just scored lights up with what was added
+  const items=t.live?.items||{},retry=t.live?.pen||0,pop=G.pop;
+  const row=(name,val,on,hot,extra,color)=>{
+    if(hot){x.fillStyle=color==='#F0B45A'?'rgba(240,180,90,.18)':'rgba(57,217,138,.18)';x.fillRect(0,y,TW,ROW)}
+    x.fillStyle='rgba(255,255,255,.1)';x.fillRect(0,y,TW,1);
+    const v=val+(hot&&extra?'  '+extra:''),fv='600 19px '+FONT.num;
+    text(v,TW-P,y+30,fv,on?color:'#5D6677','right');text(fit(name,'500 18px '+FONT.ui,TW-P*2-width(v,fv)-12),P,y+30,'500 18px '+FONT.ui,on?INK:DIM);y+=ROW};
+  cp.missions.forEach(m=>{const n=Math.min(items[m.id]||0,m.max),hot=!!pop&&pop.id===m.id;row(m.short||m.label,n+'/'+m.max,n>0,hot,hot&&pop.value,OKC)});
+  row('Retry',String(retry),retry>0,!!pop&&pop.id==='retry','','#F0B45A');
+  x.fillStyle='rgba(255,255,255,.1)';x.fillRect(0,y,TW,1);
+  // score, then the clock at the foot with the time left running across its top edge
+  const CH=84,SH=124,sy=H-CH-SH,ms=Math.min(tElapsed(t),lim),late=t.state==='run'&&lim-ms<30000;
+  x.fillStyle=o.sbg||'#fff';x.fillRect(0,sy,TW,SH);text('คะแนน',P,sy+32,'600 17px '+FONT.ui,o.slab||'#5D6677');
+  const bump=Math.max(0,1-(now-(G.bump||0))/320);
+  text(String(Math.round(G.score)),TW-P,sy+SH-20,`600 ${Math.round(78+10*bump)}px ${FONT.num}`,o.sink||'#0C0C10','right');
+  x.fillStyle=t.state==='stop'?'#1B1B22':RED;x.fillRect(0,H-CH,TW,CH);
+  x.fillStyle='rgba(0,0,0,.28)';x.fillRect(0,H-CH,TW,6);x.fillStyle=late?'#FFD166':'#fff';x.fillRect(0,H-CH,TW*(1-ms/lim),6);
+  text(t.state==='stop'?'หยุดเวลา':t.state==='run'?'เวลา':'พร้อม',P,H-CH+34,'600 15px '+FONT.ui,'rgba(255,255,255,.85)');
+  text(fmtMs(ms),TW-P,H-22,'600 44px '+FONT.num,late?'#FFD166':INK,'right');
 }
 function drawStage(){
   if(ROLE!=='timer'||!READY||needGate())return;const c=clsOfField(LOCK);if(!c)return;
+  CX.setTransform(CV.width/1280,0,0,CV.width/1280,0,0);
   const x=CX,W=1280,H=720,M=40,now=Date.now(),t=timerOf(LOCK),tm=t.team&&team(t.team)||queue(c.id)[0],cp=S.comps[c.comp],lim=limitOf(LOCK);
   const INK='#fff',DIM='#B4C0D4',PANEL='rgba(8,12,22,.9)';
   const text=(str,px,py,font,color,align='left')=>{x.font=font;x.fillStyle=color;x.textAlign=align;x.textBaseline='alphabetic';x.fillText(str,px,py)};
@@ -345,9 +588,25 @@ function drawStage(){
   const grad=(px,pw,a='#3B6FE8',b='#7A4FE0')=>{const g=x.createLinearGradient(px,0,px+pw,0);g.addColorStop(0,a);g.addColorStop(1,b);return g};
   const fit=(str,font,max)=>{if(width(str,font)<=max)return str;while(str.length>1&&width(str+'…',font)>max)str=str.slice(0,-1);return str+'…'};
 
-  x.fillStyle='#0A0F1A';x.fillRect(0,0,W,H);
-  if(VID&&VID.readyState>=2&&VID.videoWidth){const k=Math.max(W/VID.videoWidth,H/VID.videoHeight);x.drawImage(VID,(W-VID.videoWidth*k)/2,(H-VID.videoHeight*k)/2,VID.videoWidth*k,VID.videoHeight*k)}
-  else text(CAMERR?'ไม่มีภาพจากกล้อง':'กำลังเปิดกล้อง…',W/2,H/2,'500 26px '+FONT.ui,'#4D5B74','center');
+  // shared by both layouts: the score eases to its new value, and the judge's last tap is kept for a moment
+  const target=liveScore(LOCK)??0;if(target!==G.target){G.bump=now;G.target=target}
+  G.score+=(target-G.score)*.3;if(Math.abs(target-G.score)<.5)G.score=target;
+  if(t.ev&&t.ev.n!==G.evn){
+    if(G.evn!==null||t.state==='run'){const e=t.ev,pos=e.pts>0;
+      G.pop={at:now,id:e.pts?e.id:'retry',pts:e.pts,label:e.pts?e.label:'Retry',value:e.pts?(pos?'+':'−')+Math.abs(e.pts):'ครั้งที่ '+e.retry,color:pos?'#16A865':e.pts<0?'#5C6880':'#D48A16'}}
+    G.evn=t.ev.n;
+  }else if(!t.ev)G.evn=0;
+  if(G.pop&&now-G.pop.at>2600)G.pop=null;
+  if(GFX==='tower'){drawTower(x,c,t,tm,cp,lim,now,{});return}
+  if(GFX==='royal'){drawTower(x,c,t,tm,cp,lim,now,{head:'#1B2A6B',bg:'#0A1030',sbg:'#F5D06B',sink:'#0A1030',slab:'#5B4A12',ok:'#F5D06B'});return}
+  if(BAR[GFX]){drawBar(x,c,t,tm,cp,lim,now,BAR[GFX]);return}
+  if(GFX==='cast'){drawCast(x,c,t,tm,cp,lim,now,{top:false,ac:'#2F6BFF'});return}
+  if(GFX==='head'){drawCast(x,c,t,tm,cp,lim,now,{top:true,ac:'#12B886'});return}
+  if(GFX==='bug'){drawBug(x,c,t,tm,cp,lim,now,{});return}
+  const LIGHT={ink:'#10151F',dim:'#5B6677',bg:'rgba(255,255,255,.97)',bg2:'rgba(236,240,245,.97)',ac:'#1F5BD6',ok:'#1C8A57',warn:'#B86E05',off:'#B5BDC9',rule:'rgba(16,21,31,.13)'};
+  if(GFX==='day'){drawBug(x,c,t,tm,cp,lim,now,{...LIGHT,sbg:'#10151F',sink:'#FFFFFF'});return}
+  if(GFX==='studio'){drawCast(x,c,t,tm,cp,lim,now,{...LIGHT,top:false,sbg:'#1F5BD6',sink:'#FFFFFF',slab:'rgba(255,255,255,.88)'});return}
+  if(!drawCam(x,0,0,W,H))text(CAMERR?'ไม่มีภาพจากกล้อง':'กำลังเปิดกล้อง…',W/2,H/2,'500 26px '+FONT.ui,'#4D5B74','center');
   // soft shade top and bottom so the graphics read over any picture
   let g=x.createLinearGradient(0,0,0,170);g.addColorStop(0,'rgba(0,0,0,.6)');g.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=g;x.fillRect(0,0,W,170);
   g=x.createLinearGradient(0,H-250,0,H);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.72)');x.fillStyle=g;x.fillRect(0,H-250,W,250);
@@ -366,9 +625,7 @@ function drawStage(){
   x.fillStyle='rgba(255,255,255,.16)';x.fillRect(cx+38,M+82,cw-60,5);x.fillStyle=late?'#E5484D':'#7AA2FF';x.fillRect(cx+38,M+82,(cw-60)*(1-ms/lim),5);
 
   // bottom strip: team | each mission as it stands | retries | score
-  const by=H-M-104,bh=104,target=liveScore(LOCK)??0,items=t.live?.items||{},retry=t.live?.pen||0;
-  if(target!==G.target){G.bump=now;G.target=target}
-  G.score+=(target-G.score)*.3;if(Math.abs(target-G.score)<.5)G.score=target;
+  const by=H-M-104,bh=104,items=t.live?.items||{},retry=t.live?.pen||0;
   const scW=210,rtW=118,scX=W-M-scW,rtX=scX-rtW+18;
   // missions, measured first so the team block can take what is left
   const fl='600 15px '+FONT.ui,PIP=20,GAP=6;
@@ -400,14 +657,9 @@ function drawStage(){
   text(String(Math.round(G.score)),W-M-22,by+90,`600 ${fs}px ${FONT.num}`,INK,'right');
 
   // each tap from the judge wipes in above the score, holds, then fades
-  if(t.ev&&t.ev.n!==G.evn){
-    if(G.evn!==null||t.state==='run'){const e=t.ev,pos=e.pts>0;
-      G.pop={at:now,label:e.pts?e.label:'Retry',value:e.pts?(pos?'+':'−')+Math.abs(e.pts):'ครั้งที่ '+e.retry,color:pos?'#16A865':e.pts<0?'#5C6880':'#D48A16'}}
-    G.evn=t.ev.n;
-  }else if(!t.ev)G.evn=0;
   if(G.pop){
-    const age=now-G.pop.at;if(age>2600)G.pop=null;
-    else{const fa='600 26px '+FONT.ui,fv='700 30px '+FONT.num,lw=width(G.pop.label,fa)+52,vw=width(G.pop.value,fv)+44,inn=Math.min(1,age/260),e=1-Math.pow(1-inn,3),out=age>2200?(2600-age)/400:1,dx=(1-e)*90,ph=58,py=by-ph-12,rx=W-M;
+    const age=now-G.pop.at;
+    {const fa='600 26px '+FONT.ui,fv='700 30px '+FONT.num,lw=width(G.pop.label,fa)+52,vw=width(G.pop.value,fv)+44,inn=Math.min(1,age/260),e=1-Math.pow(1-inn,3),out=age>2200?(2600-age)/400:1,dx=(1-e)*90,ph=58,py=by-ph-12,rx=W-M;
       x.globalAlpha=Math.max(0,out)*inn;
       slab(rx-vw-lw+18+dx,py,lw,ph,PANEL,18,18);text(G.pop.label,rx-vw-lw+18+dx+30,py+38,fa,INK);
       slab(rx-vw+dx,py,vw,ph,G.pop.color,18,0);text(G.pop.value,rx-20+dx,py+40,fv,INK,'right');
@@ -448,11 +700,20 @@ function tPress(src){
   save();render();
 }
 async function camOn(){
-  CAMASK=true;
-  try{CAM=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280},height:{ideal:720}},audio:false});
-    VID=document.createElement('video');VID.muted=true;VID.playsInline=true;VID.srcObject=CAM;VID.play().catch(()=>{})}catch(e){CAMERR=e.name||'error'}
+  CAMASK=true;CAMERR='';
+  const q=CAMQ[QUAL],ask=id=>navigator.mediaDevices.getUserMedia({video:{...(id?{deviceId:{exact:id}}:{}),width:{ideal:q.w},height:{ideal:q.h}},audio:false});
+  try{
+    if(CAM)CAM.getTracks().forEach(k=>k.stop());
+    // a remembered camera that is no longer plugged in must not block the page: fall back to whatever is there
+    try{CAM=await ask(CAMID)}catch(e){if(!CAMID)throw e;CAMID='';CAM=await ask('')}
+    const st=CAM.getVideoTracks()[0].getSettings();CAMID=st.deviceId||CAMID;CAMREAL=st.width&&st.height?st.width+' × '+st.height:'';
+    CAMS=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput');
+    VID=document.createElement('video');VID.muted=true;VID.playsInline=true;VID.srcObject=CAM;VID.play().catch(()=>{});
+  }catch(e){CAM=null;CAMERR=e.name||'error'}
+  if(CV){CV.width=q.w;CV.height=q.h}
   CAMASK=false;if(S.ui.view==='timer')render();
 }
+navigator.mediaDevices?.addEventListener?.('devicechange',async()=>{if(ROLE!=='timer'||!CAM)return;try{CAMS=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput')}catch(e){}if(S.ui.view==='timer')render()});
 // recording follows the clock, whoever started it: this laptop, or the judge's phone
 function syncRec(){
   if(ROLE!=='timer'||!LOCK||!CAM)return;const t=timerOf(LOCK);
@@ -463,7 +724,7 @@ function syncRec(){
     // a recorder that refuses our settings must not take the clock down with it: fall back to the browser's own, then give up for this run
     // what is recorded is the picture with graphics; without that, the bare camera
     let src=CAM;try{CSTREAM=CSTREAM||stageCanvas().captureStream(25);src=CSTREAM}catch(e){}
-    try{rec=new MediaRecorder(src,{mimeType:mime,videoBitsPerSecond:2500000})}catch(e){try{rec=new MediaRecorder(src)}catch(e2){RECERR=`${e2.name}: ${e2.message}`;RECFAIL=t.startAt;return}}
+    try{rec=new MediaRecorder(src,{mimeType:mime,videoBitsPerSecond:CAMQ[QUAL].bps})}catch(e){try{rec=new MediaRecorder(src)}catch(e2){RECERR=`${e2.name}: ${e2.message}`;RECFAIL=t.startAt;return}}
     REC=rec;RECERR='';
     rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};
     rec.onstop=()=>{
@@ -599,7 +860,7 @@ function vAdmin(){
   const oc=cls(S.ui.orderCls)||S.classes[0],oids=S.order[oc.id]||[];
   const orderRows=oids.map((id,n)=>{const t=team(id);return t?`<div class="qitem"><span class="qn">${n+1}</span><span class="tid">${t.id}</span><span style="flex:1;min-width:0">${esc(t.name)}</span><button class="btn sm" data-act="omove" data-id="${t.id}" data-d="-1" aria-label="เลื่อนขึ้น" ${n?'':'disabled'}>▲</button><button class="btn sm" data-act="omove" data-id="${t.id}" data-d="1" aria-label="เลื่อนลง" ${n<oids.length-1?'':'disabled'}>▼</button></div>`:''}).join('');
   const base=location.href.split('#')[0];
-  const links=[['คนดู · ทีมและครู',''],['จอในงาน','#screen'],['พิธีกร','#mc'],['เจ้าหน้าที่','#staff'],...fieldsSorted().map(c=>['กรรมการสนาม '+c.field+' · '+S.comps[c.comp].tag+' '+c.level,'#judge-'+c.field]),...fieldsSorted().map(c=>['จับเวลาสนาม '+c.field+' · โน้ตบุ๊ก','#timer-'+c.field])];
+  const links=[['คนดู · ทีมและครู',''],['จอในงาน','#screen'],['พิธีกร','#mc'],['เจ้าหน้าที่','#staff'],['กรรมการ · เลือกสนามเอง','#judge'],...fieldsSorted().map(c=>['กรรมการสนาม '+c.field+' · '+S.comps[c.comp].tag+' '+c.level,'#judge-'+c.field]),...fieldsSorted().map(c=>['จับเวลาสนาม '+c.field+' · โน้ตบุ๊ก','#timer-'+c.field])];
   const linkRows=links.map(l=>`<div class="qitem"><span style="flex:1;min-width:0">${esc(l[0])}<br><small class="mono muted" style="word-break:break-all">${esc(base+l[1])}</small></span><button class="btn sm" data-act="copylink" data-u="${esc(base+l[1])}">คัดลอก</button></div>`).join('');
   return`<div class="adm">
     <div class="panel"><h2>สนามและรอบ</h2><p class="small muted" style="margin:0">จับคู่รุ่นกับสนาม แต่ละสนามใช้แท็บเล็ต 1 เครื่อง</p>${fieldRows}
@@ -629,12 +890,12 @@ document.addEventListener('click',e=>{
   switch(a){
     case'tab':ui.view=b.dataset.v;ui.pinFor=null;break;
     case'gojudge':ui.view='judge';ui.field=b.dataset.f;break;
-    case'field':ui.field=b.dataset.f;ui.pinFor=null;if(f&&f.editRunId)ui.form=null;break;
+    case'field':ui.field=b.dataset.f;ui.pinFor=null;if(f&&f.editRunId)ui.form=null;rememberField();break;
     case'inc':case'dec':{const t=team(f.teamId),c=compOf(t.cls),m=c.missions.find(x=>x.id===b.dataset.m);if(a==='inc'&&!needsMet(c,f.items,m)){toast('ทำ'+needText(c,m)+'ให้ครบก่อน');return}
       if(a==='inc'&&closedBy(c,f.items,m)){toast(closedBy(c,f.items,m).label+' ต้องเป็นชิ้นสุดท้ายที่เก็บ');return}
       if(navigator.userActivation?.isActive)navigator.vibrate?.(12);const was=f.items[m.id]||0;f.items[m.id]=Math.max(0,Math.min(m.max,was+(a==='inc'?1:-1)));tidy(c,f.items);f.confirm=false;
       if(m.ends&&f.items[m.id]>was&&liveT(f)?.state==='run')tStop(f.field);
-      if(f.items[m.id]!==was)liveSync(f,{label:m.label,pts:(f.items[m.id]-was)*m.pts});break}
+      if(f.items[m.id]!==was)liveSync(f,{id:m.id,label:m.label,pts:(f.items[m.id]-was)*m.pts});break}
     case'pinc':f.pen++;f.confirm=false;liveSync(f,{label:'Retry',pts:0,retry:f.pen});break;
     case'pdec':f.pen=Math.max(0,f.pen-1);f.confirm=false;liveSync(f);break;
     case'swstart':if(!tStart(f.field)){toast('กดรีเซ็ตก่อนเริ่มจับเวลาใหม่');return}f.manual=false;f.setupEnd=null;break;
@@ -673,6 +934,9 @@ document.addEventListener('click',e=>{
       const txt=lines.join('\n');navigator.clipboard?.writeText(txt).then(()=>toast('คัดลอกผลแล้ว วางใน Excel ได้เลย')).catch(()=>toast('คัดลอกไม่ได้ในหน้าต่างนี้'));return}
     case'tpress':b.blur();tPress('คลิก');return;
     case'camon':CAMERR='';camOn();return;
+    case'gfx':{if(!GFX_LIST[b.dataset.v])return;GFX=b.dataset.v;keep('ptarena:gfx',GFX);const top=$('#glist')?.scrollTop||0,box=$('.tbox')?.scrollTop||0;render();if($('#glist'))$('#glist').scrollTop=top;if($('.tbox'))$('.tbox').scrollTop=box;return}
+    case'tfull':{const cv=stageCanvas();if(cv.requestFullscreen)cv.requestFullscreen().catch(()=>toast('เบราว์เซอร์นี้เปิดเต็มจอไม่ได้'));else toast('เบราว์เซอร์นี้เปิดเต็มจอไม่ได้');return}
+    case'cropreset':CROP={z:1,x:.5,y:.5};saveCrop();render();return;
     case'dirpick':dirPick(false);return;
     case'dirnew':dirPick(true);return;
     case'omove':{const t=team(b.dataset.id),o=S.order[t.cls],n=o.indexOf(t.id),k=n+ +b.dataset.d;if(k<0||k>=o.length)return;[o[n],o[k]]=[o[k],o[n]];break}
@@ -702,9 +966,12 @@ document.addEventListener('click',e=>{
 document.addEventListener('change',e=>{
   const el=e.target;
   if(el.id==='venue'){S.venue=el.value;toast('เปลี่ยนเป็น'+VENUES.find(v=>v[0]===el.value)[1]+(CLOUD?'':' (ต้นแบบใช้ข้อมูลตัวอย่างชุดเดียวกัน)'));save();render();return}
+  if(el.id==='gsel'){GFX=GFX_LIST[el.value]?el.value:'strip';keep('ptarena:gfx',GFX);return}
+  if(el.id==='camsel'){CAMID=el.value;keep('ptarena:cam',CAMID);camOn();return}
+  if(el.id==='qsel'){QUAL=el.value;keep('ptarena:camq',QUAL);camOn();return}
   if(el.id==='osel'){S.ui.orderCls=el.value;render();return}
   if(el.id==='bsel'){S.ui.boardCls=el.value;render();return}
-  if(el.id==='fsel'){S.ui.field=el.value;S.ui.pinFor=null;if(S.ui.form?.editRunId)S.ui.form=null;render();return}
+  if(el.id==='fsel'){S.ui.field=el.value;S.ui.pinFor=null;if(S.ui.form?.editRunId)S.ui.form=null;rememberField();render();return}
   if(el.id==='cf'){S.ui.form.confirm=el.checked;render();return}
   if(el.id==='mt'){const f=S.ui.form;if(liveT(f)?.state==='run')tStop(f.field);f.ms=Math.max(0,Math.round((+el.value||0)*1000));f.manual=true;save();render();return}
   const bd=el.dataset.bind;if(!bd)return;
@@ -714,7 +981,7 @@ document.addEventListener('change',e=>{
   if(bd==='staff'){S.staffPin=el.value.trim()||'2026';keepStaff()}
   S.ui.form=null;toast('บันทึกการตั้งค่าแล้ว');save();render();
 });
-document.addEventListener('input',e=>{if(e.target.id==='ckq'){S.ui.ckQuery=e.target.value;renderCkList()}});
+document.addEventListener('input',e=>{if(e.target.id==='ckq'){S.ui.ckQuery=e.target.value;renderCkList()}if(e.target.id==='czoom'){CROP.z=+e.target.value;saveCrop()}});
 document.addEventListener('keydown',e=>{
   if(ROLE==='timer'&&S.ui.view==='timer'&&READY&&!needGate()&&clsOfField(LOCK)&&CLICKER.includes(e.key)&&!/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)){e.preventDefault();if(!e.repeat)tPress(e.key===' '?'Space bar':e.key);return}
   if(e.key!=='Enter')return;

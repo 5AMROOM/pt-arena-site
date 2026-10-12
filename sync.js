@@ -1,7 +1,7 @@
 /* Cloud backend: keeps S in step with Firestore. app.js stays the owner of S and of every screen;
    this file only copies changes both ways. Loaded only when firebase-config.js is present. */
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js';
-import {initializeFirestore,persistentLocalCache,persistentMultipleTabManager,doc,onSnapshot,setDoc,updateDoc,getDoc,getDocFromCache,deleteField,FieldPath} from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js';
+import {initializeFirestore,persistentLocalCache,persistentMultipleTabManager,serverTimestamp,getDocFromServer,doc,onSnapshot,setDoc,updateDoc,getDoc,getDocFromCache,deleteField,FieldPath} from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js';
 import {getAuth,onAuthStateChanged,signInAnonymously} from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js';
 
 const app=initializeApp(window.PT_FIREBASE);
@@ -69,7 +69,9 @@ function applyTimers(snap){
   if(j===last.timers)return;
   last.timers=j;S.timers=d.timers||{};synced.timers=timersShape();
   // a live update from another device tells us how far its clock is from ours (plus the network delay)
-  if(!first&&!snap.metadata.fromCache&&!snap.metadata.hasPendingWrites)Object.values(S.timers).forEach(t=>{if(t.sentAt>lastSent&&t.by!==DEVICE){lastSent=t.sentAt;SKEW=Date.now()-t.sentAt}});
+  // a device that cannot measure the server clock itself (the big screen is not staff) falls back to a rougher guess:
+  // the stamp on a live update, which is late by the network delay
+  if(!OFFSET_OK&&!first&&!snap.metadata.fromCache&&!snap.metadata.hasPendingWrites)Object.values(S.timers).forEach(t=>{if(t.sentAt>lastSent&&t.by!==DEVICE){lastSent=t.sentAt;OFFSET=t.sentAt-Date.now()}});
   if(READY)remoteChanged();
 }
 // only the devices that run or show a match listen to the clocks; viewers' phones do not need them
@@ -138,11 +140,29 @@ function takeCodes(snap){
   const d=snap.data();S.staffPin=d.staffCode;S.pin=d.chiefPin||'1234';synced.codes=J([S.staffPin,S.pin]);
   return true;
 }
+/* How far this device's clock is from the server's. A write stamped by the server lands somewhere between the moment
+   we sent it and the moment it was confirmed; the midpoint is our best guess, and the fastest of a few tries is the best one. */
+let clockBusy=false;
+async function syncClock(){
+  if(clockBusy||!uid||!CLOUD_STAFF||!navigator.onLine)return;clockBusy=true;
+  try{
+    const ref=doc(db,'staff',uid);let best=null;
+    for(let n=0;n<4;n++){
+      const t0=Date.now();await timeout(setDoc(ref,{code:S.staffPin,t:serverTimestamp()}),8000);const t1=Date.now();
+      const ts=(await timeout(getDocFromServer(ref),8000)).data().t.toMillis();
+      if(!best||t1-t0<best.rtt)best={rtt:t1-t0,off:ts-(t0+t1)/2};
+    }
+    OFFSET=Math.round(best.off);OFFSET_OK=true;
+  }catch(e){}
+  clockBusy=false;
+}
+window.addEventListener('online',()=>syncClock());
+setInterval(syncClock,10*60*1000);
 async function checkStaff(){
   if(!uid){CLOUD_STAFF=false;return}
   // cached answer first so a tablet with weak signal opens straight away, then confirm with the server
   try{if(takeCodes(await getDocFromCache(codesRef)))CLOUD_STAFF=true}catch(e){}
-  const confirm=getDoc(codesRef).then(s=>{CLOUD_STAFF=takeCodes(s)},e=>{if(e.code==='permission-denied')CLOUD_STAFF=false}).then(()=>{if(READY)render()});
+  const confirm=getDoc(codesRef).then(s=>{CLOUD_STAFF=takeCodes(s)},e=>{if(e.code==='permission-denied')CLOUD_STAFF=false}).then(()=>{syncClock();if(READY)render()});
   if(!CLOUD_STAFF)await timeout(confirm,6000).catch(()=>{});
 }
 onAuthStateChanged(auth,async u=>{uid=u?u.uid:null;await checkStaff();got.auth=true;READY?render():ready()});

@@ -332,3 +332,16 @@ h1,h2,h3,.jteam,.fclass,.srow b{line-height:1.35}
 .tbig{font-size:clamp(40px,5.4vw,80px);white-space:nowrap}
 .jclock .t{font-size:30px;white-space:nowrap}
 .mark img{width:72%;height:72%;object-fit:contain;display:block}
+.tset{display:flex;flex-direction:column;gap:2px;width:100%;font-size:13px;color:var(--stage-muted)}
+.tset select{width:100%;min-height:42px}
+.stage canvas:fullscreen{width:100vw;height:100vh;object-fit:contain;background:#000;border-radius:0}
+/* timer laptop: the settings column scrolls by itself so the picture never leaves the screen */
+@media (min-width:821px){.tgrid .tbox{max-height:calc(100vh - 150px);overflow-y:auto;padding-right:8px;scrollbar-width:thin}}
+.glist{display:flex;flex-direction:column;gap:2px;max-height:236px;overflow-y:auto;border:1px solid var(--stage-line);border-radius:10px;padding:4px;scrollbar-width:thin}
+.gopt{display:grid;grid-template-columns:30px minmax(0,1fr);gap:0 10px;align-items:center;text-align:left;background:none;border:0;border-radius:8px;padding:6px 8px;color:var(--stage-ink)}
+.gopt i{grid-row:span 2;width:30px;height:30px;border-radius:7px;border:1px solid rgba(255,255,255,.28)}
+.gopt b{font-size:14px;font-weight:600;line-height:1.3}
+.gopt small{color:var(--stage-muted);font-size:12px;line-height:1.3}
+.gopt:hover{background:rgba(255,255,255,.06)}
+.gopt[aria-pressed=true]{background:var(--stage-2);box-shadow:inset 0 0 0 2px var(--stage-accent)}
+
