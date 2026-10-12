@@ -11,12 +11,12 @@ const auth=getAuth(app);
 
 const J=x=>JSON.stringify(x),clone=x=>JSON.parse(J(x));
 const stateRef=doc(db,'app','state'),codesRef=doc(db,'config','private');
-const mainRef=v=>doc(db,'venues',v),runsRef=v=>doc(db,'venues',v,'data','runs');
+const mainRef=v=>doc(db,'venues',v),runsRef=v=>doc(db,'venues',v,'data','runs'),timersRef=v=>doc(db,'venues',v,'data','timers');
 
-let uid=null,venue=null,unsub=[];
+let uid=null,venue=null,unsub=[],unsubT=null,lastSent=0;
 const got={state:false,main:false,runs:false,auth:false};
-const exists={main:false,runs:false},pending={main:false,runs:false},last={main:null,runs:null};
-let synced={main:null,runs:null,codes:null};
+const exists={main:false,runs:false,timers:false},pending={main:false,runs:false,timers:false},last={main:null,runs:null,timers:null};
+let synced={main:null,runs:null,timers:{},codes:null};
 
 /* ---------- shapes: S split into the pieces that are written separately ---------- */
 const body=o=>{const c=clone(o);delete c.id;return c};
@@ -27,6 +27,7 @@ function mainShape(){
   return{rounds:J(S.rounds),comps:J(S.comps),classes:J(S.classes),order,teams};
 }
 function runsShape(){const r={};S.runs.forEach(x=>{if(x.id)r[x.id]=J(body(x))});return r}
+function timersShape(){const r={};Object.keys(S.timers||{}).forEach(k=>r[k]=J(S.timers[k]));return r}
 const unpack=m=>Object.fromEntries(Object.entries(m).map(([k,v])=>[k,JSON.parse(v)]));
 
 /* ---------- cloud -> S ---------- */
@@ -36,7 +37,7 @@ function ready(){
 }
 function showNet(){
   const el=document.querySelector('#net');if(!el)return;
-  const wait=pending.main||pending.runs;
+  const wait=pending.main||pending.runs||pending.timers;
   el.hidden=!wait;el.textContent=navigator.onLine?'กำลังส่ง…':'เน็ตหลุด · เก็บไว้ในเครื่องแล้ว';
 }
 function applyMain(snap){
@@ -61,11 +62,27 @@ function applyRuns(snap){
   synced.runs=runsShape();
   got.runs=true;READY?remoteChanged():ready();
 }
+function applyTimers(snap){
+  pending.timers=snap.metadata.hasPendingWrites;exists.timers=snap.exists();showNet();
+  const d=snap.data()||{},j=J(d),first=last.timers===null;
+  if(j===last.timers)return;
+  last.timers=j;S.timers=d.timers||{};synced.timers=timersShape();
+  // a live update from another device tells us how far its clock is from ours (plus the network delay)
+  if(!first&&!snap.metadata.fromCache&&!snap.metadata.hasPendingWrites)Object.values(S.timers).forEach(t=>{if(t.sentAt>lastSent&&t.by!==DEVICE){lastSent=t.sentAt;SKEW=Date.now()-t.sentAt}});
+  if(READY)remoteChanged();
+}
+// only the devices that run a match listen to the clocks; viewers' phones do not need them
+function watchTimers(){
+  if(unsubT){unsubT();unsubT=null}
+  last.timers=null;exists.timers=false;S.timers={};synced.timers={};
+  if(venue&&['judge','timer','staff'].includes(ROLE))unsubT=onSnapshot(timersRef(venue),{includeMetadataChanges:true},applyTimers,fail);
+}
 function watchVenue(v){
   unsub.forEach(f=>f());
   venue=v;S.venue=v;got.main=got.runs=false;last.main=last.runs=null;
   const opt={includeMetadataChanges:true};
   unsub=[onSnapshot(mainRef(v),opt,applyMain,fail),onSnapshot(runsRef(v),opt,applyRuns,fail)];
+  watchTimers();
 }
 onSnapshot(stateRef,snap=>{
   const v=(snap.data()||{}).venue||'C';got.state=true;
@@ -98,6 +115,12 @@ function push(){
   }
   if(!exists.runs){if(Object.keys(r).length){setDoc(runsRef(venue),{runs:unpack(r)}).catch(fail);exists.runs=true}}
   else{const a=diff('runs',r,or);if(a.length)updateDoc(runsRef(venue),...a).catch(fail)}
+  if(unsubT){
+    const t=timersShape();
+    if(!exists.timers){if(Object.keys(t).length){setDoc(timersRef(venue),{timers:unpack(t)}).catch(fail);exists.timers=true}}
+    else{const a=diff('timers',t,synced.timers);if(a.length)updateDoc(timersRef(venue),...a).catch(fail)}
+    synced.timers=t;
+  }
   synced.main=m;synced.runs=r;
   const c=J([S.staffPin,S.pin]);
   if(synced.codes&&c!==synced.codes){
@@ -136,4 +159,4 @@ async function enter(code){
   return CLOUD_STAFF;
 }
 
-window.PT_BACKEND={push,enter};
+window.PT_BACKEND={push,enter,role:()=>{if(venue)watchTimers()}};

@@ -38,7 +38,7 @@ function seed(){
       if(t.inspect?.result==='pass'&&i<done)runs.push(mk(t,1,comps[c.comp]));
     }});
   teams.filter(t=>t.cls==='dl-p').slice(0,2).forEach(t=>runs.push(mk(t,2,comps.dl)));
-  return{venue:'C',rounds:2,pin:'1234',staffPin:'2026',comps,classes,teams,runs,order,ts,
+  return{venue:'C',rounds:2,pin:'1234',staffPin:'2026',comps,classes,teams,runs,order,timers:{},ts,
     ui:{view:'overview',field:'A',boardCls:'kb-p',teamQuery:'C004',ckFilter:'all',ckQuery:'',openInspect:null,form:null,pinFor:null,screenIdx:0,adminMsg:'',resetAsk:false}};
 }
 S=seed();
@@ -50,7 +50,7 @@ if(CLOUD)setTimeout(()=>{if(!READY)$('#view').innerHTML='<div class="panel"><h2>
 
 /* ---------- storage: shared data lives in this browser for now (ui state stays per tab) ---------- */
 const KEY='ptarena:v1';
-const DATA_KEYS=['venue','rounds','pin','staffPin','comps','classes','teams','runs','order','ts'];
+const DATA_KEYS=['venue','rounds','pin','staffPin','comps','classes','teams','runs','order','timers','ts'];
 let lastSaved='';
 function save(){if(CLOUD){window.PT_BACKEND?.push();return}const d={};DATA_KEYS.forEach(k=>d[k]=S[k]);const j=JSON.stringify(d);if(j===lastSaved)return;lastSaved=j;try{localStorage.setItem(KEY,j)}catch(e){}}
 function load(j){try{const d=JSON.parse(j);if(!d||!Array.isArray(d.teams)||!Array.isArray(d.runs))return false;DATA_KEYS.forEach(k=>{if(k in d)S[k]=d[k]});lastSaved=j;return true}catch(e){return false}}
@@ -90,24 +90,24 @@ function queue(clsId){const r=curRound(clsId);if(!r)return[];return eligible(cls
 
 function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('on'),2400)}
 
-/* ---------- roles: the link decides what a device sees (#staff, #judge-A, #screen, #mc, none = viewers) ---------- */
-const ROLE_TABS={view:['team','board'],judge:['judge','board'],screen:['screen'],mc:['mc','board'],staff:TABS.map(t=>t[0])};
+/* ---------- roles: the link decides what a device sees (#staff, #judge-A, #timer-A, #screen, #mc, none = viewers) ---------- */
+const ROLE_TABS={view:['team','board'],judge:['judge','board'],timer:['timer'],screen:['screen'],mc:['mc','board'],staff:TABS.map(t=>t[0])};
 const STAFF_KEY='ptarena:staffcode',MYTEAM_KEY='ptarena:myteam';
 let ROLE='view',LOCK=null;
 function readHash(){
-  const h=decodeURIComponent(location.hash.slice(1)).trim(),m=/^judge-(.+)$/i.exec(h);
-  if(m){ROLE='judge';LOCK=m[1].toUpperCase()}else{LOCK=null;ROLE=h==='staff'||h==='screen'||h==='mc'?h:'view'}
+  const h=decodeURIComponent(location.hash.slice(1)).trim(),m=/^(judge|timer)-(.+)$/i.exec(h);
+  if(m){ROLE=m[1].toLowerCase();LOCK=m[2].toUpperCase()}else{LOCK=null;ROLE=h==='staff'||h==='screen'||h==='mc'?h:'view'}
   if(ROLE!=='staff'){let q='';try{q=localStorage.getItem(MYTEAM_KEY)||''}catch(e){}S.ui.teamQuery=q}
 }
 const staffOk=()=>{if(CLOUD)return CLOUD_STAFF;try{return localStorage.getItem(STAFF_KEY)===S.staffPin}catch(e){return false}};
 const keepStaff=()=>{if(CLOUD)return;try{localStorage.setItem(STAFF_KEY,S.staffPin)}catch(e){}};
-const needGate=()=>(ROLE==='judge'||ROLE==='staff')&&!staffOk();
+const needGate=()=>(ROLE==='judge'||ROLE==='timer'||ROLE==='staff')&&!staffOk();
 const rememberTeam=q=>{if(ROLE!=='staff')try{localStorage.setItem(MYTEAM_KEY,q)}catch(e){}};
 // slash = hidden, open eye = shown
 const eyeIcon=shown=>`<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>${shown?'':'<path d="M4 4l16 16"/>'}</svg>`;
 function vGate(){return`<div class="panel" style="max-width:420px;margin:0 auto;width:100%"><h2>สำหรับเจ้าหน้าที่</h2>
   <div class="row"><input type="password" id="sc" placeholder="รหัสเจ้าหน้าที่" autocapitalize="none" autocomplete="off" autocorrect="off" spellcheck="false" style="flex:1"><button class="btn" data-act="eye" aria-label="แสดงรหัส" aria-pressed="false" style="padding:7px 10px">${eyeIcon(false)}</button><button class="btn pri" data-act="gate">เข้า</button></div></div>`}
-window.addEventListener('hashchange',()=>{readHash();render()});
+window.addEventListener('hashchange',()=>{readHash();window.PT_BACKEND?.role?.();render()});
 
 /* ---------- shell ---------- */
 function renderShell(){
@@ -127,8 +127,9 @@ function render(){
   if(LOCK)S.ui.field=LOCK;
   if(!clsOfField(S.ui.field))S.ui.field=fieldsSorted()[0].field;
   const v=S.ui.view;
-  const map={overview:vOverview,checkin:vCheckin,judge:vJudge,board:vBoard,team:vTeam,screen:vScreen,mc:vMc,admin:vAdmin};
-  $('#view').innerHTML=map[v]();if(v==='checkin')renderCkList();if(v==='judge')tickSW();}
+  syncRec();
+  const map={overview:vOverview,checkin:vCheckin,judge:vJudge,timer:vTimer,board:vBoard,team:vTeam,screen:vScreen,mc:vMc,admin:vAdmin};
+  $('#view').innerHTML=map[v]();if(v==='checkin')renderCkList();if(v==='judge')tickSW();if(v==='timer')timerAfter();}
 
 /* ---------- overview ---------- */
 function vOverview(){
@@ -203,10 +204,31 @@ function ensureForm(){
   if(!f||f.field!==S.ui.field||f.teamId!==q[0].id)S.ui.form=newForm(q[0],curRound(c.id),S.ui.field);
   return S.ui.form;
 }
-const elapsed=f=>f.ms+(f.startAt?Date.now()-f.startAt:0);
+/* One clock per field, shared by the judge's phone and the timer laptop. Whoever starts it stamps its own clock;
+   other devices shift that by SKEW (their clock minus the sender's, measured when a live update arrives). */
+let DEVICE;try{DEVICE=sessionStorage.getItem('ptarena:device')||Math.random().toString(36).slice(2,8);sessionStorage.setItem('ptarena:device',DEVICE)}catch(e){DEVICE=Math.random().toString(36).slice(2,8)}
+let SKEW=0;
+const timerOf=field=>S.timers[field]||{state:'idle',ms:0};
+const tElapsed=t=>t.state==='run'?Math.max(0,Date.now()-t.startAt-(t.by===DEVICE?0:SKEW)):t.ms||0;
+const limitOf=field=>S.comps[clsOfField(field).comp].timeLimit*1000;
+function tStart(field){
+  const c=clsOfField(field),q=queue(c.id),t=timerOf(field);if(!q.length)return false;
+  // a stopped clock stays until the judge submits or resets, so a stray press cannot wipe a result
+  if(t.state!=='idle'&&t.team===q[0].id&&t.round===curRound(c.id))return false;
+  S.timers[field]={state:'run',team:q[0].id,round:curRound(c.id),startAt:Date.now(),sentAt:Date.now(),by:DEVICE,ms:0};return true}
+function tStop(field,ms){const t=timerOf(field);if(t.state!=='run')return false;
+  S.timers[field]={...t,state:'stop',ms:Math.min(ms??tElapsed(t),limitOf(field)),sentAt:Date.now()};return true}
+function tReset(field){S.timers[field]={state:'idle',ms:0}}
+// the device that started the clock ends the match at the time limit
+function autoStop(){
+  const field=ROLE==='timer'?LOCK:S.ui.view==='judge'?S.ui.field:null;if(!field||!READY||!clsOfField(field))return;
+  const t=timerOf(field);if(t.state==='run'&&t.by===DEVICE&&tElapsed(t)>=limitOf(field)){tStop(field,limitOf(field));save();render()}}
+const liveT=f=>{const t=timerOf(f.field);return!f.editRunId&&t.state!=='idle'&&t.team===f.teamId&&t.round===f.round?t:null};
+const elapsed=f=>{const t=liveT(f);return t&&t.state==='run'?tElapsed(t):f.ms};
 function formTotal(f){const t=team(f.teamId);const c=compOf(t.cls);let s=0;c.missions.forEach(m=>s+=(f.items[m.id]||0)*m.pts);return s}
 function vJudge(){
   const c=clsOfField(S.ui.field),f=ensureForm(),cp=S.comps[c.comp],q=queue(c.id);
+  const T=f&&liveT(f),running=!!T&&T.state==='run';if(T&&T.state==='stop'&&!f.manual)f.ms=T.ms;
   const fieldChips=fieldsSorted().map(x=>`<button class="chip" data-act="field" data-f="${x.field}" aria-pressed="${x.field===S.ui.field}"><b>${x.field}</b> ${esc(S.comps[x.comp].tag)} ${esc(x.level)}</button>`).join('');
   let form;
   if(!f){form=`<div class="panel"><h2>${eligible(c.id).length?'สนามนี้แข่งครบทุกรอบแล้ว':'ยังไม่มีทีมที่ผ่านการตรวจหุ่น'}</h2><p class="muted">${eligible(c.id).length?'ไปดูอันดับได้ที่แท็บกระดานผล':'ทีมต้องเช็กอินและผ่านการตรวจหุ่นก่อน จึงจะขึ้นคิวในสนามนี้'}</p></div>`}
@@ -215,8 +237,8 @@ function vJudge(){
       ${f.editRunId?`<div class="editbar"><span>กำลังแก้คะแนนที่ส่งแล้ว (สิทธิ์หัวหน้ากรรมการ) · ระบบเก็บประวัติการแก้ไว้</span><button class="btn sm" data-act="canceledit">ยกเลิกการแก้</button></div>`:''}
       <div class="jhead"><div><div class="small muted">สนาม ${c.field} · ${esc(clsName(c))} · รอบ ${f.round}/${S.rounds}</div><div class="jteam"><span class="tid" style="font-size:18px">${t.id}</span> ${esc(t.name)}</div><div class="small muted">${esc(t.school)}</div></div>
       ${f.editRunId?'':`<button class="btn sm" data-act="skip">ทีมไม่มา · ข้ามคิว</button>`}</div>
-      <div class="sw"><span class="t mono ${f.startAt?'run':''} ${el>cp.timeLimit*1000?'over':''}" id="sw">${fmtMs(el)}</span>
-        ${f.startAt?`<button class="btn big" data-act="swstop">หยุดเวลา</button>`:`<button class="btn pri big" data-act="swstart">${el?'จับเวลาต่อ':'เริ่มจับเวลา'}</button>`}
+      <div class="sw"><span class="t mono ${running?'run':''} ${el>cp.timeLimit*1000?'over':''}" id="sw">${fmtMs(el)}</span>
+        ${running?`<button class="btn big" data-act="swstop">หยุดเวลา</button>`:T||f.editRunId?'':`<button class="btn pri big" data-act="swstart">เริ่มจับเวลา</button>`}
         <button class="btn" data-act="swreset">รีเซ็ต</button>
         <button class="btn" data-act="swgiveup">ทีมขอหยุด</button>
         <span class="row small muted"><label for="mt">แก้เวลา (วินาที)</label><input type="number" id="mt" step="0.1" min="0" style="width:90px" value="${(f.ms/1000).toFixed(1)}"></span>
@@ -242,7 +264,65 @@ function vJudge(){
       </div></div></div>`;
 }
 function tickSW(){const f=S.ui.form,el=$('#sw');if(!f||!el)return;const ms=elapsed(f);el.textContent=fmtMs(ms);const lim=compOf(team(f.teamId).cls).timeLimit*1000;el.classList.toggle('over',ms>lim)}
-setInterval(()=>{if(S.ui.view==='judge'&&S.ui.form?.startAt)tickSW()},100);
+setInterval(()=>{autoStop();if(S.ui.view==='judge'&&S.ui.form)tickSW();if(S.ui.view==='timer')tickTimer()},100);
+
+/* ---------- timer laptop: Space bar or a USB clicker starts and stops the clock, the webcam records the run ---------- */
+const CLICKER=[' ','Enter','PageDown','PageUp','ArrowRight','ArrowLeft','ArrowUp','ArrowDown','b','B','.','F5'];
+let CAM=null,CAMERR='',CAMASK=false,REC=null,RECERR='',RECFAIL=0,CLIP=null,LASTKEY='',LASTPRESS=0;
+function vTimer(){
+  const c=clsOfField(LOCK),q=queue(c.id),t=timerOf(LOCK),who=t.state!=='idle'&&team(t.team)||q[0];
+  const label={idle:who?'พร้อม · กด Space bar เพื่อเริ่ม':'ไม่มีทีมรอคิว',run:'กำลังแข่ง · กด Space bar เพื่อหยุด',stop:'หยุดแล้ว · รอกรรมการส่งคะแนน'}[t.state];
+  return`<div class="stage">
+    <div class="stage-top"><div><div class="ev">สนาม ${c.field} · ${esc(clsName(c))}${who&&t.state!=='idle'?' · รอบ '+t.round:''}</div><div style="font-family:var(--f-display);font-size:26px;font-weight:700">${who?`${who.id} · ${esc(who.name)}`:'–'}</div></div>${REC?'<span class="pill bad">● กำลังอัด</span>':''}</div>
+    <div class="stage-grid">
+      <div class="tbox"><button class="tbig mono ${t.state}" id="tm" data-act="tpress" aria-label="เริ่มหรือหยุดเวลา">${fmtMs(tElapsed(t))}</button>
+        <div style="font-size:20px">${label}</div><div class="sub2">ปุ่มล่าสุดที่รับได้: <b>${esc(LASTKEY||'ยังไม่มี')}</b></div></div>
+      <div class="sq" style="gap:10px"><video id="cam" autoplay muted playsinline></video>
+        ${CAMERR?`<div><b>เปิดกล้องไม่ได้</b><ol style="margin:4px 0;padding-left:20px"><li>เช็กว่าเสียบเว็บแคมแล้ว</li><li>กดรูปกล้องบนแถบที่อยู่เว็บ แล้วเลือกอนุญาต</li><li>กดปุ่มข้างล่าง</li></ol><button class="btn sm" data-act="camon">เปิดกล้องอีกครั้ง</button></div>`:''}
+        ${RECERR?`<div><b>อัดวิดีโอไม่ได้</b> <span class="sub2">${esc(RECERR)}</span></div>`:''}
+        ${CLIP&&t.state!=='run'?`<div class="sub2">ดูย้อนหลัง · ${esc(CLIP.name)}</div><video id="clip" controls src="${CLIP.url}"></video><div><a class="btn sm" href="${CLIP.url}" download="${esc(CLIP.name)}">บันทึกไฟล์อีกครั้ง</a></div>`:''}</div>
+    </div></div>`;
+}
+function timerAfter(){
+  const el=$('#cam');if(el&&CAM)el.srcObject=CAM;if(!CAM&&!CAMERR&&!CAMASK)camOn();
+  // a fresh recording has no length written in it; jumping to the end once makes the browser work it out, so the bar can be dragged
+  const v=$('#clip');if(v)v.onloadedmetadata=()=>{if(v.duration===Infinity){v.ontimeupdate=()=>{v.ontimeupdate=null;v.currentTime=0};v.currentTime=1e9}};
+}
+function tickTimer(){const el=$('#tm');if(!el||!clsOfField(LOCK))return;const t=timerOf(LOCK),ms=tElapsed(t);el.textContent=fmtMs(ms);el.classList.toggle('over',ms>=limitOf(LOCK))}
+function tPress(src){
+  const now=Date.now();LASTKEY=src;
+  if(now-LASTPRESS<1000){render();return} // a bouncing or double press counts once
+  LASTPRESS=now;const t=timerOf(LOCK);
+  if(t.state==='run')tStop(LOCK);
+  else if(!tStart(LOCK))toast(t.state==='stop'?'รอกรรมการส่งคะแนนก่อน':'ไม่มีทีมรอคิว');
+  save();render();
+}
+async function camOn(){
+  CAMASK=true;
+  try{CAM=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280},height:{ideal:720}},audio:false})}catch(e){CAMERR=e.name||'error'}
+  CAMASK=false;if(S.ui.view==='timer')render();
+}
+// recording follows the clock, whoever started it: this laptop, or the judge's phone
+function syncRec(){
+  if(ROLE!=='timer'||!LOCK||!CAM)return;const t=timerOf(LOCK);
+  if(t.state==='run'&&!REC&&RECFAIL!==t.startAt){
+    const mime=['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4'].find(m=>MediaRecorder.isTypeSupported(m));
+    const name=`${t.team}_R${t.round}_${nowHM().replace(':','')}.${mime&&mime.startsWith('video/mp4')?'mp4':'webm'}`,chunks=[];
+    let rec;
+    // a recorder that refuses our settings must not take the clock down with it: fall back to the browser's own, then give up for this run
+    try{rec=new MediaRecorder(CAM,{mimeType:mime,videoBitsPerSecond:1500000})}catch(e){try{rec=new MediaRecorder(CAM)}catch(e2){RECERR=`${e2.name}: ${e2.message}`;RECFAIL=t.startAt;return}}
+    REC=rec;RECERR='';
+    rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};
+    rec.onstop=()=>{
+      REC=null;if(CLIP)URL.revokeObjectURL(CLIP.url);
+      CLIP={url:URL.createObjectURL(new Blob(chunks,{type:rec.mimeType})),name};
+      // kept on this laptop only: the file goes to its Downloads folder
+      const a=document.createElement('a');a.href=CLIP.url;a.download=name;document.body.append(a);a.click();a.remove();
+      if(S.ui.view==='timer')render();
+    };
+    try{rec.start(1000)}catch(e){REC=null;RECERR=`${e.name}: ${e.message}`;RECFAIL=t.startAt}
+  }else if(t.state!=='run'&&REC&&REC.state==='recording')REC.stop();
+}
 
 /* ---------- board ---------- */
 function vBoard(){
@@ -343,7 +423,7 @@ function vAdmin(){
     ${cp.missions.map(m=>`<span>${esc(m.label)}</span><input type="number" min="0" value="${m.pts}" data-bind="pts" data-k="${k}" data-m="${m.id}" aria-label="คะแนน ${esc(m.label)}"><input type="number" min="1" value="${m.max}" data-bind="max" data-k="${k}" data-m="${m.id}" aria-label="สูงสุด ${esc(m.label)}">`).join('')}
     <span>เวลาแข่ง (วินาที)</span><input type="number" min="10" value="${cp.timeLimit}" data-bind="time" data-k="${k}" aria-label="เวลาแข่ง"><span></span></div></div>`).join('');
   const base=location.href.split('#')[0];
-  const links=[['คนดู · ทีมและครู',''],['จอในงาน','#screen'],['พิธีกร','#mc'],['เจ้าหน้าที่','#staff'],...fieldsSorted().map(c=>['กรรมการสนาม '+c.field+' · '+S.comps[c.comp].tag+' '+c.level,'#judge-'+c.field])];
+  const links=[['คนดู · ทีมและครู',''],['จอในงาน','#screen'],['พิธีกร','#mc'],['เจ้าหน้าที่','#staff'],...fieldsSorted().map(c=>['กรรมการสนาม '+c.field+' · '+S.comps[c.comp].tag+' '+c.level,'#judge-'+c.field]),...fieldsSorted().map(c=>['จับเวลาสนาม '+c.field+' · โน้ตบุ๊ก','#timer-'+c.field])];
   const linkRows=links.map(l=>`<div class="qitem"><span style="flex:1;min-width:0">${esc(l[0])}<br><small class="mono muted" style="word-break:break-all">${esc(base+l[1])}</small></span><button class="btn sm" data-act="copylink" data-u="${esc(base+l[1])}">คัดลอก</button></div>`).join('');
   return`<div class="adm">
     <div class="panel"><h2>สนามและรอบ</h2><p class="small muted" style="margin:0">จับคู่รุ่นกับสนาม แต่ละสนามใช้แท็บเล็ต 1 เครื่อง</p>${fieldRows}
@@ -375,18 +455,18 @@ document.addEventListener('click',e=>{
       f.items[m.id]=Math.max(0,Math.min(m.max,(f.items[m.id]||0)+(a==='inc'?1:-1)));tidy(c,f.items);f.confirm=false;break}
     case'pinc':f.pen++;f.confirm=false;break;
     case'pdec':f.pen=Math.max(0,f.pen-1);f.confirm=false;break;
-    case'swstart':f.startAt=Date.now();break;
-    case'swstop':f.ms=elapsed(f);f.startAt=null;break;
-    case'swreset':f.ms=0;f.startAt=null;break;
+    case'swstart':if(!tStart(f.field)){toast('กดรีเซ็ตก่อนเริ่มจับเวลาใหม่');return}f.manual=false;break;
+    case'swstop':tStop(f.field);break;
+    case'swreset':if(!f.editRunId)tReset(f.field);f.ms=0;f.manual=false;break;
     // a team may stop early, but the rules record the full match time
-    case'swgiveup':f.ms=compOf(team(f.teamId).cls).timeLimit*1000;f.startAt=null;toast('บันทึกเวลาเป็น '+fmtMs(f.ms));break;
-    case'submit':{if(!f.confirm)return;if(f.startAt){f.ms=elapsed(f);f.startAt=null}
+    case'swgiveup':{const lim=limitOf(f.field);if(liveT(f)?.state==='run')tStop(f.field,lim);f.ms=lim;f.manual=true;toast('บันทึกเวลาเป็น '+fmtMs(lim));break}
+    case'submit':{if(!f.confirm)return;if(liveT(f)?.state==='run'){tStop(f.field);f.ms=timerOf(f.field).ms}
       if(f.ms<=0){toast('ยังไม่มีเวลาที่จับได้ กดเริ่มจับเวลา หรือใส่เวลาเอง');return}
       const t=team(f.teamId);f.ms=Math.min(f.ms,compOf(t.cls).timeLimit*1000);
       if(f.editRunId){const r=S.runs.find(x=>x.id===f.editRunId);(r.history=r.history||[]).push({items:r.items,pen:r.pen,ms:r.ms,at:nowHM()});Object.assign(r,{items:{...f.items},pen:f.pen,ms:f.ms});r.edits++;toast('บันทึกคะแนนที่แก้แล้ว · '+t.id+' ได้ '+score(r)+' คะแนน')}
-      else{const r={id:t.id+'_'+f.round,team:t.id,round:f.round,items:{...f.items},pen:f.pen,ms:f.ms,at:nowHM(),ts:Date.now(),edits:0};S.runs.push(r);toast('ส่งคะแนนแล้ว · '+t.id+' ได้ '+score(r)+' คะแนน')}
+      else{const r={id:t.id+'_'+f.round,team:t.id,round:f.round,items:{...f.items},pen:f.pen,ms:f.ms,at:nowHM(),ts:Date.now(),edits:0};S.runs.push(r);tReset(f.field);toast('ส่งคะแนนแล้ว · '+t.id+' ได้ '+score(r)+' คะแนน')}
       ui.form=null;break}
-    case'skip':{const t=team(f.teamId),o=S.order[t.cls];o.splice(o.indexOf(t.id),1);o.push(t.id);ui.form=null;toast(t.id+' ไปต่อท้ายคิว');break}
+    case'skip':{const t=team(f.teamId),o=S.order[t.cls];o.splice(o.indexOf(t.id),1);o.push(t.id);tReset(f.field);ui.form=null;toast(t.id+' ไปต่อท้ายคิว');break}
     case'editask':ui.pinFor=b.dataset.id;render();setTimeout(()=>$('#pin')?.focus(),0);return;
     case'pincancel':ui.pinFor=null;break;
     case'pinok':{const v=$('#pin').value;if(v!==S.pin){toast('PIN ไม่ถูกต้อง');return}
@@ -407,6 +487,8 @@ document.addEventListener('click',e=>{
     case'viewboard':ui.boardCls=b.dataset.v;ui.view='board';break;
     case'copycsv':{const c=cls(ui.boardCls);const lines=['อันดับ,TeamID,ทีม,โรงเรียน,คะแนน,เวลา,Retry'].concat(standings(c.id).map(r=>[r.rank||'',r.t.id,r.t.name,r.t.school,r.b?r.b.score:'',r.b?fmtMs(r.b.run.ms):'',r.b?r.b.run.pen||0:''].join(',')));
       const txt=lines.join('\n');navigator.clipboard?.writeText(txt).then(()=>toast('คัดลอกผลแล้ว วางใน Excel ได้เลย')).catch(()=>toast('คัดลอกไม่ได้ในหน้าต่างนี้'));return}
+    case'tpress':b.blur();tPress('คลิก');return;
+    case'camon':CAMERR='';camOn();return;
     case'teamgo':ui.teamQuery=$('#tq').value;rememberTeam(ui.teamQuery.trim());break;
     case'eye':{const i=$('#sc'),shown=i.type==='password';i.type=shown?'text':'password';b.setAttribute('aria-pressed',shown);b.innerHTML=eyeIcon(shown);i.focus();return}
     case'gate':{const v=$('#sc').value.trim();if(!v)return;
@@ -434,7 +516,7 @@ document.addEventListener('change',e=>{
   const el=e.target;
   if(el.id==='venue'){S.venue=el.value;toast('เปลี่ยนเป็น'+VENUES.find(v=>v[0]===el.value)[1]+(CLOUD?'':' (ต้นแบบใช้ข้อมูลตัวอย่างชุดเดียวกัน)'));save();render();return}
   if(el.id==='cf'){S.ui.form.confirm=el.checked;render();return}
-  if(el.id==='mt'){const f=S.ui.form;f.ms=Math.max(0,Math.round((+el.value||0)*1000));f.startAt=null;render();return}
+  if(el.id==='mt'){const f=S.ui.form;if(liveT(f)?.state==='run')tStop(f.field);f.ms=Math.max(0,Math.round((+el.value||0)*1000));f.manual=true;save();render();return}
   const bd=el.dataset.bind;if(!bd)return;
   const k=el.dataset.k,cp=k&&S.comps[k];
   if(bd==='field')cls(el.dataset.c).field=el.value;
@@ -448,6 +530,7 @@ document.addEventListener('change',e=>{
 });
 document.addEventListener('input',e=>{if(e.target.id==='ckq'){S.ui.ckQuery=e.target.value;renderCkList()}});
 document.addEventListener('keydown',e=>{
+  if(ROLE==='timer'&&S.ui.view==='timer'&&READY&&!needGate()&&clsOfField(LOCK)&&CLICKER.includes(e.key)&&!/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)){e.preventDefault();if(!e.repeat)tPress(e.key===' '?'Space bar':e.key);return}
   if(e.key!=='Enter')return;
   if(e.target.id==='tq'){document.querySelector('[data-act="teamgo"]')?.click()}
   if(e.target.id==='sc'){document.querySelector('[data-act="gate"]')?.click()}

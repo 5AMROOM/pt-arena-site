@@ -171,6 +171,12 @@ td.num,th.num{text-align:right;font-family:var(--f-mono);font-variant-numeric:ta
 .sq .ql:last-child{border-bottom:0}
 .sq .ql .L{font-family:var(--f-display);font-weight:700;font-size:20px;color:var(--stage-accent)}
 .sq .ql small{color:var(--stage-muted)}
+/* timer laptop */
+.tbox{display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+.tbig{background:none;border:0;padding:0;color:var(--stage-ink);font-size:clamp(64px,15vw,190px);font-weight:600;line-height:1}
+.tbig.run{color:var(--stage-accent)}
+.tbig.over{color:#FF7A73}
+.stage video{width:100%;border-radius:8px;background:#000;display:block}
 .dots{display:flex;gap:6px;justify-content:center}
 .dots i{width:28px;height:4px;border-radius:2px;background:var(--stage-line)}
 .dots i.on{background:var(--stage-accent)}
