@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>PT Arena</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="style.css?v=9fe6cf0b">
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="mark">PT</div>
+      <div><div class="eyebrow">Thailand Youth Robotics Championship 2026</div><h1>PT Arena <span style="font-family:var(--f-body);font-size:14px;font-weight:500;color:var(--muted)">ระบบวันแข่ง</span></h1></div>
+    </div>
+    <div class="venue"><label for="venue">สนามแข่งขัน</label><select id="venue"></select></div>
+  </header>
+  <div class="note" id="demo"><b>ต้นแบบ</b> · ทีม โรงเรียน และคะแนนทั้งหมดเป็นข้อมูลตัวอย่าง เกณฑ์คะแนนเป็นค่าสมมติ แก้ได้ในแท็บตั้งค่า · ลองกดกรอกคะแนนในแท็บกรรมการ แล้วดูกระดานผลกับหน้าทีมเปลี่ยนตาม · ของจริงจะซิงก์ข้อมูลระหว่างทุกเครื่องในงาน</div>
+  <div class="tabs-wrap"><nav class="tabs" role="tablist" id="tabs"></nav></div>
+  <main id="view"></main>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+<span id="net" class="pill warn" style="position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:5" hidden></span>
+<script src="firebase-config.js?v=9fe6cf0b"></script>
+<script src="app.js?v=9fe6cf0b"></script>
+<script>if(window.PT_FIREBASE){const s=document.createElement('script');s.type='module';s.src='sync.js?v=9fe6cf0b';document.head.append(s)}</script>
+</body>
+</html>
