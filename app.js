@@ -20,7 +20,8 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 const hm=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
 const nowHM=()=>{const d=new Date();return hm(d.getHours()*60+d.getMinutes())};
-const fmtMs=ms=>{const s=ms/1000;const m=Math.floor(s/60);return m+':'+(s-m*60).toFixed(1).padStart(4,'0')};
+// 00:00.00 = minutes : seconds . hundredths, cut (not rounded) so the clock never shows a time that has not happened yet
+const fmtMs=ms=>{const cs=Math.max(0,Math.floor(ms/10)),p=n=>String(n).padStart(2,'0');return p(Math.floor(cs/6000))+':'+p(Math.floor(cs%6000/100))+'.'+p(cs%100)};
 
 let S;
 function seed(){
@@ -230,7 +231,8 @@ function tStart(field){
   const same=t.team===q[0].id&&t.round===curRound(c.id);
   S.timers[field]={state:'run',team:q[0].id,round:curRound(c.id),startAt:Date.now(),sentAt:Date.now(),by:DEVICE,ms:0,live:same&&t.live||null,ev:same&&t.ev||null};return true}
 function tStop(field,ms){const t=timerOf(field);if(t.state!=='run')return false;
-  S.timers[field]={...t,state:'stop',ms:Math.min(ms??tElapsed(t),limitOf(field)),sentAt:Date.now()};return true}
+  // kept to the hundredth that is shown, so two times that look equal are equal when ranking
+  S.timers[field]={...t,state:'stop',ms:Math.floor(Math.min(ms??tElapsed(t),limitOf(field))/10)*10,sentAt:Date.now()};return true}
 function tReset(field){S.timers[field]={state:'idle',ms:0}}
 // The judge's taps ride on the field clock, so the timer laptop and the big screen show the score as it happens.
 // ev is the last tap (what was scored), n makes each one distinct for the on-screen pop.
@@ -270,7 +272,7 @@ function vJudge(){
         ${running?`<button class="btn big jmain stop" data-act="swstop">■ หยุดเวลา</button>`:T||f.editRunId?'':`<button class="btn pri big jmain" data-act="swstart">▶ เริ่มจับเวลา</button>`}
         <button class="btn" data-act="swreset">รีเซ็ต</button><button class="btn" data-act="swgiveup">ทีมขอหยุด</button>
         ${cp.setup&&!T&&!f.editRunId?`<button class="btn" data-act="setup"><span id="su">${f.setupEnd?'ตั้งหุ่น …':'ตั้งหุ่น '+Math.floor(cp.setup/60)+':'+String(cp.setup%60).padStart(2,'0')}</span></button>`:''}
-        <details class="jedit"><summary>แก้เวลาเอง</summary><span class="row small"><label for="mt">วินาที</label><input type="number" id="mt" inputmode="decimal" step="0.1" min="0" style="width:100px" value="${(f.ms/1000).toFixed(1)}"></span></details>
+        <details class="jedit"><summary>แก้เวลาเอง</summary><span class="row small"><label for="mt">วินาที</label><input type="number" id="mt" inputmode="decimal" step="0.01" min="0" style="width:110px" value="${(f.ms/1000).toFixed(2)}"></span></details>
       </div>
       <div class="jlist">${cp.missions.map(row).join('')}
         <div class="jm retry"><div class="lbl"><b>Retry</b><small>ไม่หักคะแนน</small></div><div class="jstep"><button data-act="pdec" aria-label="ลด" ${f.pen?'':'disabled'}>−</button><span><b>${f.pen}</b></span><button data-act="pinc" aria-label="เพิ่ม">+</button></div><div class="sub muted small">ครั้ง</div></div></div>
@@ -293,7 +295,7 @@ function vJudge(){
 }
 function tickSW(){const f=S.ui.form,el=$('#sw');if(!f||!el)return;const ms=elapsed(f);el.textContent=fmtMs(ms);const lim=compOf(team(f.teamId).cls).timeLimit*1000;el.classList.toggle('over',ms>lim);
   const su=$('#su');if(su&&f.setupEnd){const left=f.setupEnd-Date.now();su.textContent=left>0?'ตั้งหุ่น '+fmtMs(left):'หมดเวลาตั้งหุ่น';su.classList.toggle('over',left<=0)}}
-setInterval(()=>{autoStop();if(S.ui.view==='judge'&&S.ui.form)tickSW();if(S.ui.view==='timer')tickTimer();if(S.ui.view==='screen')document.querySelectorAll('[data-tm]').forEach(el=>el.textContent=fmtMs(tElapsed(timerOf(el.dataset.tm))))},100);
+setInterval(()=>{autoStop();if(S.ui.view==='judge'&&S.ui.form)tickSW();if(S.ui.view==='timer')tickTimer();if(S.ui.view==='screen')document.querySelectorAll('[data-tm]').forEach(el=>el.textContent=fmtMs(tElapsed(timerOf(el.dataset.tm))))},40);
 
 /* ---------- timer laptop: Space bar or a USB clicker starts and stops the clock, the webcam records the run ---------- */
 const CLICKER=[' ','Enter','PageDown','PageUp','ArrowRight','ArrowLeft','ArrowUp','ArrowDown','b','B','.','F5'];
@@ -355,7 +357,7 @@ function drawStage(){
   text(`สนาม ${c.field}  ·  ${c.level}${t.round&&t.state!=='idle'?'  ·  รอบ '+t.round:''}`,M+88,M+51,'500 19px '+FONT.ui,DIM);
 
   // top right: the clock, with the match time running out underneath
-  const ms=Math.min(tElapsed(t),lim),cw=318,cx=W-M-cw,late=t.state==='run'&&lim-ms<30000;
+  const ms=Math.min(tElapsed(t),lim),cw=356,cx=W-M-cw,late=t.state==='run'&&lim-ms<30000;
   slab(cx,M,cw,96,PANEL,22,0);slab(cx,M,30,96,late?'#E5484D':t.state==='stop'?'#E2B748':grad(cx,30),22,22);
   text(t.state==='stop'?'หยุดเวลา':'เวลา',cx+46,M+30,'600 17px '+FONT.ui,t.state==='stop'?'#E2B748':DIM);
   text(fmtMs(ms),W-M-22,M+70,'600 56px '+FONT.num,late?'#FF8A85':INK,'right');

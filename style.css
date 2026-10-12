@@ -328,3 +328,6 @@ h1,h2,h3,.jteam,.fclass,.srow b{line-height:1.35}
 @media (max-width:700px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.stat{padding:10px 12px}.stat .v{font-size:22px}}
 #su.over{color:var(--bad)}
 .mtab small{display:block}
+/* the clock reads 00:00.00, eight characters: sized so it never wraps */
+.tbig{font-size:clamp(40px,5.4vw,80px);white-space:nowrap}
+.jclock .t{font-size:30px;white-space:nowrap}
