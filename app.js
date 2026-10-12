@@ -351,9 +351,9 @@ const keep=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k)||'';local
 let CROP={z:1,x:.5,y:.5};try{const c=JSON.parse(keep('ptarena:crop')||'null');if(c&&c.z>=1&&c.z<=4)CROP={z:+c.z,x:Math.min(1,Math.max(0,+c.x)),y:Math.min(1,Math.max(0,+c.y))}}catch(e){}
 const saveCrop=()=>keep('ptarena:crop',JSON.stringify(CROP));
 // Graphic layouts the timer laptop can switch between. BAR holds the looks that share the bottom-bar layout of drawBar.
-const GFX_LIST={strip:'Midnight · แถบล่าง น้ำเงินม่วง',tower:'Pit Lane · แถบข้างซ้าย แดงดำ',clean:'Arctic · แถบล่าง สีขาว',neon:'Neon · แถบล่าง ฟ้าม่วง',gold:'Champion · แถบล่าง ดำทอง',cast:'Broadcast · แถบเดียวเต็มขอบล่าง',head:'Headline · แถบเดียวเต็มขอบบน',bug:'Scorebug · กล่องเล็กมุมซ้ายบน',carbon:'Carbon · แถบล่าง เทาแดง',mono:'Mono · แถบล่าง ขาวดำ',sunset:'Sunset · แถบล่าง ส้มชมพู',emerald:'Emerald · แถบล่าง เขียว',royal:'Royal · แถบข้างซ้าย น้ำเงินทอง',day:'Daylight · กล่องเล็กมุมซ้ายบน สีขาว',studio:'Studio · แถบเดียวขอบล่าง สีขาว'};
+const GFX_LIST={strip:'Midnight · แถบล่าง น้ำเงินม่วง',tower:'Pit Lane · แถบข้างซ้าย แดงดำ',clean:'Arctic · แถบล่าง สีขาว',neon:'Neon · แถบล่าง ฟ้าม่วง',gold:'Champion · แถบล่าง ดำทอง',cast:'Broadcast · แถบเดียวเต็มขอบล่าง',head:'Headline · แถบเดียวเต็มขอบบน',bug:'Scorebug · กล่องเล็กมุมซ้ายบน',carbon:'Carbon · แถบล่าง เทาแดง',mono:'Mono · แถบล่าง ขาวดำ',sunset:'Sunset · แถบล่าง ส้มชมพู',emerald:'Emerald · แถบล่าง เขียว',royal:'Royal · แถบข้างซ้าย น้ำเงินทอง',day:'Daylight · กล่องเล็กมุมซ้ายบน สีขาว',studio:'Studio · แถบเดียวขอบล่าง สีขาว',crimson:'Crimson · แถบล่าง แดงดำ',ocean:'Ocean · แถบล่าง น้ำเงินเขียวทะเล',amber:'Amber · แถบเดียวขอบล่าง เหลืองอำพัน',rally:'Rally · กล่องเล็กมุมซ้ายบน ส้ม',matrix:'Matrix · แถบข้างซ้าย เขียวดำ'};
 // two colours that stand for each look in the picker
-const GFX_SW={strip:['#3B6FE8','#7A4FE0'],tower:['#E10600','#0C0C10'],clean:['#FFFFFF','#1F5BD6'],neon:['#00E0FF','#7A4FE0'],gold:['#F5D06B','#0C0C0E'],cast:['#0E1218','#2F6BFF'],head:['#0E1218','#12B886'],bug:['#2F6BFF','#FFFFFF'],carbon:['#1B1E22','#E5383B'],mono:['#000000','#FFFFFF'],sunset:['#FF8A00','#E52E71'],emerald:['#19C37D','#06181A'],royal:['#1B2A6B','#F5D06B'],day:['#FFFFFF','#10151F'],studio:['#FFFFFF','#1F5BD6']};
+const GFX_SW={strip:['#3B6FE8','#7A4FE0'],tower:['#E10600','#0C0C10'],clean:['#FFFFFF','#1F5BD6'],neon:['#00E0FF','#7A4FE0'],gold:['#F5D06B','#0C0C0E'],cast:['#0E1218','#2F6BFF'],head:['#0E1218','#12B886'],bug:['#2F6BFF','#FFFFFF'],carbon:['#1B1E22','#E5383B'],mono:['#000000','#FFFFFF'],sunset:['#FF8A00','#E52E71'],emerald:['#19C37D','#06181A'],royal:['#1B2A6B','#F5D06B'],day:['#FFFFFF','#10151F'],studio:['#FFFFFF','#1F5BD6'],crimson:['#FF3B3B','#0A0A0C'],ocean:['#00C2A8','#0077FF'],amber:['#0E1218','#FFB020'],rally:['#FF5A1F','#0D1118'],matrix:['#0E9F6E','#06140F']};
 const BAR={
   clean:{panel:'#FFFFFF',ink:'#10151F',dim:'#5B6677',a:'#1F5BD6',b:'#1F5BD6',on:'#FFFFFF',ok:'#1C8A57',warn:'#B86E05',r:10,skew:0,pips:false,shade:.3,glow:null},
   neon:{panel:'rgba(8,10,26,.9)',ink:'#FFFFFF',dim:'#A9B4D0',a:'#00E0FF',b:'#7A4FE0',on:'#FFFFFF',ok:'#00E0FF',warn:'#FFC857',r:0,skew:16,pips:true,shade:.75,glow:'#00E0FF'},
@@ -361,6 +361,8 @@ const BAR={
   mono:{panel:'rgba(0,0,0,.92)',ink:'#FFFFFF',dim:'#9A9A9A',a:'#FFFFFF',b:'#FFFFFF',on:'#000000',ok:'#FFFFFF',warn:'#FFFFFF',r:0,skew:0,pips:true,shade:.6,glow:null},
   sunset:{panel:'rgba(22,10,24,.9)',ink:'#FFFFFF',dim:'#D9BCCB',a:'#FF8A00',b:'#E52E71',on:'#FFFFFF',ok:'#FFB36B',warn:'#FFD166',r:0,skew:16,pips:true,shade:.7,glow:null},
   emerald:{panel:'rgba(6,24,20,.93)',ink:'#FFFFFF',dim:'#A8C9BE',a:'#19C37D',b:'#0E9F6E',on:'#FFFFFF',ok:'#3EE6A0',warn:'#FFC857',r:12,skew:0,pips:false,shade:.65,glow:null},
+  crimson:{panel:'rgba(10,10,12,.93)',ink:'#FFFFFF',dim:'#C9B5B8',a:'#FF3B3B',b:'#B00020',on:'#FFFFFF',ok:'#FF6B6B',warn:'#FFC857',r:0,skew:16,pips:true,shade:.72,glow:null},
+  ocean:{panel:'rgba(8,20,40,.93)',ink:'#FFFFFF',dim:'#A9C0DA',a:'#00C2A8',b:'#0077FF',on:'#FFFFFF',ok:'#3FE0C5',warn:'#FFC857',r:14,skew:0,pips:false,shade:.65,glow:null},
   gold:{panel:'rgba(12,12,14,.92)',ink:'#FFFFFF',dim:'#B9B4A6',a:'#F5D06B',b:'#C99A2E',on:'#14110A',ok:'#F5D06B',warn:'#FF9F5A',r:4,skew:0,pips:true,shade:.7,glow:null}};
 let GFX=GFX_LIST[keep('ptarena:gfx')]?keep('ptarena:gfx'):'strip';
 let CAMID=keep('ptarena:cam'),QUAL=CAMQ[keep('ptarena:camq')]?keep('ptarena:camq'):'mid',CAMS=[],CAMREAL='';
@@ -603,6 +605,9 @@ function drawStage(){
   if(GFX==='cast'){drawCast(x,c,t,tm,cp,lim,now,{top:false,ac:'#2F6BFF'});return}
   if(GFX==='head'){drawCast(x,c,t,tm,cp,lim,now,{top:true,ac:'#12B886'});return}
   if(GFX==='bug'){drawBug(x,c,t,tm,cp,lim,now,{});return}
+  if(GFX==='rally'){drawBug(x,c,t,tm,cp,lim,now,{ac:'#FF5A1F',ok:'#FFB36B'});return}
+  if(GFX==='amber'){drawCast(x,c,t,tm,cp,lim,now,{top:false,ac:'#FFB020',sbg:'#FFB020',sink:'#14110A',slab:'#5B4A12',ok:'#FFD27A'});return}
+  if(GFX==='matrix'){drawTower(x,c,t,tm,cp,lim,now,{head:'#0E9F6E',bg:'#06140F',sbg:'#0E9F6E',sink:'#FFFFFF',slab:'rgba(255,255,255,.85)',ok:'#3EE6A0'});return}
   const LIGHT={ink:'#10151F',dim:'#5B6677',bg:'rgba(255,255,255,.97)',bg2:'rgba(236,240,245,.97)',ac:'#1F5BD6',ok:'#1C8A57',warn:'#B86E05',off:'#B5BDC9',rule:'rgba(16,21,31,.13)'};
   if(GFX==='day'){drawBug(x,c,t,tm,cp,lim,now,{...LIGHT,sbg:'#10151F',sink:'#FFFFFF'});return}
   if(GFX==='studio'){drawCast(x,c,t,tm,cp,lim,now,{...LIGHT,top:false,sbg:'#1F5BD6',sink:'#FFFFFF',slab:'rgba(255,255,255,.88)'});return}
