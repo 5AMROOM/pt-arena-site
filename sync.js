@@ -13,7 +13,7 @@ const J=x=>JSON.stringify(x),clone=x=>JSON.parse(J(x));
 const stateRef=doc(db,'app','state'),codesRef=doc(db,'config','private');
 const mainRef=v=>doc(db,'venues',v),runsRef=v=>doc(db,'venues',v,'data','runs'),timersRef=v=>doc(db,'venues',v,'data','timers');
 
-let uid=null,venue=null,unsub=[],unsubT=null,lastSent=0;
+let uid=null,venue=null,unsub=[],unsubT=null,lastSent=0,staleComps=false;
 const got={state:false,main:false,runs:false,auth:false};
 const exists={main:false,runs:false,timers:false},pending={main:false,runs:false,timers:false},last={main:null,runs:null,timers:null};
 let synced={main:null,runs:null,timers:{},codes:null};
@@ -24,7 +24,7 @@ function mainShape(){
   const order={},teams={};
   S.classes.forEach(c=>order[c.id]=J(S.order[c.id]||[]));
   S.teams.forEach(t=>{if(t.id)teams[t.id]=J(body(t))});
-  return{rounds:J(S.rounds),comps:J(S.comps),classes:J(S.classes),order,teams};
+  return{rounds:J(S.rounds),classes:J(S.classes),order,teams};
 }
 function runsShape(){const r={};S.runs.forEach(x=>{if(x.id)r[x.id]=J(body(x))});return r}
 function timersShape(){const r={};Object.keys(S.timers||{}).forEach(k=>r[k]=J(S.timers[k]));return r}
@@ -46,8 +46,9 @@ function applyMain(snap){
   if(got.main&&j===last.main)return;
   last.main=j;
   S.rounds=d.rounds||2;
-  S.comps=clone(d.comps||DEFAULT_COMPS);
-  S.classes=clone(d.classes||DEFAULT_CLASSES);
+  // Scoring is never read from the database: it is the rule book, and it lives in the code (DEFAULT_COMPS).
+  // An earlier version stored a copy here, which went stale and showed old scoring; that copy is removed on the next save.
+  S.comps=clone(DEFAULT_COMPS);S.classes=withFields(d.classes);staleComps='comps' in d;
   S.teams=Object.entries(d.teams||{}).map(([id,t])=>({id,...t})).sort((a,b)=>a.id.localeCompare(b.id,undefined,{numeric:true}));
   S.order={};S.classes.forEach(c=>S.order[c.id]=[...((d.order||{})[c.id]||[])]);
   synced.main=mainShape();
@@ -71,11 +72,11 @@ function applyTimers(snap){
   if(!first&&!snap.metadata.fromCache&&!snap.metadata.hasPendingWrites)Object.values(S.timers).forEach(t=>{if(t.sentAt>lastSent&&t.by!==DEVICE){lastSent=t.sentAt;SKEW=Date.now()-t.sentAt}});
   if(READY)remoteChanged();
 }
-// only the devices that run a match listen to the clocks; viewers' phones do not need them
+// only the devices that run or show a match listen to the clocks; viewers' phones do not need them
 function watchTimers(){
   if(unsubT){unsubT();unsubT=null}
   last.timers=null;exists.timers=false;S.timers={};synced.timers={};
-  if(venue&&['judge','timer','staff'].includes(ROLE))unsubT=onSnapshot(timersRef(venue),{includeMetadataChanges:true},applyTimers,fail);
+  if(venue&&['judge','timer','staff','screen'].includes(ROLE))unsubT=onSnapshot(timersRef(venue),{includeMetadataChanges:true},applyTimers,fail);
 }
 function watchVenue(v){
   unsub.forEach(f=>f());
@@ -106,10 +107,11 @@ function push(){
   if(!CLOUD_STAFF||!READY)return;
   if(S.venue!==venue){setDoc(stateRef,{venue:S.venue}).catch(fail);READY=false;return}
   const m=mainShape(),r=runsShape(),om=synced.main,or=synced.runs;
-  if(!exists.main){setDoc(mainRef(venue),{rounds:S.rounds,comps:clone(S.comps),classes:clone(S.classes),order:unpack(m.order),teams:unpack(m.teams)}).catch(fail);exists.main=true}
+  if(!exists.main){setDoc(mainRef(venue),{rounds:S.rounds,classes:clone(S.classes),order:unpack(m.order),teams:unpack(m.teams)}).catch(fail);exists.main=true}
   else{
     const a=[];
-    ['rounds','comps','classes'].forEach(k=>{if(m[k]!==om[k])a.push(new FieldPath(k),JSON.parse(m[k]))});
+    ['rounds','classes'].forEach(k=>{if(m[k]!==om[k])a.push(new FieldPath(k),JSON.parse(m[k]))});
+    if(staleComps){a.push(new FieldPath('comps'),deleteField());staleComps=false}
     a.push(...diff('order',m.order,om.order),...diff('teams',m.teams,om.teams));
     if(a.length)updateDoc(mainRef(venue),...a).catch(fail);
   }
