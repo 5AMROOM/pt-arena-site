@@ -22,6 +22,8 @@
   --gold:#E2B748; --silver:#AEB8C6; --bronze:#D08A55; color-scheme:dark}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
+/* Edge draws its own reveal eye in password fields; ours works on every browser, so keep one */
+input::-ms-reveal{display:none}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}

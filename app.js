@@ -1,11 +1,14 @@
 const VENUES=[['C','ภาคกลาง · นนทบุรี','14–15 พ.ย. 2569'],['S','ภาคใต้ · สุราษฎร์ธานี','21–22 พ.ย. 2569'],['E','ภาคตะวันออก · ชลบุรี','28–29 พ.ย. 2569'],['N','ภาคเหนือ · แพร่','19–20 ธ.ค. 2569'],['NE','ภาคตะวันออกเฉียงเหนือ · ร้อยเอ็ด','26–27 ธ.ค. 2569']];
 const TABS=[['overview','ภาพรวมสนาม','หัวหน้ากรรมการ'],['checkin','เช็กอิน & ตรวจหุ่น','จุดลงทะเบียน'],['judge','กรรมการให้คะแนน','แท็บเล็ตประจำสนาม'],['board','กระดานผล','ทุกคน'],['team','หน้าทีม','มือถือครู/นักเรียน'],['screen','โหมดจอ','ถ้ามีจอในงาน'],['mc','เรียกคิว','พิธีกร'],['admin','ตั้งค่า','แอดมิน']];
+// Scoring follows the rule PDFs linked from the registration site. A mission with "needs" only counts once the missions
+// it names are complete ('all' = every mission without "needs"). Retries cost no points; they only break ties.
 const DEFAULT_COMPS={
-  kb:{name:'หยิบและวาง Box',tag:'PT KidsBiT',timeLimit:120,missions:[{id:'box',label:'Box กลับถึงจุดเริ่ม',pts:20,max:5},{id:'stop',label:'หยุดในเขตเริ่มเมื่อจบ',pts:20,max:1}],penalty:{label:'แตะหุ่นระหว่างแข่ง',pts:10}},
-  rs:{name:'หุ่นยนต์กู้ภัย',tag:'Rescue Robot',timeLimit:150,missions:[{id:'cube',label:'ลูกบาศก์ลงพื้นที่เป้าหมาย',pts:20,max:4},{id:'cp',label:'ผ่านจุดตรวจบนเส้นทาง',pts:10,max:3}],penalty:{label:'ออกนอกเส้นทาง',pts:5}},
-  dl:{name:'ดิลิฟเวอร์ลี่ ขนส่งทรงกระบอก',tag:'Delivery Robot',timeLimit:180,missions:[{id:'match',label:'วางตรงสีจุดส่ง',pts:25,max:4},{id:'wrong',label:'วางในจุดส่งแต่ผิดสี',pts:5,max:4},{id:'end',label:'จบในเขตเริ่ม',pts:15,max:1}],penalty:{label:'วัตถุตกระหว่างขนส่ง',pts:10}}
+  kb:{name:'PT KidsBiT ภารกิจส่งด่วน',tag:'PT KidsBiT',timeLimit:180,missions:[{id:'w',label:'Box ขาว',pts:10,max:4},{id:'k',label:'Box ดำ',pts:10,max:4},{id:'y',label:'Box เหลือง',pts:10,max:1},{id:'yb',label:'Box เหลืองกลับถึง START',pts:10,max:1,needs:['y']}]},
+  rs:{name:'หุ่นยนต์กู้ภัยระดับกลาง',tag:'Rescue Robot',timeLimit:180,missions:[{id:'cp',label:'ผ่านจุด CheckPoint',unit:'จุด',pts:15,max:2},{id:'drop',label:'ปล่อยถุงยังชีพถูกจุด',unit:'จุด',pts:15,max:4},{id:'fin',label:'กลับมาหยุดที่ FINISH',unit:'ครั้ง',pts:10,max:1,needs:'all'}]},
+  dl:{name:'หุ่นยนต์ดิลิฟเวอร์ลี่',tag:'Delivery Robot',timeLimit:180,missions:[{id:'place',label:'วางวัตถุถูกสี ตั้งตรง',unit:'จุด',pts:15,max:6},{id:'fin',label:'กลับมาหยุดที่ START',unit:'ครั้ง',pts:10,max:1,needs:'all'}]},
+  dl2:{name:'หุ่นยนต์ดิลิฟเวอร์ลี่',tag:'Delivery Robot',timeLimit:180,missions:[{id:'cp',label:'ผ่านจุด CheckPoint',unit:'จุด',pts:10,max:2},{id:'place',label:'วางวัตถุถูกสี ตั้งตรง',unit:'จุด',pts:10,max:6},{id:'fin',label:'กลับมาหยุดที่ FINISH',unit:'ครั้ง',pts:20,max:1,needs:'all'}]}
 };
-const DEFAULT_CLASSES=[{id:'kb-p',comp:'kb',level:'ประถม',field:'A'},{id:'kb-s',comp:'kb',level:'มัธยม',field:'B'},{id:'rs-p',comp:'rs',level:'ประถม',field:'C'},{id:'rs-s',comp:'rs',level:'มัธยม',field:'D'},{id:'dl-p',comp:'dl',level:'ประถม',field:'E'},{id:'dl-m',comp:'dl',level:'ม.ต้น',field:'F'},{id:'dl-h',comp:'dl',level:'ม.ปลาย',field:'G'}];
+const DEFAULT_CLASSES=[{id:'kb-p',comp:'kb',level:'ประถม',field:'A'},{id:'kb-s',comp:'kb',level:'มัธยม',field:'B'},{id:'rs-p',comp:'rs',level:'ประถม',field:'C'},{id:'rs-s',comp:'rs',level:'มัธยม',field:'D'},{id:'dl-p',comp:'dl',level:'ประถม',field:'E'},{id:'dl-m',comp:'dl2',level:'ม.ต้น',field:'F'},{id:'dl-h',comp:'dl2',level:'ม.ปลาย',field:'G'}];
 const NAMES=['Falcon','Nova','Titan','Spark','Orbit','Pixel','Volt','Comet','Atlas','Echo','Bolt','Zenith','Rocket','Gear','Byte','Quantum','Vector','Nimbus','Turbo','Matrix','Blaze','Photon','Circuit','Kite','Delta','Raptor','Lynx','Helix','Cobalt','Aero','Sonic','Ion','Radar','Prism','Nexus','Flux','Apex','Storm','Jet','Onyx','Polar','Ranger'];
 const SCHOOLS=['โรงเรียนอรุณวิทยา','โรงเรียนดาวเหนือพิทยาคม','โรงเรียนศรีนครศึกษา','โรงเรียนบ้านคลองใหม่','โรงเรียนวังทองวิทยา','โรงเรียนสายรุ้งศึกษา','โรงเรียนชัยพฤกษ์วิทยา','โรงเรียนปทุมทองวิทยา','โรงเรียนเกษมพัฒนา','โรงเรียนราชพฤกษ์วิทยา','โรงเรียนน้ำใสพิทยา','โรงเรียนทุ่งทองศึกษา'];
 const CHECKS=['ขนาดไม่เกินกำหนด (วางลงกล่องวัดได้)','น้ำหนักไม่เกินกำหนด','ใช้บอร์ดและอุปกรณ์ตามกติกา','ไม่มีขอบคม แบตไม่บวมหรือเสียหาย','มีสวิตช์เปิดปิดที่เข้าถึงง่าย'];
@@ -22,7 +25,7 @@ function seed(){
   const r=rng(2026);
   const comps=JSON.parse(JSON.stringify(DEFAULT_COMPS)),classes=JSON.parse(JSON.stringify(DEFAULT_CLASSES));
   const teams=[],runs=[],order={};let n=0,minute=7*60+40,ts=0;
-  const mk=(t,round,comp)=>{const items={};comp.missions.forEach(m=>items[m.id]=Math.min(m.max,Math.floor(r()*(m.max+1.6))));
+  const mk=(t,round,comp)=>{const items={};comp.missions.forEach(m=>items[m.id]=Math.min(m.max,Math.floor(r()*(m.max+1.6))));tidy(comp,items);
     return{id:(++ts,t.id+'_'+round),team:t.id,round,items,pen:r()<.3?1:0,ms:Math.round((55+r()*(comp.timeLimit-60))*1000),at:hm(9*60+ts*2),ts,edits:0}};
   classes.forEach((c,ci)=>{order[c.id]=[];
     for(let i=0;i<6;i++){n++;const id='C'+String(n).padStart(3,'0');
@@ -69,7 +72,11 @@ const compOf=clsId=>S.comps[cls(clsId).comp];
 const clsName=(c,short)=>{const cp=S.comps[c.comp];return(short?cp.tag:cp.name)+' · '+c.level};
 const clsOfField=f=>S.classes.find(c=>c.field===f);
 const fieldsSorted=()=>[...S.classes].sort((a,b)=>a.field.localeCompare(b.field));
-function score(run){const t=team(run.team);if(!t)return 0;const c=compOf(t.cls);let s=0;c.missions.forEach(m=>s+=Math.min(run.items[m.id]||0,m.max)*m.pts);s-=(run.pen||0)*c.penalty.pts;return Math.max(0,s)}
+function needIds(c,m){return m.needs==='all'?c.missions.filter(x=>!x.needs).map(x=>x.id):m.needs||[]}
+function needsMet(c,items,m){return needIds(c,m).every(id=>{const x=c.missions.find(y=>y.id===id);return x&&(items[id]||0)>=x.max})}
+function tidy(c,items){c.missions.forEach(m=>{if(!needsMet(c,items,m))items[m.id]=0})}
+const needText=(c,m)=>m.needs==='all'?'ภารกิจอื่น':needIds(c,m).map(id=>c.missions.find(x=>x.id===id)?.label).join(', ');
+function score(run){const t=team(run.team);if(!t)return 0;const c=compOf(t.cls);let s=0;c.missions.forEach(m=>s+=Math.min(run.items[m.id]||0,m.max)*m.pts);return s}
 const runOf=(tid,r)=>S.runs.find(x=>x.team===tid&&x.round===r);
 function best(tid){const rs=S.runs.filter(r=>r.team===tid);if(!rs.length)return null;return rs.map(r=>({run:r,score:score(r)})).sort((a,b)=>b.score-a.score||a.run.ms-b.run.ms||a.run.pen-b.run.pen)[0]}
 function standings(clsId){
@@ -96,8 +103,10 @@ const staffOk=()=>{if(CLOUD)return CLOUD_STAFF;try{return localStorage.getItem(S
 const keepStaff=()=>{if(CLOUD)return;try{localStorage.setItem(STAFF_KEY,S.staffPin)}catch(e){}};
 const needGate=()=>(ROLE==='judge'||ROLE==='staff')&&!staffOk();
 const rememberTeam=q=>{if(ROLE!=='staff')try{localStorage.setItem(MYTEAM_KEY,q)}catch(e){}};
+// slash = hidden, open eye = shown
+const eyeIcon=shown=>`<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>${shown?'':'<path d="M4 4l16 16"/>'}</svg>`;
 function vGate(){return`<div class="panel" style="max-width:420px;margin:0 auto;width:100%"><h2>สำหรับเจ้าหน้าที่</h2>
-  <div class="row"><input type="password" id="sc" inputmode="numeric" placeholder="รหัสเจ้าหน้าที่" style="flex:1"><button class="btn pri" data-act="gate">เข้า</button></div></div>`}
+  <div class="row"><input type="password" id="sc" placeholder="รหัสเจ้าหน้าที่" autocapitalize="none" autocomplete="off" autocorrect="off" spellcheck="false" style="flex:1"><button class="btn" data-act="eye" aria-label="แสดงรหัส" aria-pressed="false" style="padding:7px 10px">${eyeIcon(false)}</button><button class="btn pri" data-act="gate">เข้า</button></div></div>`}
 window.addEventListener('hashchange',()=>{readHash();render()});
 
 /* ---------- shell ---------- */
@@ -195,7 +204,7 @@ function ensureForm(){
   return S.ui.form;
 }
 const elapsed=f=>f.ms+(f.startAt?Date.now()-f.startAt:0);
-function formTotal(f){const t=team(f.teamId);const c=compOf(t.cls);let s=0;c.missions.forEach(m=>s+=f.items[m.id]*m.pts);return Math.max(0,s-f.pen*c.penalty.pts)}
+function formTotal(f){const t=team(f.teamId);const c=compOf(t.cls);let s=0;c.missions.forEach(m=>s+=(f.items[m.id]||0)*m.pts);return s}
 function vJudge(){
   const c=clsOfField(S.ui.field),f=ensureForm(),cp=S.comps[c.comp],q=queue(c.id);
   const fieldChips=fieldsSorted().map(x=>`<button class="chip" data-act="field" data-f="${x.field}" aria-pressed="${x.field===S.ui.field}"><b>${x.field}</b> ${esc(S.comps[x.comp].tag)} ${esc(x.level)}</button>`).join('');
@@ -209,12 +218,13 @@ function vJudge(){
       <div class="sw"><span class="t mono ${f.startAt?'run':''} ${el>cp.timeLimit*1000?'over':''}" id="sw">${fmtMs(el)}</span>
         ${f.startAt?`<button class="btn big" data-act="swstop">หยุดเวลา</button>`:`<button class="btn pri big" data-act="swstart">${el?'จับเวลาต่อ':'เริ่มจับเวลา'}</button>`}
         <button class="btn" data-act="swreset">รีเซ็ต</button>
+        <button class="btn" data-act="swgiveup">ทีมขอหยุด</button>
         <span class="row small muted"><label for="mt">แก้เวลา (วินาที)</label><input type="number" id="mt" step="0.1" min="0" style="width:90px" value="${(f.ms/1000).toFixed(1)}"></span>
-        <span class="small muted" style="width:100%">เวลาแข่ง ${cp.timeLimit} วินาที · เลขเปลี่ยนเป็นสีแดงเมื่อเกินเวลา</span></div>
-      <div>${cp.missions.map(m=>`<div class="mrow"><div class="lbl"><b>${esc(m.label)}</b><small>ชิ้นละ ${m.pts} คะแนน · สูงสุด ${m.max}</small></div>
-        <div class="step"><button data-act="dec" data-m="${m.id}" aria-label="ลด">−</button><span>${f.items[m.id]}</span><button data-act="inc" data-m="${m.id}" aria-label="เพิ่ม">+</button></div><div class="sub">${f.items[m.id]*m.pts}</div></div>`).join('')}
-        <div class="mrow"><div class="lbl"><b>บทลงโทษ: ${esc(cp.penalty.label)}</b><small>ครั้งละ −${cp.penalty.pts} คะแนน</small></div>
-        <div class="step"><button data-act="pdec" aria-label="ลด">−</button><span>${f.pen}</span><button data-act="pinc" aria-label="เพิ่ม">+</button></div><div class="sub neg">${f.pen?'−'+f.pen*cp.penalty.pts:'0'}</div></div></div>
+        <span class="small muted" style="width:100%">เวลาแข่ง ${Math.floor(cp.timeLimit/60)}:${String(cp.timeLimit%60).padStart(2,'0')} นาที · เลขเปลี่ยนเป็นสีแดงเมื่อเกินเวลา</span></div>
+      <div>${cp.missions.map(m=>`<div class="mrow"><div class="lbl"><b>${esc(m.label)}</b><small>${m.unit||'ชิ้น'}ละ ${m.pts} คะแนน · สูงสุด ${m.max}${m.needs?` · กดได้เมื่อ${esc(needText(cp,m))}ครบ`:''}</small></div>
+        <div class="step"><button data-act="dec" data-m="${m.id}" aria-label="ลด">−</button><span>${f.items[m.id]||0}</span><button data-act="inc" data-m="${m.id}" aria-label="เพิ่ม" ${needsMet(cp,f.items,m)?'':'disabled'}>+</button></div><div class="sub">${(f.items[m.id]||0)*m.pts}</div></div>`).join('')}
+        <div class="mrow"><div class="lbl"><b>Retry</b><small>ไม่หักคะแนน · ใช้ตัดสินเมื่อคะแนนและเวลาเท่ากัน</small></div>
+        <div class="step"><button data-act="pdec" aria-label="ลด">−</button><span>${f.pen}</span><button data-act="pinc" aria-label="เพิ่ม">+</button></div><div class="sub muted">ครั้ง</div></div></div>
       <div class="total"><span class="small muted">คะแนนรวม (คำนวณอัตโนมัติ)</span><span class="n">${formTotal(f)}</span></div>
       <label class="confirm"><input type="checkbox" id="cf" ${f.confirm?'checked':''}> ตัวแทนทีมดูคะแนนบนจอนี้แล้ว และยืนยันว่าถูกต้อง</label>
       <button class="btn pri big" data-act="submit" ${f.confirm?'':'disabled'}>${f.editRunId?'บันทึกคะแนนที่แก้':'ส่งคะแนน · เรียกทีมถัดไป'}</button>
@@ -242,12 +252,12 @@ function vBoard(){
   const body=rows.map(r=>{const rd=Array.from({length:S.rounds},(_,i)=>{const x=runOf(r.t.id,i+1);return`<td class="num">${x?score(x):'<span class="muted">–</span>'}</td>`}).join('');
     return`<tr><td>${r.rank?`<span class="rk ${r.rank<=3?'r'+r.rank:''}">${r.rank}</span>`:'<span class="muted small">รอแข่ง</span>'}</td>
       <td><span class="tid">${r.t.id}</span> <b>${esc(r.t.name)}</b><div class="small muted">${esc(r.t.school)}</div></td>${rd}
-      <td class="num best">${r.b?r.b.score:'–'}</td><td class="num">${r.b?fmtMs(r.b.run.ms):'–'}</td></tr>`}).join('');
+      <td class="num best">${r.b?r.b.score:'–'}</td><td class="num">${r.b?fmtMs(r.b.run.ms):'–'}</td><td class="num">${r.b?r.b.run.pen||0:'–'}</td></tr>`}).join('');
   return`<div class="panel">
     <div class="row between"><div><h2>${esc(cp.name)} · ${esc(c.level)}</h2><div class="small muted">สนาม ${c.field} · อัปเดตทันทีที่กรรมการส่งคะแนน</div></div>${ROLE==='staff'?'<button class="btn sm" data-act="copycsv">คัดลอกผลเป็น CSV</button>':''}</div>
     <div class="chips">${chips}</div>
-    <div class="tbl-wrap"><table><thead><tr><th>อันดับ</th><th>ทีม</th>${head}<th class="num">คะแนนดีสุด</th><th class="num">เวลา</th></tr></thead><tbody>${body}</tbody></table></div>
-    <p class="small muted" style="margin:0">นับรอบที่ได้คะแนนสูงสุด · คะแนนเท่ากันดูเวลาน้อยกว่า แล้วดูบทลงโทษน้อยกว่า (ตัวอย่างเกณฑ์ ตั้งค่าตามกติกาจริงได้)</p></div>`;
+    <div class="tbl-wrap"><table><thead><tr><th>อันดับ</th><th>ทีม</th>${head}<th class="num">คะแนนดีสุด</th><th class="num">เวลา</th><th class="num">Retry</th></tr></thead><tbody>${body}</tbody></table></div>
+    <p class="small muted" style="margin:0">นับรอบที่ได้คะแนนสูงสุด · คะแนนเท่ากันดูเวลาน้อยกว่า แล้วดู Retry น้อยกว่า</p></div>`;
 }
 
 /* ---------- team phone ---------- */
@@ -328,10 +338,9 @@ function vMc(){
 function vAdmin(){
   const letters='ABCDEFGH'.split('');
   const fieldRows=S.classes.map(c=>`<div class="row between"><span>${esc(clsName(c))}</span><select data-bind="field" data-c="${c.id}" aria-label="สนามของ ${esc(clsName(c))}">${letters.map(l=>`<option ${l===c.field?'selected':''}>${l}</option>`).join('')}</select></div>`).join('');
-  const comps=Object.entries(S.comps).map(([k,cp])=>`<div class="ccard"><h3>${esc(cp.name)} <span class="muted small">${esc(cp.tag)}</span></h3>
+  const comps=Object.entries(S.comps).map(([k,cp])=>`<div class="ccard"><h3>${esc(cp.name)} <span class="muted small">${esc(S.classes.filter(c=>c.comp===k).map(c=>c.level).join(', '))}</span></h3>
     <div class="mtab"><span class="h">ภารกิจ</span><span class="h">คะแนน/ชิ้น</span><span class="h">สูงสุด</span>
     ${cp.missions.map(m=>`<span>${esc(m.label)}</span><input type="number" min="0" value="${m.pts}" data-bind="pts" data-k="${k}" data-m="${m.id}" aria-label="คะแนน ${esc(m.label)}"><input type="number" min="1" value="${m.max}" data-bind="max" data-k="${k}" data-m="${m.id}" aria-label="สูงสุด ${esc(m.label)}">`).join('')}
-    <span>บทลงโทษ: ${esc(cp.penalty.label)}</span><input type="number" min="0" value="${cp.penalty.pts}" data-bind="pen" data-k="${k}" aria-label="หักคะแนน"><span class="small muted">ต่อครั้ง</span>
     <span>เวลาแข่ง (วินาที)</span><input type="number" min="10" value="${cp.timeLimit}" data-bind="time" data-k="${k}" aria-label="เวลาแข่ง"><span></span></div></div>`).join('');
   const base=location.href.split('#')[0];
   const links=[['คนดู · ทีมและครู',''],['จอในงาน','#screen'],['พิธีกร','#mc'],['เจ้าหน้าที่','#staff'],...fieldsSorted().map(c=>['กรรมการสนาม '+c.field+' · '+S.comps[c.comp].tag+' '+c.level,'#judge-'+c.field])];
@@ -342,7 +351,7 @@ function vAdmin(){
       <div class="row between"><span>PIN หัวหน้ากรรมการ</span><input type="text" value="${esc(S.pin)}" data-bind="pin" style="width:100px" aria-label="PIN"></div>
       <div class="row between"><span>รหัสเจ้าหน้าที่ (เข้าหน้ากรรมการ)</span><input type="text" value="${esc(S.staffPin)}" data-bind="staff" style="width:100px" aria-label="รหัสเจ้าหน้าที่"></div></div>
     <div class="panel"><h2>ลิงก์ของแต่ละคน</h2><p class="small muted" style="margin:0">แต่ละลิงก์เห็นเฉพาะหน้าของตัวเอง</p><div>${linkRows}</div></div>
-    <div class="panel"><div class="row between"><h2>เกณฑ์คะแนน</h2><span class="pill warn">ค่าสมมติ</span></div><p class="small muted" style="margin:0">แก้แล้วคะแนนทุกทีมคำนวณใหม่ทันที เปลี่ยนเป็นค่าจากกติกาจริงได้ภายหลัง</p>${comps}</div>
+    <div class="panel"><h2>เกณฑ์คะแนน</h2><p class="small muted" style="margin:0">ตามกติกาบนเว็บสมัคร · แก้แล้วคะแนนทุกทีมคำนวณใหม่ทันที</p>${comps}</div>
     <div class="panel"><h2>นำเข้ารายชื่อทีม</h2><p class="small muted" style="margin:0">วางจาก Excel หรือ CSV ที่ได้จากผู้ดูแลเว็บสมัคร ใช้ 4 คอลัมน์: Team ID, ชื่อทีม, โรงเรียน, รหัสรุ่น</p>
       <p class="small muted" style="margin:0">รหัสรุ่น: ${S.classes.map(c=>`<span class="mono">${c.id}</span> ${esc(S.comps[c.comp].tag)} ${esc(c.level)}`).join(' · ')}</p>
       <textarea id="imp" rows="6">TeamID,ชื่อทีม,โรงเรียน,รุ่น
@@ -362,15 +371,18 @@ document.addEventListener('click',e=>{
     case'tab':ui.view=b.dataset.v;ui.pinFor=null;break;
     case'gojudge':ui.view='judge';ui.field=b.dataset.f;break;
     case'field':ui.field=b.dataset.f;ui.pinFor=null;if(f&&f.editRunId)ui.form=null;break;
-    case'inc':case'dec':{const t=team(f.teamId),m=compOf(t.cls).missions.find(x=>x.id===b.dataset.m);f.items[m.id]=Math.max(0,Math.min(m.max,f.items[m.id]+(a==='inc'?1:-1)));f.confirm=false;break}
+    case'inc':case'dec':{const t=team(f.teamId),c=compOf(t.cls),m=c.missions.find(x=>x.id===b.dataset.m);if(a==='inc'&&!needsMet(c,f.items,m)){toast('ทำ'+needText(c,m)+'ให้ครบก่อน');return}
+      f.items[m.id]=Math.max(0,Math.min(m.max,(f.items[m.id]||0)+(a==='inc'?1:-1)));tidy(c,f.items);f.confirm=false;break}
     case'pinc':f.pen++;f.confirm=false;break;
     case'pdec':f.pen=Math.max(0,f.pen-1);f.confirm=false;break;
     case'swstart':f.startAt=Date.now();break;
     case'swstop':f.ms=elapsed(f);f.startAt=null;break;
     case'swreset':f.ms=0;f.startAt=null;break;
+    // a team may stop early, but the rules record the full match time
+    case'swgiveup':f.ms=compOf(team(f.teamId).cls).timeLimit*1000;f.startAt=null;toast('บันทึกเวลาเป็น '+fmtMs(f.ms));break;
     case'submit':{if(!f.confirm)return;if(f.startAt){f.ms=elapsed(f);f.startAt=null}
       if(f.ms<=0){toast('ยังไม่มีเวลาที่จับได้ กดเริ่มจับเวลา หรือใส่เวลาเอง');return}
-      const t=team(f.teamId);
+      const t=team(f.teamId);f.ms=Math.min(f.ms,compOf(t.cls).timeLimit*1000);
       if(f.editRunId){const r=S.runs.find(x=>x.id===f.editRunId);(r.history=r.history||[]).push({items:r.items,pen:r.pen,ms:r.ms,at:nowHM()});Object.assign(r,{items:{...f.items},pen:f.pen,ms:f.ms});r.edits++;toast('บันทึกคะแนนที่แก้แล้ว · '+t.id+' ได้ '+score(r)+' คะแนน')}
       else{const r={id:t.id+'_'+f.round,team:t.id,round:f.round,items:{...f.items},pen:f.pen,ms:f.ms,at:nowHM(),ts:Date.now(),edits:0};S.runs.push(r);toast('ส่งคะแนนแล้ว · '+t.id+' ได้ '+score(r)+' คะแนน')}
       ui.form=null;break}
@@ -393,9 +405,10 @@ document.addEventListener('click',e=>{
       toast(a==='ipass'?id+' ผ่านการตรวจ · ขึ้นคิวสนาม '+cls(t.cls).field+' แล้ว':id+' ไม่ผ่าน · แจ้งทีมให้แก้แล้วกลับมาตรวจซ้ำ');break}
     case'bcls':ui.boardCls=b.dataset.v;break;
     case'viewboard':ui.boardCls=b.dataset.v;ui.view='board';break;
-    case'copycsv':{const c=cls(ui.boardCls);const lines=['อันดับ,TeamID,ทีม,โรงเรียน,คะแนน,เวลา'].concat(standings(c.id).map(r=>[r.rank||'',r.t.id,r.t.name,r.t.school,r.b?r.b.score:'',r.b?fmtMs(r.b.run.ms):''].join(',')));
+    case'copycsv':{const c=cls(ui.boardCls);const lines=['อันดับ,TeamID,ทีม,โรงเรียน,คะแนน,เวลา,Retry'].concat(standings(c.id).map(r=>[r.rank||'',r.t.id,r.t.name,r.t.school,r.b?r.b.score:'',r.b?fmtMs(r.b.run.ms):'',r.b?r.b.run.pen||0:''].join(',')));
       const txt=lines.join('\n');navigator.clipboard?.writeText(txt).then(()=>toast('คัดลอกผลแล้ว วางใน Excel ได้เลย')).catch(()=>toast('คัดลอกไม่ได้ในหน้าต่างนี้'));return}
     case'teamgo':ui.teamQuery=$('#tq').value;rememberTeam(ui.teamQuery.trim());break;
+    case'eye':{const i=$('#sc'),shown=i.type==='password';i.type=shown?'text':'password';b.setAttribute('aria-pressed',shown);b.innerHTML=eyeIcon(shown);i.focus();return}
     case'gate':{const v=$('#sc').value.trim();if(!v)return;
       if(CLOUD){if(!window.PT_BACKEND){toast('ยังโหลดไม่เสร็จ รอสักครู่แล้วกดใหม่');return}b.disabled=true;
         window.PT_BACKEND.enter(v).then(ok=>{if(!ok)toast('รหัสไม่ถูกต้อง');render()}).catch(()=>{toast('เข้าไม่ได้ เช็กเน็ตแล้วกดใหม่');render()});return}
@@ -430,7 +443,6 @@ document.addEventListener('change',e=>{
   if(bd==='staff'){S.staffPin=el.value.trim()||'2026';keepStaff()}
   if(bd==='pts')cp.missions.find(m=>m.id===el.dataset.m).pts=Math.max(0,+el.value||0);
   if(bd==='max')cp.missions.find(m=>m.id===el.dataset.m).max=Math.max(1,+el.value||1);
-  if(bd==='pen')cp.penalty.pts=Math.max(0,+el.value||0);
   if(bd==='time')cp.timeLimit=Math.max(10,+el.value||10);
   S.ui.form=null;toast('บันทึกการตั้งค่าแล้ว');save();render();
 });
