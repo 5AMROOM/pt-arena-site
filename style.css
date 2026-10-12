@@ -331,3 +331,4 @@ h1,h2,h3,.jteam,.fclass,.srow b{line-height:1.35}
 /* the clock reads 00:00.00, eight characters: sized so it never wraps */
 .tbig{font-size:clamp(40px,5.4vw,80px);white-space:nowrap}
 .jclock .t{font-size:30px;white-space:nowrap}
+.mark img{width:72%;height:72%;object-fit:contain;display:block}

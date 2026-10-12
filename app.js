@@ -324,6 +324,7 @@ function timerAfter(){
 
 /* The picture shown on the timer laptop and written into the recording: webcam frame with broadcast graphics on top.
    Drawing is fenced off from the clock: if a frame fails it is skipped, timing and scoring carry on. */
+const LOGO=new Image();LOGO.src='logo-mark.png';
 let CV=null,CX=null,VID=null,CSTREAM=null,G={score:0,target:0,bump:0,evn:null,pop:null};
 const FONT={ui:'"IBM Plex Sans Thai",sans-serif',head:'"Chakra Petch","IBM Plex Sans Thai",sans-serif',num:'"IBM Plex Sans Thai",sans-serif'};
 function stageCanvas(){
@@ -352,7 +353,8 @@ function drawStage(){
   g=x.createLinearGradient(0,H-250,0,H);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.72)');x.fillStyle=g;x.fillRect(0,H-250,W,250);
 
   // top left: event mark, then where and what
-  slab(M,M,74,56,grad(M,74),14,14);text('PT',M+37,M+38,'700 26px '+FONT.head,INK,'center');
+  slab(M,M,74,56,grad(M,74),14,14);
+  if(LOGO.complete&&LOGO.naturalWidth){const lh=42,lw=lh*LOGO.naturalWidth/LOGO.naturalHeight;x.drawImage(LOGO,M+37-lw/2,M+28-lh/2,lw,lh)}else text('PT',M+37,M+38,'700 26px '+FONT.head,INK,'center');
   text(cp.name,M+88,M+25,'700 23px '+FONT.head,INK);
   text(`สนาม ${c.field}  ·  ${c.level}${t.round&&t.state!=='idle'?'  ·  รอบ '+t.round:''}`,M+88,M+51,'500 19px '+FONT.ui,DIM);
 
