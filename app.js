@@ -367,6 +367,7 @@ function vTimer(){
         ${CAMS.length||PHONE||CAMID==='phone'?`<label class="tset"><span>กล้อง</span><select id="camsel" ${t.state==='run'?'disabled':''}>${CAMS.map((d,n)=>`<option value="${esc(d.deviceId)}" ${d.deviceId===CAMID?'selected':''}>${esc(d.label||'กล้อง '+(n+1))}</option>`).join('')}<option value="phone" ${CAMID==='phone'?'selected':''}>มือถือ (เปิด #cam-${esc(LOCK)} บนมือถือ)${PHONE?' · ต่ออยู่':''}</option></select></label>`:''}
         ${CAMID==='phone'&&!PHONE?`<div class="sub2"><b>รอภาพจากมือถือ</b> เปิดลิงก์ #cam-${esc(LOCK)} บนมือถือที่ต่อ Wi‑Fi วงเดียวกัน แล้วกด เริ่มส่งภาพ</div>`:''}
         <label class="tset"><span>ความชัด</span><select id="qsel" ${t.state==='run'?'disabled':''}>${Object.entries(CAMQ).map(([k,q])=>`<option value="${k}" ${k===QUAL?'selected':''}>${q.label}</option>`).join('')}</select></label>
+        <label class="tset"><span>เสียงในคลิป · <b id="audwhere">${esc(audioWhere())}</b></span><select id="audsel" ${t.state==='run'?'disabled':''}><option value="on" ${AUDIO?'selected':''}>เปิด</option><option value="off" ${AUDIO?'':'selected'}>ปิด</option></select></label>
         <label class="tset"><span>ความลื่น (ภาพต่อวินาที)</span><select id="fpsel" ${t.state==='run'?'disabled':''}>${Object.entries(FPS_LIST).map(([k,v])=>`<option value="${k}" ${+k===FPS?'selected':''}>${v}</option>`).join('')}</select></label>
         ${CAMREAL?`<div class="sub2" id="camreal">กล้องส่งภาพมา ${CAMREAL}</div>`:''}
         <div class="tset"><span>รูปแบบกราฟิก · ${Object.keys(GFX_LIST).length} แบบ</span>${(()=>{const opt=(k,tag,extra)=>{const [nm,ds]=GFX_LIST[k].split(' · '),w=GFX_SW[k]||['#333','#999'];return`<${tag} class="gopt" ${extra}><i style="background:linear-gradient(135deg,${w[0]} 50%,${w[1]} 50%)"></i><b>${esc(nm)}</b><small>${esc(ds||'')}</small></${tag}>`};
@@ -381,7 +382,7 @@ function vTimer(){
     </div></div>`;
 }
 function timerAfter(){
-  $('#cvbox')?.append(stageCanvas());if(!CAM&&!CAMERR&&!CAMASK)camOn();phoneListen();if(!DIRASKED){DIRASKED=true;dirLoad()}
+  $('#cvbox')?.append(stageCanvas());if(!CAM&&!CAMERR&&!CAMASK)camOn();phoneListen();if(AUDIO&&!LAPMIC&&!MICERR)micOn();if(!DIRASKED){DIRASKED=true;dirLoad()}
   // a fresh recording has no length written in it; jumping to the end once makes the browser work it out, so the bar can be dragged
   const v=$('#clip');if(v)v.onloadedmetadata=()=>{if(v.duration===Infinity){v.ontimeupdate=()=>{v.ontimeupdate=null;v.currentTime=0};v.currentTime=1e9}};
 }
@@ -415,6 +416,16 @@ let CAMID=keep('ptarena:cam'),QUAL=CAMQ[keep('ptarena:camq')]?keep('ptarena:camq
 // frames per second for the picture, the drawing and the recording; 60 needs a camera that gives 60 and a laptop that keeps up
 const FPS_LIST={25:'25 fps · เบาเครื่องสุด',30:'30 fps · ปกติ',60:'60 fps · ลื่น ไฟล์ใหญ่ขึ้นราว 1.6 เท่า'};
 let FPS=FPS_LIST[keep('ptarena:fps')]?+keep('ptarena:fps'):30,DRAWT=null;
+// sound in the clip: the phone's microphone when the picture comes from the phone, else this laptop's (or the webcam's)
+let AUDIO=keep('ptarena:audio')!=='off',LAPMIC=null,MICERR='';
+async function micOn(){
+  if(!AUDIO||LAPMIC)return;
+  try{LAPMIC=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:true,autoGainControl:true},video:false});MICERR=''}
+  catch(e){LAPMIC=null;MICERR=e.name||'error'}
+  if(S.ui.view==='timer')render();
+}
+const recAudio=()=>{if(!AUDIO)return null;const ph=CAMID==='phone'&&PHONE?.getAudioTracks?.()[0];return ph&&ph.readyState==='live'?ph:LAPMIC?.getAudioTracks()[0]||null};
+const audioWhere=()=>!AUDIO?'ปิดอยู่':CAMID==='phone'&&PHONE?.getAudioTracks?.().length?'จากไมค์มือถือ':LAPMIC?'จากไมค์โน้ตบุ๊ก / เว็บแคม':MICERR?'ใช้ไมค์ไม่ได้ ('+MICERR+')':'รออนุญาตไมค์';
 let CV=null,CX=null,VID=null,CSTREAM=null,G={score:0,target:0,bump:0,evn:null,pop:null};
 const FONT={ui:'"IBM Plex Sans Thai",sans-serif',head:'"Chakra Petch","IBM Plex Sans Thai",sans-serif',num:'"IBM Plex Sans Thai",sans-serif'};
 /* The webcam's own lens controls, when the camera offers them: zoom in, pan, tilt, and focus held still
@@ -883,7 +894,7 @@ function phoneMeter(){
 const CAM_RES={480:[854,480,4000000],720:[1280,720,10000000],1080:[1920,1080,16000000]};
 const camCap=()=>CAM_RES[CAMP.res][2]*(CAMP.fps>30?1.5:1);
 const CAM_SHAPE={land:'แนวนอน',port:'แนวตั้ง',auto:'ตามการหมุนเครื่อง'};
-const CAMP={full:false,shape:CAM_SHAPE[keep('ptarena:camshape')]?keep('ptarena:camshape'):'land',locked:false,mode:keep('ptarena:cammode')==='sharp'?'sharp':'smooth',net:'',res:CAM_RES[keep('ptarena:camres')]?+keep('ptarena:camres'):1080,stream:null,pc:null,sid:'',state:'idle',fps:60,facing:'environment',dev:'',devs:[],zoom:null,real:'',tries:[],wake:null,un:null,err:''};
+const CAMP={mic:null,full:false,shape:CAM_SHAPE[keep('ptarena:camshape')]?keep('ptarena:camshape'):'land',locked:false,mode:keep('ptarena:cammode')==='sharp'?'sharp':'smooth',net:'',res:CAM_RES[keep('ptarena:camres')]?+keep('ptarena:camres'):1080,stream:null,pc:null,sid:'',state:'idle',fps:60,facing:'environment',dev:'',devs:[],zoom:null,real:'',tries:[],wake:null,un:null,err:''};
 function vCam(){
   const st={idle:['','ยังไม่ได้ส่งภาพ'],wait:['warn','รอโน้ตบุ๊กสนาม '+LOCK],on:['ok','● ส่งภาพอยู่'],lost:['bad','หลุด กำลังต่อใหม่…']}[CAMP.state];
   return`<div class="campg">
@@ -1024,6 +1035,8 @@ function camRead(){
 async function camStart(){
   CAMP.err='';
   try{CAMP.stream=await camOpen()}catch(e){CAMP.stream=null;CAMP.err=e.name||'error';render();return}
+  // the phone's microphone goes along; without permission the picture still goes
+  try{CAMP.mic=CAMP.mic||await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:true,autoGainControl:true},video:false})}catch(e){CAMP.mic=null}
   camRead();
   // lens names only show once the camera is allowed, so the list is read after opening it
   try{CAMP.devs=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput')}catch(e){}
@@ -1045,13 +1058,14 @@ function camStop(){
   // tells the laptop straight away, instead of leaving it on a frozen picture until the link times out
   if(CAMP.sid)rtcSend(LOCK,{bye:CAMP.sid,offer:null,sid:null});
   CAMP.locked=false;
-  try{CAMP.pc?.close()}catch(e){}CAMP.pc=null;CAMP.stream?.getTracks().forEach(t=>t.stop());CAMP.stream=null;CAMP.state='idle';CAMP.real='';
+  try{CAMP.pc?.close()}catch(e){}CAMP.pc=null;CAMP.stream?.getTracks().forEach(t=>t.stop());CAMP.stream=null;CAMP.mic?.getTracks().forEach(t=>t.stop());CAMP.mic=null;CAMP.state='idle';CAMP.real='';
   try{CAMP.wake?.release()}catch(e){}CAMP.wake=null;render();
 }
 async function camOffer(){
   if(!CAMP.stream)return;try{CAMP.pc?.close()}catch(e){}
   const pc=new RTCPeerConnection(RTC_CFG),sid=Date.now().toString(36)+Math.random().toString(36).slice(2,6);CAMP.pc=pc;CAMP.sid=sid;CAMP.state='wait';camStatus();
-  CAMP.stream.getTracks().forEach(t=>pc.addTrack(t,CAMP.stream));
+  CAMP.stream.getVideoTracks().forEach(t=>pc.addTrack(t,CAMP.stream));
+  CAMP.mic?.getAudioTracks().forEach(t=>pc.addTrack(t,CAMP.stream));
   // phones have a video chip for H.264; using it keeps the phone cooler and steadier than encoding in software
   try{const tc=pc.getTransceivers()[0],cs=RTCRtpSender.getCapabilities('video').codecs;tc.setCodecPreferences([...cs.filter(c=>/h264/i.test(c.mimeType)),...cs.filter(c=>!/h264/i.test(c.mimeType))])}catch(e){}
   camNet(pc);
@@ -1063,7 +1077,7 @@ async function camOffer(){
   };
   await pc.setLocalDescription(await pc.createOffer());
   // ask the encoder for the full picture and the chosen smoothness; the network may still lower it on weak Wi-Fi
-  await camBitrate(pc.getSenders()[0]);
+  await camBitrate(pc.getSenders().find(x=>x.track?.kind==='video'));
   await iceDone(pc);if(pc!==CAMP.pc)return;
   const offer={sid,offer:pc.localDescription.sdp,answer:null,asid:null,t:Date.now()};rtcSend(LOCK,offer);
   // the laptop page may open later: say it again until it answers
@@ -1108,14 +1122,15 @@ navigator.mediaDevices?.addEventListener?.('devicechange',async()=>{if(ROLE!=='t
 function syncRec(){
   if(ROLE!=='timer'||!LOCK||!CAM)return;const t=timerOf(LOCK);
   if(t.state==='run'&&!REC&&RECFAIL!==t.startAt){
-    const mime=['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4'].find(m=>MediaRecorder.isTypeSupported(m));
+    const aud=recAudio();
+    const mime=(aud?['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm','video/mp4']:['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4']).find(m=>MediaRecorder.isTypeSupported(m));
     // the file name carries the team's name too, so a clip is easy to find in a folder; characters Windows refuses are dropped
     const tname=(team(t.team)?.name||'').replace(/[\\/:*?"<>|]+/g,'').trim().slice(0,40);
     const name=`${t.team}${tname?'_'+tname:''}_R${t.round}_${nowHM().replace(':','')}.${mime&&mime.startsWith('video/mp4')?'mp4':'webm'}`,chunks=[];
     let rec;
     // a recorder that refuses our settings must not take the clock down with it: fall back to the browser's own, then give up for this run
     // what is recorded is the picture with graphics; without that, the bare camera
-    let src=CAM;try{CSTREAM=CSTREAM||stageCanvas().captureStream(FPS);src=CSTREAM}catch(e){}
+    let src=CAM;try{CSTREAM=CSTREAM||stageCanvas().captureStream(FPS);src=aud?new MediaStream([...CSTREAM.getVideoTracks(),aud]):CSTREAM}catch(e){}
     try{rec=new MediaRecorder(src,{mimeType:mime,videoBitsPerSecond:Math.round(CAMQ[QUAL].bps*(FPS>30?1.6:1))})}catch(e){try{rec=new MediaRecorder(src)}catch(e2){RECERR=`${e2.name}: ${e2.message}`;RECFAIL=t.startAt;return}}
     REC=rec;RECERR='';
     rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};
@@ -1461,11 +1476,12 @@ document.addEventListener('change',e=>{
   if(el.id==='camsel'){CAMID=el.value;keep('ptarena:cam',CAMID);camOn();return}
   if(el.id==='qsel'){QUAL=el.value;keep('ptarena:camq',QUAL);camOn();return}
   if(el.id==='camshape'){CAMP.shape=CAM_SHAPE[el.value]?el.value:'land';keep('ptarena:camshape',CAMP.shape);CAMWASP=camPortrait();if(CAMP.stream)camSwap();else render();return}
-  if(el.id==='cammode'){CAMP.mode=el.value==='sharp'?'sharp':'smooth';keep('ptarena:cammode',CAMP.mode);const snd=CAMP.pc?.getSenders()[0];if(snd)camBitrate(snd);return}
+  if(el.id==='cammode'){CAMP.mode=el.value==='sharp'?'sharp':'smooth';keep('ptarena:cammode',CAMP.mode);const snd=CAMP.pc?.getSenders().find(x=>x.track?.kind==='video');if(snd)camBitrate(snd);return}
   if(el.id==='camres'){CAMP.res=CAM_RES[el.value]?+el.value:1080;keep('ptarena:camres',String(CAMP.res));if(CAMP.stream)camSwap();return}
   if(el.id==='camfps'){CAMP.fps=+el.value||30;if(CAMP.stream)camSwap();return}
   if(el.dataset?.lensfocus!==undefined&&LENS){LENS.focusAuto=el.value==='auto';lensApply().then(render);return}
   if(el.id==='camlens'){CAMP.dev=el.value;if(CAMP.stream)camSwap();return}
+  if(el.id==='audsel'){AUDIO=el.value!=='off';keep('ptarena:audio',AUDIO?'on':'off');if(AUDIO)micOn();else{LAPMIC?.getTracks().forEach(k=>k.stop());LAPMIC=null;render()}return}
   if(el.id==='fpsel'){FPS=FPS_LIST[el.value]?+el.value:30;keep('ptarena:fps',String(FPS));camOn();return}
   if(el.id==='osel'){S.ui.orderCls=el.value;render();return}
   if(el.id==='bsel'){S.ui.boardCls=el.value;render();return}
