@@ -371,6 +371,7 @@ function vTimer(){
         ${CAMREAL?`<div class="sub2" id="camreal">กล้องส่งภาพมา ${CAMREAL}</div>`:''}
         <div class="tset"><span>รูปแบบกราฟิก · ${Object.keys(GFX_LIST).length} แบบ</span>${(()=>{const opt=(k,tag,extra)=>{const [nm,ds]=GFX_LIST[k].split(' · '),w=GFX_SW[k]||['#333','#999'];return`<${tag} class="gopt" ${extra}><i style="background:linear-gradient(135deg,${w[0]} 50%,${w[1]} 50%)"></i><b>${esc(nm)}</b><small>${esc(ds||'')}</small></${tag}>`};
           return`<details class="gdrop"><summary>${opt(GFX,'span','')}<em aria-hidden="true">▾</em></summary><div class="glist" id="glist">${Object.keys(GFX_LIST).map(k=>opt(k,'button',`data-act="gfx" data-v="${k}" aria-pressed="${k===GFX}"`)).join('')}</div></details>`})()}</div>
+        ${lensPanel()}
         ${CAM?`<label class="tset"><span>ครอปภาพ: เลื่อนเพื่อซูม แล้วลากบนภาพเพื่อเลือกส่วนที่จะเอา</span><input type="range" id="czoom" min="1" max="3" step="0.05" value="${CROP.z}"></label>
         <div><button class="btn sm" data-act="cropreset">ภาพเต็ม</button></div>`:''}
         <div class="sub2">วิดีโอเก็บที่: <b>${esc(DIR&&DIRSTATE==='ok'?DIR.name:'Downloads')}</b>${SAVED?`<br>ล่าสุด: ${esc(SAVED)}`:''}</div>
@@ -416,6 +417,37 @@ const FPS_LIST={25:'25 fps · เบาเครื่องสุด',30:'30 fp
 let FPS=FPS_LIST[keep('ptarena:fps')]?+keep('ptarena:fps'):30,DRAWT=null;
 let CV=null,CX=null,VID=null,CSTREAM=null,G={score:0,target:0,bump:0,evn:null,pop:null};
 const FONT={ui:'"IBM Plex Sans Thai",sans-serif',head:'"Chakra Petch","IBM Plex Sans Thai",sans-serif',num:'"IBM Plex Sans Thai",sans-serif'};
+/* The webcam's own lens controls, when the camera offers them: zoom in, pan, tilt, and focus held still
+   (autofocus hunting each time a hand passes is the usual problem). Settings are remembered per camera. */
+const LENS_KEYS={zoom:'ซูม',pan:'เลื่อนซ้าย-ขวา',tilt:'เลื่อนขึ้น-ลง',focusDistance:'ระยะโฟกัส'};
+let LENS=null;   // {caps:{key:{min,max,step}}, val:{key:number}, focusAuto:bool, canFocus:bool}
+async function lensRead(){
+  LENS=null;const tr=CAM?.getVideoTracks?.()[0];if(!tr||CAMID==='phone'||!tr.getCapabilities)return;
+  const cap=tr.getCapabilities(),set=tr.getSettings(),caps={};
+  Object.keys(LENS_KEYS).forEach(k=>{if(cap[k]&&cap[k].max>cap[k].min)caps[k]={min:cap[k].min,max:cap[k].max,step:cap[k].step||((cap[k].max-cap[k].min)/100)}});
+  const canFocus=(cap.focusMode||[]).includes('manual')&&!!caps.focusDistance;if(!canFocus)delete caps.focusDistance;
+  if(!Object.keys(caps).length&&!canFocus)return;
+  let saved={};try{saved=JSON.parse(keep('ptarena:lens:'+(set.deviceId||''))||'{}')}catch(e){}
+  LENS={caps,canFocus,focusAuto:saved.focusAuto!==false,val:{}};
+  Object.keys(caps).forEach(k=>LENS.val[k]=saved[k]??set[k]??caps[k].min);
+  await lensApply();
+}
+async function lensApply(){
+  const tr=CAM?.getVideoTracks?.()[0];if(!tr||!LENS)return;const a={};
+  Object.keys(LENS.caps).forEach(k=>{if(k!=='focusDistance')a[k]=LENS.val[k]});
+  if(LENS.canFocus){a.focusMode=LENS.focusAuto?'continuous':'manual';if(!LENS.focusAuto)a.focusDistance=LENS.val.focusDistance}
+  try{await tr.applyConstraints({advanced:[a]})}catch(e){}
+  keep('ptarena:lens:'+(tr.getSettings().deviceId||''),JSON.stringify({...LENS.val,focusAuto:LENS.focusAuto}));
+}
+function lensPanel(){
+  if(!CAM||CAMID==='phone')return'';
+  if(!LENS)return`<div class="sub2">เลนส์กล้อง: กล้องตัวนี้ไม่ให้สั่งซูมหรือโฟกัสผ่านเว็บ ใช้ครอปข้างล่างแทน</div>`;
+  return`<div class="tset"><span>เลนส์กล้อง (สั่งที่ตัวกล้องจริง)</span>
+    ${Object.keys(LENS.caps).filter(k=>k!=='focusDistance').map(k=>{const c=LENS.caps[k];return`<label class="lensrow"><span>${LENS_KEYS[k]}</span><input type="range" data-lens="${k}" min="${c.min}" max="${c.max}" step="${c.step}" value="${LENS.val[k]}"></label>`}).join('')}
+    ${LENS.canFocus?`<label class="lensrow"><span>โฟกัส</span><select data-lensfocus><option value="auto" ${LENS.focusAuto?'selected':''}>อัตโนมัติ</option><option value="lock" ${LENS.focusAuto?'':'selected'}>ล็อกไว้</option></select></label>
+      ${LENS.focusAuto?'':`<label class="lensrow"><span>ระยะโฟกัส</span><input type="range" data-lens="focusDistance" min="${LENS.caps.focusDistance.min}" max="${LENS.caps.focusDistance.max}" step="${LENS.caps.focusDistance.step}" value="${LENS.val.focusDistance}"></label>`}`:''}
+    <div><button class="btn sm" data-act="lensreset">เลนส์ค่าเริ่มต้น</button></div></div>`;
+}
 function drawLoop(){clearInterval(DRAWT);DRAWT=setInterval(()=>{try{drawStage()}catch(e){}},Math.floor(1000/FPS))}
 function stageCanvas(){
   if(CV)return CV;
@@ -941,13 +973,14 @@ async function camOn(){
     try{CAMS=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput')}catch(e){}
     if(CV){CV.width=q.w;CV.height=q.h}CSTREAM=null;drawLoop();CAMASK=false;if(S.ui.view==='timer')render();return;
   }
-  const q=CAMQ[QUAL],ask=id=>navigator.mediaDevices.getUserMedia({video:{...(id?{deviceId:{exact:id}}:{}),width:{ideal:q.w},height:{ideal:q.h},frameRate:{ideal:FPS}},audio:false});
+  const q=CAMQ[QUAL],ask=id=>navigator.mediaDevices.getUserMedia({video:{...(id?{deviceId:{exact:id}}:{}),width:{ideal:q.w},height:{ideal:q.h},frameRate:{ideal:FPS},pan:true,tilt:true,zoom:true},audio:false});
   try{
     if(CAM&&CAM!==PHONE)CAM.getTracks().forEach(k=>k.stop());
     // a remembered camera that is no longer plugged in must not block the page: fall back to whatever is there
     try{CAM=await ask(CAMID)}catch(e){if(!CAMID)throw e;CAMID='';CAM=await ask('')}
     const st=CAM.getVideoTracks()[0].getSettings();CAMID=st.deviceId||CAMID;CAMREAL=st.width&&st.height?st.width+' × '+st.height+(st.frameRate?' · '+Math.round(st.frameRate)+' fps':''):'';
     CAMS=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput');
+    await lensRead();
     VID=document.createElement('video');VID.muted=true;VID.playsInline=true;VID.srcObject=CAM;VID.play().catch(()=>{});
   }catch(e){CAM=null;CAMERR=e.name||'error'}
   if(CV){CV.width=q.w;CV.height=q.h}
@@ -1204,6 +1237,7 @@ document.addEventListener('click',e=>{
   switch(a){
     case'tab':{const was=ui.view;ui.view=b.dataset.v;ui.pinFor=null;if((was==='live')!==(ui.view==='live'))window.PT_BACKEND?.role?.();break}
     case'ch':ui.liveCh=b.dataset.v;break;
+    case'lensreset':if(LENS){Object.keys(LENS.caps).forEach(k=>LENS.val[k]=k==='zoom'?LENS.caps[k].min:k==='focusDistance'?LENS.val[k]:(LENS.caps[k].min+LENS.caps[k].max)/2);LENS.focusAuto=true;lensApply().then(render)}return;
     case'camgo':if(CAMP.stream)camStop();else camStart();return;
     case'camflip':CAMP.facing=CAMP.facing==='environment'?'user':'environment';CAMP.dev='';if(CAMP.stream)camSwap();else render();return;
     case'drivekey':S.drive={url:S.drive?.url||'',key:[...crypto.getRandomValues(new Uint8Array(16))].map(x=>x.toString(16).padStart(2,'0')).join('')};toast('สร้างกุญแจแล้ว กดคัดลอกไปวางในสคริปต์ แล้ว Deploy ใหม่');break;
@@ -1303,6 +1337,7 @@ document.addEventListener('change',e=>{
   if(el.id==='camsel'){CAMID=el.value;keep('ptarena:cam',CAMID);camOn();return}
   if(el.id==='qsel'){QUAL=el.value;keep('ptarena:camq',QUAL);camOn();return}
   if(el.id==='camfps'){CAMP.fps=+el.value||30;if(CAMP.stream)camSwap();return}
+  if(el.dataset?.lensfocus!==undefined&&LENS){LENS.focusAuto=el.value==='auto';lensApply().then(render);return}
   if(el.id==='camlens'){CAMP.dev=el.value;if(CAMP.stream)camSwap();return}
   if(el.id==='fpsel'){FPS=FPS_LIST[el.value]?+el.value:30;keep('ptarena:fps',String(FPS));camOn();return}
   if(el.id==='osel'){S.ui.orderCls=el.value;render();return}
@@ -1319,7 +1354,7 @@ document.addEventListener('change',e=>{
   if(bd==='staff'){S.staffPin=el.value.trim()||'2026';keepStaff()}
   S.ui.form=null;toast('บันทึกการตั้งค่าแล้ว');save();render();
 });
-document.addEventListener('input',e=>{if(e.target.id==='camzoom'&&CAMP.stream){const v=+e.target.value;CAMP.zoom.val=v;const zl=$('#camzv');if(zl)zl.textContent=v.toFixed(1)+'×';CAMP.stream.getVideoTracks()[0].applyConstraints({advanced:[{zoom:v}]}).catch(()=>{})}if(e.target.id==='tfind'){S.ui.teamFind=e.target.value;$('#tlist').innerHTML=teamList()}if(e.target.id==='ckq'){S.ui.ckQuery=e.target.value;renderCkList()}if(e.target.id==='czoom'){CROP.z=+e.target.value;saveCrop()}});
+document.addEventListener('input',e=>{if(e.target.dataset?.lens&&LENS){LENS.val[e.target.dataset.lens]=+e.target.value;lensApply()}if(e.target.id==='camzoom'&&CAMP.stream){const v=+e.target.value;CAMP.zoom.val=v;const zl=$('#camzv');if(zl)zl.textContent=v.toFixed(1)+'×';CAMP.stream.getVideoTracks()[0].applyConstraints({advanced:[{zoom:v}]}).catch(()=>{})}if(e.target.id==='tfind'){S.ui.teamFind=e.target.value;$('#tlist').innerHTML=teamList()}if(e.target.id==='ckq'){S.ui.ckQuery=e.target.value;renderCkList()}if(e.target.id==='czoom'){CROP.z=+e.target.value;saveCrop()}});
 document.addEventListener('keydown',e=>{
   if(ROLE==='timer'&&S.ui.view==='timer'&&READY&&!needGate()&&clsOfField(LOCK)&&CLICKER.includes(e.key)&&!/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)){e.preventDefault();if(!e.repeat)tPress(e.key===' '?'Space bar':e.key);return}
   if(e.key!=='Enter')return;

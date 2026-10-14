@@ -499,4 +499,7 @@ body.camfocus .app{padding:10px 10px 24px}
 .camctl .tset select{min-height:46px}
 .camctl .btn{min-height:46px}
 .campg .btn.big{min-height:58px;font-size:18px;justify-content:center}
+/* timer laptop: the webcam's own lens controls */
+.lensrow{display:grid;grid-template-columns:110px minmax(0,1fr);gap:8px;align-items:center;font-size:13px;color:var(--stage-muted)}
+.lensrow select{min-height:36px}
 
