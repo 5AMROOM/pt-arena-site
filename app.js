@@ -880,26 +880,30 @@ function phoneMeter(){
 }
 // phone side
 const CAM_RES={480:[854,480,2500000],720:[1280,720,5000000],1080:[1920,1080,8000000]};
-const CAMP={mode:keep('ptarena:cammode')==='sharp'?'sharp':'smooth',net:'',res:CAM_RES[keep('ptarena:camres')]?+keep('ptarena:camres'):1080,stream:null,pc:null,sid:'',state:'idle',fps:60,facing:'environment',dev:'',devs:[],zoom:null,real:'',tries:[],wake:null,un:null,err:''};
+const CAM_SHAPE={land:'แนวนอน',port:'แนวตั้ง',auto:'ตามการหมุนเครื่อง'};
+const CAMP={full:false,shape:CAM_SHAPE[keep('ptarena:camshape')]?keep('ptarena:camshape'):'land',locked:false,mode:keep('ptarena:cammode')==='sharp'?'sharp':'smooth',net:'',res:CAM_RES[keep('ptarena:camres')]?+keep('ptarena:camres'):1080,stream:null,pc:null,sid:'',state:'idle',fps:60,facing:'environment',dev:'',devs:[],zoom:null,real:'',tries:[],wake:null,un:null,err:''};
 function vCam(){
   const st={idle:['','ยังไม่ได้ส่งภาพ'],wait:['warn','รอโน้ตบุ๊กสนาม '+LOCK],on:['ok','● ส่งภาพอยู่'],lost:['bad','หลุด กำลังต่อใหม่…']}[CAMP.state];
   return`<div class="campg">
     <div class="row between"><b>กล้องมือถือ · สนาม ${esc(LOCK)}</b><span class="pill ${st[0]}" id="camst">${st[1]}</span></div>
-    ${camPortrait()?`<div class="callout warn camrot"><b>หมุนมือถือเป็นแนวนอน</b><div class="small">ภาพจะได้เต็ม ${CAM_RES[CAMP.res][0]} × ${CAM_RES[CAMP.res][1]} แล้วเปิดล็อกการหมุนจอของมือถือไว้ จะได้ไม่หมุนกลับเอง</div></div>`:''}
-    <div class="campv"><video id="campv" playsinline muted autoplay></video>${CAMP.stream?'':'<span>กด เริ่มส่งภาพ</span>'}</div>
+    ${CAMP.shape!=='auto'&&camPortrait()!==(CAMP.shape==='port')?`<div class="callout warn camrot"><b>หมุนมือถือเป็น${CAM_SHAPE[CAMP.shape]}</b><div class="small">ตั้งทิศภาพไว้เป็น${CAM_SHAPE[CAMP.shape]} ${camDims(CAMP.res).join(' × ')} ถือให้ตรงทิศ แล้วเปิดล็อกการหมุนจอของมือถือ</div></div>`:''}
+    <div class="campv"><video id="campv" playsinline muted autoplay></video>${CAMP.stream?'':'<span>กด เริ่มส่งภาพ</span>'}
+      ${CAMP.full?`<div class="camfbar"><span class="pill ${{idle:'',wait:'warn',on:'ok',lost:'bad'}[CAMP.state]}">${{idle:'ยังไม่ได้ส่งภาพ',wait:'รอโน้ตบุ๊ก',on:'● ส่งภาพอยู่',lost:'หลุด กำลังต่อใหม่…'}[CAMP.state]}</span>${CAMP.locked?'<span class="pill ok">🔒</span>':''}<span class="camfnet" id="camfnet">${esc(CAMP.net)}</span><button class="btn" data-act="camfull">ย่อ</button></div>`:''}</div>
     <div class="small" id="camnet">${esc(CAMP.net)}</div>
     <div class="small muted" id="camgot">${CAMP.real?'กล้องมือถือให้ภาพ '+esc(CAMP.real):'ภาพจะไปขึ้นที่หน้าจับเวลาของสนามนี้ ไม่ต้องลงแอป'}</div>
     ${CAMP.tries.length?`<div class="small muted">ลองขอ 60 fps: ${CAMP.tries.map(esc).join(' · ')}</div>`:''}
     ${CAMP.err?`<div class="callout bad"><div><b>เปิดกล้องไม่ได้ (${esc(CAMP.err)})</b></div><ol style="margin:6px 0 0;padding-left:20px"><li>กดอนุญาตให้เว็บนี้ใช้กล้อง</li><li>iPhone: ตั้งค่า → Safari → กล้อง → อนุญาต</li><li>ปิดแอปอื่นที่ใช้กล้องอยู่ แล้วกดเริ่มใหม่</li></ol></div>`:''}
+    ${CAMP.locked?`<div class="callout ok camlocked"><b>🔒 ล็อกกล้องอยู่</b><div class="small">หมุนเครื่องแล้วภาพไม่เปลี่ยน ปุ่มตั้งค่าซ่อนไว้ ปลดล็อกต้องกดค้าง 2 วินาที</div></div><button class="btn big" data-act="camfull">⛶ เต็มจอ</button><button class="btn big" id="camunlock">กดค้างเพื่อปลดล็อก</button>`:`
     ${CAMP.devs.length>1?`<label class="tset" style="color:var(--muted)"><span>เลนส์ (มุมกว้าง / ปกติ / ซูม)</span><select id="camlens">${CAMP.devs.map((d,n)=>`<option value="${esc(d.deviceId)}" ${d.deviceId===CAMP.dev?'selected':''}>${esc(lensName(d.label,n))}</option>`).join('')}</select></label>`:''}
     ${CAMP.zoom?`<label class="tset" style="color:var(--muted)"><span>ซูม <b id="camzv">${CAMP.zoom.val.toFixed(1)}×</b></span><input type="range" id="camzoom" min="${CAMP.zoom.min}" max="${CAMP.zoom.max}" step="${CAMP.zoom.step}" value="${CAMP.zoom.val}"></label>`:CAMP.stream?'<div class="small muted">มือถือรุ่นนี้ซูมผ่านเบราว์เซอร์ไม่ได้ ใช้เลือกเลนส์ หรือครอปที่หน้าจับเวลาแทน</div>':''}
-    <div class="row camctl"><label class="tset"><span>ความชัด</span><select id="camres">${Object.keys(CAM_RES).map(r=>`<option value="${r}" ${+r===CAMP.res?'selected':''}>${r}p</option>`).join('')}</select></label><label class="tset"><span>เน้น</span><select id="cammode"><option value="smooth" ${CAMP.mode==='smooth'?'selected':''}>ลื่น</option><option value="sharp" ${CAMP.mode==='sharp'?'selected':''}>คม</option></select></label><label class="tset"><span>ความลื่น</span><select id="camfps">${[30,60].map(f=>`<option value="${f}" ${f===CAMP.fps?'selected':''}>${f} fps</option>`).join('')}</select></label>
-      <button class="btn" data-act="camflip">สลับกล้องหน้า/หลัง</button><button class="btn" data-act="camland">เต็มจอ + แนวนอน</button></div>
+    <div class="row camctl"><label class="tset"><span>ทิศภาพ</span><select id="camshape">${Object.entries(CAM_SHAPE).map(([k,v])=>`<option value="${k}" ${k===CAMP.shape?'selected':''}>${k==='auto'?v:v+' '+(()=>{const [a,b]=CAM_RES[CAMP.res];return k==='port'?b+'×'+a:a+'×'+b})()}</option>`).join('')}</select></label><label class="tset"><span>ความชัด</span><select id="camres">${Object.keys(CAM_RES).map(r=>`<option value="${r}" ${+r===CAMP.res?'selected':''}>${r}p</option>`).join('')}</select></label><label class="tset"><span>เน้น</span><select id="cammode"><option value="smooth" ${CAMP.mode==='smooth'?'selected':''}>ลื่น</option><option value="sharp" ${CAMP.mode==='sharp'?'selected':''}>คม</option></select></label><label class="tset"><span>ความลื่น</span><select id="camfps">${[30,60].map(f=>`<option value="${f}" ${f===CAMP.fps?'selected':''}>${f} fps</option>`).join('')}</select></label>
+      <button class="btn" data-act="camflip">สลับกล้องหน้า/หลัง</button><button class="btn" data-act="camfull">⛶ เต็มจอ</button></div>
     <button class="btn ${CAMP.stream?'':'pri'} big" data-act="camgo">${CAMP.stream?'■ หยุดส่งภาพ':'▶ เริ่มส่งภาพ'}</button>
+    ${CAMP.stream?`<button class="btn big" data-act="camlock">🔒 ล็อกกล้อง</button>`:''}`}
     <p class="small muted camtip" style="margin:0">ต่อ Wi‑Fi วงเดียวกับโน้ตบุ๊ก วางมือถือนิ่งๆ เสียบชาร์จไว้ และเปิดหน้านี้ค้างไว้ตลอด</p></div>`;
 }
 function camAfter(){const v=$('#campv');if(v&&CAMP.stream&&v.srcObject!==CAMP.stream){v.srcObject=CAMP.stream;v.play().catch(()=>{})}}
-function camStatus(){const el=$('#camst');if(!el)return render();const st={idle:['','ยังไม่ได้ส่งภาพ'],wait:['warn','รอโน้ตบุ๊กสนาม '+LOCK],on:['ok','● ส่งภาพอยู่'],lost:['bad','หลุด กำลังต่อใหม่…']}[CAMP.state];el.className='pill '+st[0];el.textContent=st[1]}
+function camStatus(){const el=$('#camst');if(!el||CAMP.full)return render();const st={idle:['','ยังไม่ได้ส่งภาพ'],wait:['warn','รอโน้ตบุ๊กสนาม '+LOCK],on:['ok','● ส่งภาพอยู่'],lost:['bad','หลุด กำลังต่อใหม่…']}[CAMP.state];el.className='pill '+st[0];el.textContent=st[1]}
 // lens names as phones report them, in plain words; unknown names are shown as they are
 function lensName(label,n){
   const l=(label||'').toLowerCase();
@@ -912,14 +916,17 @@ function lensName(label,n){
 // opens the camera; for 60 fps it asks firmly first at 1080p, then at 720p, before settling for 30
 // Opens the camera, then, for 60 fps, asks the open camera to change: some phone browsers refuse a frame rate
 // demanded at opening but accept it as a change afterwards. Every try and its answer is kept for the screen.
+// width and height for a size, turned to the chosen shape
+const camWantPort=()=>CAMP.shape==='port'||(CAMP.shape==='auto'&&camPortrait());
+const camDims=r=>{const [a,b]=CAM_RES[r];return camWantPort()?[b,a]:[a,b]};
 async function camOpen(){
-  const pick=CAMP.dev?{deviceId:{exact:CAMP.dev}}:{facingMode:{ideal:CAMP.facing}},[w,h]=CAM_RES[CAMP.res];
-  const st=await navigator.mediaDevices.getUserMedia({video:{...pick,width:{ideal:w},height:{ideal:h},frameRate:{ideal:CAMP.fps}},audio:false});
+  const pick=CAMP.dev?{deviceId:{exact:CAMP.dev}}:{facingMode:{ideal:CAMP.facing}},[w,h]=camDims(CAMP.res);
+  const st=await navigator.mediaDevices.getUserMedia({video:{...pick,width:{ideal:w},height:{ideal:h},aspectRatio:{ideal:w/h},frameRate:{ideal:CAMP.fps}},audio:false});
   CAMP.tries=[];
   const tr=st.getVideoTracks()[0],fps=()=>Math.round(tr.getSettings().frameRate||0);
   if(CAMP.fps>30&&fps()<50){
     // the chosen size first, then smaller ones, then 60 at whatever size the phone picks
-    const sizes=[1080,720,480].filter(r=>CAMP.mode==='sharp'?r===CAMP.res:r<=CAMP.res).map(r=>[r+'p 60',{width:{ideal:CAM_RES[r][0]},height:{ideal:CAM_RES[r][1]},frameRate:{exact:60}}]);
+    const sizes=[1080,720,480].filter(r=>CAMP.mode==='sharp'?r===CAMP.res:r<=CAMP.res).map(r=>[r+'p 60',{width:{ideal:camDims(r)[0]},height:{ideal:camDims(r)[1]},frameRate:{exact:60}}]);
     for(const [nm,c] of CAMP.mode==='sharp'?sizes:[...sizes,['60 ขนาดไหนก็ได้',{frameRate:{exact:60}}],['60 แบบขอ',{frameRate:{ideal:60}}]]){
       try{await tr.applyConstraints(c);const f=fps();CAMP.tries.push(nm+': ได้ '+f+' fps');if(f>=50)break}
       catch(e){CAMP.tries.push(nm+': ไม่ได้ ('+(e.constraint?e.constraint+' ':'')+(e.name||'error')+')')}
@@ -943,7 +950,7 @@ function camNet(pc){
       CAMP.net=r.frameWidth?`กำลังส่ง ${r.frameWidth} × ${r.frameHeight} · ${Math.round(r.framesPerSecond||0)} fps · ${mbps.toFixed(1)} Mbps${why?' · ติดที่: '+why:''}${r.encoderImplementation?' · '+r.encoderImplementation:''}`:'';
       last=r;
     })}catch(e){}
-    const el=$('#camnet');if(el)el.textContent=CAMP.net;
+    const el=$('#camnet');if(el)el.textContent=CAMP.net;const fe=$('#camfnet');if(fe)fe.textContent=CAMP.net;
   },2000);
 }
 // The picture's shape follows how the phone is held when the camera opens. When the phone turns, the camera is opened
@@ -952,12 +959,43 @@ const camPortrait=()=>matchMedia('(orientation: portrait)').matches;
 let CAMROT=null;
 let CAMWASP=null;
 const camTurned=()=>{
-  if(ROLE!=='cam')return;const p=camPortrait();if(p===CAMWASP)return;CAMWASP=p;clearTimeout(CAMROT);
+  if(ROLE!=='cam')return;const p=camPortrait();if(p===CAMWASP)return;
+  if(CAMP.locked||CAMP.shape!=='auto'){CAMWASP=p;clearTimeout(CAMROT);CAMROT=setTimeout(render,700);return}   // fixed shape: only refresh the noticeCAMWASP=p;clearTimeout(CAMROT);
   CAMROT=setTimeout(()=>{if(CAMP.stream)camSwap();else render()},700);   // wait for the turn to finish
 };
 matchMedia('(orientation: portrait)').addEventListener?.('change',camTurned);
 window.addEventListener('resize',camTurned);
 setInterval(camTurned,1000);   // some phones report a turn late or not at all
+// Lock: the picture stays as it is. Turning the phone no longer reopens the camera, the settings are hidden from stray
+// fingers, and focus, light and colour are held where they are now if the phone lets the page do that.
+async function camLock(){
+  CAMP.locked=true;if(CAMP.shape==='land')camLand(true);
+  const tr=CAMP.stream?.getVideoTracks()[0],cap=tr?.getCapabilities?.()||{},hold={};
+  [['focusMode'],['exposureMode'],['whiteBalanceMode']].forEach(([k])=>{if((cap[k]||[]).includes('manual'))hold[k]='manual'});
+  if(tr&&Object.keys(hold).length)try{await tr.applyConstraints({advanced:[hold]})}catch(e){}
+  render();toast(Object.keys(hold).length?'ล็อกกล้องแล้ว ล็อกโฟกัส แสง สีไว้ด้วย':'ล็อกกล้องแล้ว (มือถือนี้ไม่ให้ล็อกโฟกัสและแสงจากเว็บ)');
+}
+async function camUnlock(){
+  CAMP.locked=false;const tr=CAMP.stream?.getVideoTracks()[0],cap=tr?.getCapabilities?.()||{},free={};
+  [['focusMode'],['exposureMode'],['whiteBalanceMode']].forEach(([k])=>{if((cap[k]||[]).includes('continuous'))free[k]='continuous'});
+  if(tr&&Object.keys(free).length)try{await tr.applyConstraints({advanced:[free]})}catch(e){}
+  CAMWASP=null;render();
+}
+// unlocking takes a two-second press, so a brush of the hand while mounting the phone does nothing
+let CAMHOLD=null;
+document.addEventListener('pointerdown',e=>{if(e.target.closest?.('#camunlock')){const b=e.target.closest('#camunlock');b.classList.add('holding');CAMHOLD=setTimeout(()=>{CAMHOLD=null;camUnlock()},2000)}});
+['pointerup','pointercancel','pointerleave'].forEach(n=>document.addEventListener(n,()=>{if(CAMHOLD){clearTimeout(CAMHOLD);CAMHOLD=null;$('#camunlock')?.classList.remove('holding')}},true));
+// full screen for the phone page: the picture fills the screen. Where the browser cannot go full screen (iPhone),
+// the page itself fills the window, which looks much the same.
+async function camFull(on){
+  CAMP.full=on;document.body.classList.toggle('camfull',on);
+  try{
+    if(on){if(!document.fullscreenElement)await document.documentElement.requestFullscreen?.();if(CAMP.shape==='land')await screen.orientation?.lock?.('landscape').catch(()=>{})}
+    else if(document.fullscreenElement)await document.exitFullscreen();
+  }catch(e){}
+  render();
+}
+document.addEventListener('fullscreenchange',()=>{if(ROLE==='cam'&&!document.fullscreenElement&&CAMP.full){CAMP.full=false;document.body.classList.remove('camfull');render()}});
 async function camLand(quiet){
   let full=false;
   try{if(!document.fullscreenElement)await document.documentElement.requestFullscreen?.();full=!!document.fullscreenElement}catch(e){}
@@ -993,6 +1031,7 @@ async function camSwap(){
 function camStop(){
   // tells the laptop straight away, instead of leaving it on a frozen picture until the link times out
   if(CAMP.sid)rtcSend(LOCK,{bye:CAMP.sid,offer:null,sid:null});
+  CAMP.locked=false;
   try{CAMP.pc?.close()}catch(e){}CAMP.pc=null;CAMP.stream?.getTracks().forEach(t=>t.stop());CAMP.stream=null;CAMP.state='idle';CAMP.real='';
   try{CAMP.wake?.release()}catch(e){}CAMP.wake=null;render();
 }
@@ -1305,7 +1344,9 @@ document.addEventListener('click',e=>{
     case'ch':ui.liveCh=b.dataset.v;break;
     case'lensreset':if(LENS){Object.keys(LENS.caps).forEach(k=>LENS.val[k]=k==='zoom'?LENS.caps[k].min:k==='focusDistance'?LENS.val[k]:(LENS.caps[k].min+LENS.caps[k].max)/2);LENS.focusAuto=true;lensApply().then(render)}return;
     case'camland':camLand();return;
-    case'camgo':if(CAMP.stream)camStop();else{camLand(true);camStart()}return;
+    case'camfull':camFull(!CAMP.full);return;
+    case'camlock':camLock();return;
+    case'camgo':if(CAMP.stream)camStop();else{if(CAMP.shape==='land')camLand(true);camStart()}return;
     case'camflip':CAMP.facing=CAMP.facing==='environment'?'user':'environment';CAMP.dev='';if(CAMP.stream)camSwap();else render();return;
     case'drivekey':S.drive={url:S.drive?.url||'',key:[...crypto.getRandomValues(new Uint8Array(16))].map(x=>x.toString(16).padStart(2,'0')).join('')};toast('สร้างกุญแจแล้ว กดคัดลอกไปวางในสคริปต์ แล้ว Deploy ใหม่');break;
     case'drivecopy':navigator.clipboard?.writeText(S.drive.key).then(()=>toast('คัดลอกกุญแจแล้ว')).catch(()=>toast('คัดลอกไม่ได้ในหน้าต่างนี้'));return;
@@ -1403,6 +1444,7 @@ document.addEventListener('change',e=>{
   if(el.id==='gsel'){GFX=GFX_LIST[el.value]?el.value:'strip';keep('ptarena:gfx',GFX);return}
   if(el.id==='camsel'){CAMID=el.value;keep('ptarena:cam',CAMID);camOn();return}
   if(el.id==='qsel'){QUAL=el.value;keep('ptarena:camq',QUAL);camOn();return}
+  if(el.id==='camshape'){CAMP.shape=CAM_SHAPE[el.value]?el.value:'land';keep('ptarena:camshape',CAMP.shape);CAMWASP=camPortrait();if(CAMP.stream)camSwap();else render();return}
   if(el.id==='cammode'){CAMP.mode=el.value==='sharp'?'sharp':'smooth';keep('ptarena:cammode',CAMP.mode);const snd=CAMP.pc?.getSenders()[0];if(snd)camBitrate(snd);return}
   if(el.id==='camres'){CAMP.res=CAM_RES[el.value]?+el.value:1080;keep('ptarena:camres',String(CAMP.res));if(CAMP.stream)camSwap();return}
   if(el.id==='camfps'){CAMP.fps=+el.value||30;if(CAMP.stream)camSwap();return}

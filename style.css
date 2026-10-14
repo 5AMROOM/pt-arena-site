@@ -522,4 +522,17 @@ body.camfocus .app{padding:10px 10px 24px}
   .campg .btn.big{min-height:44px;font-size:16px}
   .campg>.row.between b{font-size:14px}
 }
+/* phone camera lock */
+.camlocked b{font-size:18px}
+#camunlock{position:relative;overflow:hidden;justify-content:center;user-select:none;-webkit-user-select:none;touch-action:none}
+#camunlock::after{content:'';position:absolute;left:0;top:0;bottom:0;width:0;background:rgba(255,255,255,.18)}
+#camunlock.holding::after{width:100%;transition:width 2s linear}
+/* phone camera full screen: only the picture and a small bar */
+body.camfull .app{padding:0}
+body.camfull .campg>*:not(.campv){display:none!important}
+body.camfull .campv{position:fixed;inset:0;border-radius:0;aspect-ratio:auto;z-index:30}
+.camfbar{position:absolute;left:8px;right:8px;top:calc(8px + env(safe-area-inset-top,0px));display:flex;align-items:center;gap:8px;z-index:2}
+.camfbar .pill{background:rgba(0,0,0,.6)}
+.camfnet{flex:1;min-width:0;font-size:12px;color:#fff;text-shadow:0 1px 2px #000;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.camfbar .btn{min-height:40px;background:rgba(0,0,0,.6);border-color:rgba(255,255,255,.3);color:#fff}
 
