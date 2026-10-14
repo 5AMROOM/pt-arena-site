@@ -20,11 +20,16 @@ let synced={main:null,runs:null,timers:{},codes:null};
 
 /* ---------- shapes: S split into the pieces that are written separately ---------- */
 const body=o=>{const c=clone(o);delete c.id;return c};
+// config/private as this device last read or wrote it; only the fields that differ are written back,
+// so a device opened before someone else's change cannot put an old staff code back
+const codesFields=()=>({staffCode:S.staffPin,chiefPin:S.pin,driveUrl:S.drive?.url||'',driveKey:S.drive?.key||''});
+let codesSeen=null,unsubC=null;
 function mainShape(){
-  const order={},teams={};
+  const order={},teams={},clips={};
+  Object.keys(S.clips||{}).forEach(k=>clips[k]=J(S.clips[k]));
   S.classes.forEach(c=>order[c.id]=J(S.order[c.id]||[]));
   S.teams.forEach(t=>{if(t.id)teams[t.id]=J(body(t))});
-  return{rounds:J(S.rounds),classes:J(S.classes),order,teams};
+  return{rounds:J(S.rounds),classes:J(S.classes),live:J(S.live||{}),order,teams,clips};
 }
 function runsShape(){const r={};S.runs.forEach(x=>{if(x.id)r[x.id]=J(body(x))});return r}
 function timersShape(){const r={};Object.keys(S.timers||{}).forEach(k=>r[k]=J(S.timers[k]));return r}
@@ -45,7 +50,7 @@ function applyMain(snap){
   const d=snap.data()||{},j=J(d);
   if(got.main&&j===last.main)return;
   last.main=j;
-  S.rounds=d.rounds||2;
+  S.rounds=d.rounds||2;S.live=d.live||{};S.clips=d.clips||{};
   // Scoring is never read from the database: it is the rule book, and it lives in the code (DEFAULT_COMPS).
   // An earlier version stored a copy here, which went stale and showed old scoring; that copy is removed on the next save.
   S.comps=clone(DEFAULT_COMPS);S.classes=withFields(d.classes);staleComps='comps' in d;
@@ -74,11 +79,12 @@ function applyTimers(snap){
   if(!OFFSET_OK&&!first&&!snap.metadata.fromCache&&!snap.metadata.hasPendingWrites)Object.values(S.timers).forEach(t=>{if(t.sentAt>lastSent&&t.by!==DEVICE){lastSent=t.sentAt;OFFSET=t.sentAt-Date.now()}});
   if(READY)remoteChanged();
 }
-// only the devices that run or show a match listen to the clocks; viewers' phones do not need them
+// only the devices that run or show a match listen to the clocks; a viewer's phone listens only while its live tab is open,
+// because every tap a judge makes costs one read for each phone listening
 function watchTimers(){
   if(unsubT){unsubT();unsubT=null}
   last.timers=null;exists.timers=false;S.timers={};synced.timers={};
-  if(venue&&['judge','timer','staff','screen'].includes(ROLE))unsubT=onSnapshot(timersRef(venue),{includeMetadataChanges:true},applyTimers,fail);
+  if(venue&&(['judge','timer','staff','screen'].includes(ROLE)||S.ui.view==='live'))unsubT=onSnapshot(timersRef(venue),{includeMetadataChanges:true},applyTimers,fail);
 }
 function watchVenue(v){
   unsub.forEach(f=>f());
@@ -109,12 +115,12 @@ function push(){
   if(!CLOUD_STAFF||!READY)return;
   if(S.venue!==venue){setDoc(stateRef,{venue:S.venue}).catch(fail);READY=false;return}
   const m=mainShape(),r=runsShape(),om=synced.main,or=synced.runs;
-  if(!exists.main){setDoc(mainRef(venue),{rounds:S.rounds,classes:clone(S.classes),order:unpack(m.order),teams:unpack(m.teams)}).catch(fail);exists.main=true}
+  if(!exists.main){setDoc(mainRef(venue),{rounds:S.rounds,live:clone(S.live||{}),classes:clone(S.classes),order:unpack(m.order),teams:unpack(m.teams),clips:unpack(m.clips)}).catch(fail);exists.main=true}
   else{
     const a=[];
-    ['rounds','classes'].forEach(k=>{if(m[k]!==om[k])a.push(new FieldPath(k),JSON.parse(m[k]))});
+    ['rounds','classes','live'].forEach(k=>{if(m[k]!==om[k])a.push(new FieldPath(k),JSON.parse(m[k]))});
     if(staleComps){a.push(new FieldPath('comps'),deleteField());staleComps=false}
-    a.push(...diff('order',m.order,om.order),...diff('teams',m.teams,om.teams));
+    a.push(...diff('order',m.order,om.order),...diff('teams',m.teams,om.teams),...diff('clips',m.clips,om.clips||{}));
     if(a.length)updateDoc(mainRef(venue),...a).catch(fail);
   }
   if(!exists.runs){if(Object.keys(r).length){setDoc(runsRef(venue),{runs:unpack(r)}).catch(fail);exists.runs=true}}
@@ -126,18 +132,20 @@ function push(){
     synced.timers=t;
   }
   synced.main=m;synced.runs=r;
-  const c=J([S.staffPin,S.pin]);
-  if(synced.codes&&c!==synced.codes){
-    synced.codes=c;
-    // codes first, then this device's own pass, so the admin is not locked out by the change
-    updateDoc(codesRef,{staffCode:S.staffPin,chiefPin:S.pin}).then(()=>setDoc(doc(db,'staff',uid),{code:S.staffPin})).catch(fail);
+  if(codesSeen){
+    const now=codesFields(),ch={};Object.keys(now).forEach(k=>{if(now[k]!==codesSeen[k])ch[k]=now[k]});
+    if(Object.keys(ch).length){
+      codesSeen=now;
+      // codes first, then this device's own pass, so the admin is not locked out by the change
+      updateDoc(codesRef,ch).then(()=>{if('staffCode' in ch)return setDoc(doc(db,'staff',uid),{code:S.staffPin})}).catch(fail);
+    }
   }
 }
 
 /* ---------- staff ---------- */
 function takeCodes(snap){
   if(!snap.exists())return false;
-  const d=snap.data();S.staffPin=d.staffCode;S.pin=d.chiefPin||'1234';synced.codes=J([S.staffPin,S.pin]);
+  const d=snap.data();S.staffPin=d.staffCode;S.pin=d.chiefPin||'1234';S.drive={url:d.driveUrl||'',key:d.driveKey||''};codesSeen=codesFields();
   return true;
 }
 /* How far this device's clock is from the server's. A write stamped by the server lands somewhere between the moment
@@ -158,11 +166,16 @@ async function syncClock(){
 }
 window.addEventListener('online',()=>syncClock());
 setInterval(syncClock,10*60*1000);
+// staff devices follow config/private live, so a new Drive link or key reaches open timer laptops without a reload
+function watchCodes(){
+  if(unsubC||!CLOUD_STAFF)return;
+  unsubC=onSnapshot(codesRef,s=>{if(!s.metadata.hasPendingWrites&&takeCodes(s)&&READY)render()},()=>{unsubC?.();unsubC=null});
+}
 async function checkStaff(){
   if(!uid){CLOUD_STAFF=false;return}
   // cached answer first so a tablet with weak signal opens straight away, then confirm with the server
   try{if(takeCodes(await getDocFromCache(codesRef)))CLOUD_STAFF=true}catch(e){}
-  const confirm=getDoc(codesRef).then(s=>{CLOUD_STAFF=takeCodes(s)},e=>{if(e.code==='permission-denied')CLOUD_STAFF=false}).then(()=>{syncClock();if(READY)render()});
+  const confirm=getDoc(codesRef).then(s=>{CLOUD_STAFF=takeCodes(s)},e=>{if(e.code==='permission-denied')CLOUD_STAFF=false}).then(()=>{syncClock();watchCodes();if(READY)render()});
   if(!CLOUD_STAFF)await timeout(confirm,6000).catch(()=>{});
 }
 onAuthStateChanged(auth,async u=>{uid=u?u.uid:null;await checkStaff();got.auth=true;READY?render():ready()});
@@ -181,4 +194,7 @@ async function enter(code){
   return CLOUD_STAFF;
 }
 
-window.PT_BACKEND={push,enter,role:()=>{if(venue)watchTimers()}};
+// signatures: one staff-only document per run
+const signRef=k=>doc(db,'signs',k);
+const sign=(k,d)=>setDoc(signRef(k),{...d,t:serverTimestamp()}),getSign=k=>getDoc(signRef(k)).then(s=>s.exists()?s.data():null);
+window.PT_BACKEND={push,enter,sign,getSign,role:()=>{if(venue)watchTimers()}};
