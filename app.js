@@ -885,6 +885,7 @@ function vCam(){
   const st={idle:['','ยังไม่ได้ส่งภาพ'],wait:['warn','รอโน้ตบุ๊กสนาม '+LOCK],on:['ok','● ส่งภาพอยู่'],lost:['bad','หลุด กำลังต่อใหม่…']}[CAMP.state];
   return`<div class="campg">
     <div class="row between"><b>กล้องมือถือ · สนาม ${esc(LOCK)}</b><span class="pill ${st[0]}" id="camst">${st[1]}</span></div>
+    ${camPortrait()?`<div class="callout warn camrot"><b>หมุนมือถือเป็นแนวนอน</b><div class="small">ภาพจะได้เต็ม ${CAM_RES[CAMP.res][0]} × ${CAM_RES[CAMP.res][1]} แล้วเปิดล็อกการหมุนจอของมือถือไว้ จะได้ไม่หมุนกลับเอง</div></div>`:''}
     <div class="campv"><video id="campv" playsinline muted autoplay></video>${CAMP.stream?'':'<span>กด เริ่มส่งภาพ</span>'}</div>
     <div class="small" id="camnet">${esc(CAMP.net)}</div>
     <div class="small muted" id="camgot">${CAMP.real?'กล้องมือถือให้ภาพ '+esc(CAMP.real):'ภาพจะไปขึ้นที่หน้าจับเวลาของสนามนี้ ไม่ต้องลงแอป'}</div>
@@ -893,9 +894,9 @@ function vCam(){
     ${CAMP.devs.length>1?`<label class="tset" style="color:var(--muted)"><span>เลนส์ (มุมกว้าง / ปกติ / ซูม)</span><select id="camlens">${CAMP.devs.map((d,n)=>`<option value="${esc(d.deviceId)}" ${d.deviceId===CAMP.dev?'selected':''}>${esc(lensName(d.label,n))}</option>`).join('')}</select></label>`:''}
     ${CAMP.zoom?`<label class="tset" style="color:var(--muted)"><span>ซูม <b id="camzv">${CAMP.zoom.val.toFixed(1)}×</b></span><input type="range" id="camzoom" min="${CAMP.zoom.min}" max="${CAMP.zoom.max}" step="${CAMP.zoom.step}" value="${CAMP.zoom.val}"></label>`:CAMP.stream?'<div class="small muted">มือถือรุ่นนี้ซูมผ่านเบราว์เซอร์ไม่ได้ ใช้เลือกเลนส์ หรือครอปที่หน้าจับเวลาแทน</div>':''}
     <div class="row camctl"><label class="tset"><span>ความชัด</span><select id="camres">${Object.keys(CAM_RES).map(r=>`<option value="${r}" ${+r===CAMP.res?'selected':''}>${r}p</option>`).join('')}</select></label><label class="tset"><span>เน้น</span><select id="cammode"><option value="smooth" ${CAMP.mode==='smooth'?'selected':''}>ลื่น</option><option value="sharp" ${CAMP.mode==='sharp'?'selected':''}>คม</option></select></label><label class="tset"><span>ความลื่น</span><select id="camfps">${[30,60].map(f=>`<option value="${f}" ${f===CAMP.fps?'selected':''}>${f} fps</option>`).join('')}</select></label>
-      <button class="btn" data-act="camflip">สลับกล้องหน้า/หลัง</button></div>
+      <button class="btn" data-act="camflip">สลับกล้องหน้า/หลัง</button><button class="btn" data-act="camland">เต็มจอ + แนวนอน</button></div>
     <button class="btn ${CAMP.stream?'':'pri'} big" data-act="camgo">${CAMP.stream?'■ หยุดส่งภาพ':'▶ เริ่มส่งภาพ'}</button>
-    <p class="small muted" style="margin:0">ต่อ Wi‑Fi วงเดียวกับโน้ตบุ๊ก วางมือถือนิ่งๆ เสียบชาร์จไว้ และเปิดหน้านี้ค้างไว้ตลอด</p></div>`;
+    <p class="small muted camtip" style="margin:0">ต่อ Wi‑Fi วงเดียวกับโน้ตบุ๊ก วางมือถือนิ่งๆ เสียบชาร์จไว้ และเปิดหน้านี้ค้างไว้ตลอด</p></div>`;
 }
 function camAfter(){const v=$('#campv');if(v&&CAMP.stream&&v.srcObject!==CAMP.stream){v.srcObject=CAMP.stream;v.play().catch(()=>{})}}
 function camStatus(){const el=$('#camst');if(!el)return render();const st={idle:['','ยังไม่ได้ส่งภาพ'],wait:['warn','รอโน้ตบุ๊กสนาม '+LOCK],on:['ok','● ส่งภาพอยู่'],lost:['bad','หลุด กำลังต่อใหม่…']}[CAMP.state];el.className='pill '+st[0];el.textContent=st[1]}
@@ -918,8 +919,8 @@ async function camOpen(){
   const tr=st.getVideoTracks()[0],fps=()=>Math.round(tr.getSettings().frameRate||0);
   if(CAMP.fps>30&&fps()<50){
     // the chosen size first, then smaller ones, then 60 at whatever size the phone picks
-    const sizes=[1080,720,480].filter(r=>r<=CAMP.res).map(r=>[r+'p 60',{width:{ideal:CAM_RES[r][0]},height:{ideal:CAM_RES[r][1]},frameRate:{exact:60}}]);
-    for(const [nm,c] of [...sizes,['60 ขนาดไหนก็ได้',{frameRate:{exact:60}}],['60 แบบขอ',{frameRate:{ideal:60}}]]){
+    const sizes=[1080,720,480].filter(r=>CAMP.mode==='sharp'?r===CAMP.res:r<=CAMP.res).map(r=>[r+'p 60',{width:{ideal:CAM_RES[r][0]},height:{ideal:CAM_RES[r][1]},frameRate:{exact:60}}]);
+    for(const [nm,c] of CAMP.mode==='sharp'?sizes:[...sizes,['60 ขนาดไหนก็ได้',{frameRate:{exact:60}}],['60 แบบขอ',{frameRate:{ideal:60}}]]){
       try{await tr.applyConstraints(c);const f=fps();CAMP.tries.push(nm+': ได้ '+f+' fps');if(f>=50)break}
       catch(e){CAMP.tries.push(nm+': ไม่ได้ ('+(e.constraint?e.constraint+' ':'')+(e.name||'error')+')')}
     }
@@ -944,6 +945,24 @@ function camNet(pc){
     })}catch(e){}
     const el=$('#camnet');if(el)el.textContent=CAMP.net;
   },2000);
+}
+// The picture's shape follows how the phone is held when the camera opens. When the phone turns, the camera is opened
+// again on the same link, so a phone turned to landscape sends a landscape picture.
+const camPortrait=()=>matchMedia('(orientation: portrait)').matches;
+let CAMROT=null;
+let CAMWASP=null;
+const camTurned=()=>{
+  if(ROLE!=='cam')return;const p=camPortrait();if(p===CAMWASP)return;CAMWASP=p;clearTimeout(CAMROT);
+  CAMROT=setTimeout(()=>{if(CAMP.stream)camSwap();else render()},700);   // wait for the turn to finish
+};
+matchMedia('(orientation: portrait)').addEventListener?.('change',camTurned);
+window.addEventListener('resize',camTurned);
+setInterval(camTurned,1000);   // some phones report a turn late or not at all
+async function camLand(quiet){
+  let full=false;
+  try{if(!document.fullscreenElement)await document.documentElement.requestFullscreen?.();full=!!document.fullscreenElement}catch(e){}
+  try{await screen.orientation.lock('landscape');if(!quiet)toast('เต็มจอ และล็อกแนวนอนแล้ว');return}catch(e){}
+  if(!quiet)toast(full?'เต็มจอแล้ว แต่มือถือนี้ล็อกแนวนอนจากเว็บไม่ได้ หมุนเป็นแนวนอนแล้วเปิดล็อกการหมุนจอของมือถือ':'มือถือนี้ทำเต็มจอจากเว็บไม่ได้ (iPhone) หมุนเป็นแนวนอนแล้วเปิดล็อกการหมุนจอของมือถือ');
 }
 function camRead(){
   const tr=CAMP.stream.getVideoTracks()[0],s=tr.getSettings(),cap=tr.getCapabilities?.()||{};
@@ -1285,7 +1304,8 @@ document.addEventListener('click',e=>{
     case'tab':{const was=ui.view;ui.view=b.dataset.v;ui.pinFor=null;if((was==='live')!==(ui.view==='live'))window.PT_BACKEND?.role?.();break}
     case'ch':ui.liveCh=b.dataset.v;break;
     case'lensreset':if(LENS){Object.keys(LENS.caps).forEach(k=>LENS.val[k]=k==='zoom'?LENS.caps[k].min:k==='focusDistance'?LENS.val[k]:(LENS.caps[k].min+LENS.caps[k].max)/2);LENS.focusAuto=true;lensApply().then(render)}return;
-    case'camgo':if(CAMP.stream)camStop();else camStart();return;
+    case'camland':camLand();return;
+    case'camgo':if(CAMP.stream)camStop();else{camLand(true);camStart()}return;
     case'camflip':CAMP.facing=CAMP.facing==='environment'?'user':'environment';CAMP.dev='';if(CAMP.stream)camSwap();else render();return;
     case'drivekey':S.drive={url:S.drive?.url||'',key:[...crypto.getRandomValues(new Uint8Array(16))].map(x=>x.toString(16).padStart(2,'0')).join('')};toast('สร้างกุญแจแล้ว กดคัดลอกไปวางในสคริปต์ แล้ว Deploy ใหม่');break;
     case'drivecopy':navigator.clipboard?.writeText(S.drive.key).then(()=>toast('คัดลอกกุญแจแล้ว')).catch(()=>toast('คัดลอกไม่ได้ในหน้าต่างนี้'));return;

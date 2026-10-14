@@ -505,4 +505,21 @@ body.camfocus .app{padding:10px 10px 24px}
 .camctl{flex-wrap:wrap}
 .camctl .tset{flex:1 1 30%;min-width:96px}
 #camnet:empty{display:none}
+/* phone camera page held sideways: picture on the left, controls on the right, nothing below the fold */
+.camrot b{font-size:18px}
+@media (orientation:landscape) and (max-height:560px){
+  body.camfocus .app{padding:6px 10px}
+  .campg{max-width:none;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:8px 14px;align-items:start}
+  .campg>*{grid-column:2}
+  .campg>.campv{grid-column:1;grid-row:1/span 9}
+  .campg .btn.big{min-height:48px}
+}
+@media (orientation:landscape) and (max-height:560px){
+  .campg{gap:6px 12px}
+  .campg .camtip{display:none}
+  .camctl .tset span{font-size:11px}
+  .camctl .tset select,.camctl .btn{min-height:38px;padding-block:4px}
+  .campg .btn.big{min-height:44px;font-size:16px}
+  .campg>.row.between b{font-size:14px}
+}
 
