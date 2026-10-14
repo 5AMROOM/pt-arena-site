@@ -1086,11 +1086,14 @@ async function camOn(){
     try{CAMS=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput')}catch(e){}
     if(CV){CV.width=q.w;CV.height=q.h}CSTREAM=null;drawLoop();CAMASK=false;if(S.ui.view==='timer')render();return;
   }
-  const q=CAMQ[QUAL],ask=id=>navigator.mediaDevices.getUserMedia({video:{...(id?{deviceId:{exact:id}}:{}),width:{ideal:q.w},height:{ideal:q.h},frameRate:{ideal:FPS},pan:true,tilt:true,zoom:true},audio:false});
+  // the request for the camera's own zoom and pan is a bonus: a camera or browser that refuses it is opened without it
+  const q=CAMQ[QUAL],ask=async id=>{const v={...(id?{deviceId:{exact:id}}:{}),width:{ideal:q.w},height:{ideal:q.h},frameRate:{ideal:FPS}};
+    try{return await navigator.mediaDevices.getUserMedia({video:{...v,pan:true,tilt:true,zoom:true},audio:false})}catch(e){return navigator.mediaDevices.getUserMedia({video:v,audio:false})}};
+  const why={NotReadableError:'มีโปรแกรมอื่นใช้กล้องตัวนี้อยู่ ปิดโปรแกรมนั้นก่อน',OverconstrainedError:'กล้องไม่รองรับค่าที่ตั้ง',NotAllowedError:'ยังไม่ได้อนุญาตกล้อง',NotFoundError:'ไม่พบกล้องตัวนี้ (ถอดสายอยู่หรือเปล่า)'};
   try{
     if(CAM&&CAM!==PHONE)CAM.getTracks().forEach(k=>k.stop());
-    // a remembered camera that is no longer plugged in must not block the page: fall back to whatever is there
-    try{CAM=await ask(CAMID)}catch(e){if(!CAMID)throw e;CAMID='';CAM=await ask('')}
+    // the chosen camera first; if it cannot open, say why, then fall back to whatever is there so the field still records
+    try{CAM=await ask(CAMID)}catch(e){if(!CAMID)throw e;const nm=CAMS.find(d=>d.deviceId===CAMID)?.label||'ที่เลือก';CAMID='';CAM=await ask('');toast(`เปิดกล้อง ${nm} ไม่ได้: ${why[e.name]||e.name} · ใช้กล้องอื่นแทน`)}
     const st=CAM.getVideoTracks()[0].getSettings();CAMID=st.deviceId||CAMID;CAMREAL=st.width&&st.height?st.width+' × '+st.height+(st.frameRate?' · '+Math.round(st.frameRate)+' fps':''):'';
     CAMS=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput');
     await lensRead();
