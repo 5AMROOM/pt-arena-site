@@ -879,7 +879,9 @@ function phoneMeter(){
   },2000);
 }
 // phone side
-const CAM_RES={480:[854,480,2500000],720:[1280,720,5000000],1080:[1920,1080,8000000]};
+// size choices for the phone, with the most the encoder may send for each (times 1.5 at 60 fps); a home or venue router carries this easily
+const CAM_RES={480:[854,480,4000000],720:[1280,720,10000000],1080:[1920,1080,16000000]};
+const camCap=()=>CAM_RES[CAMP.res][2]*(CAMP.fps>30?1.5:1);
 const CAM_SHAPE={land:'แนวนอน',port:'แนวตั้ง',auto:'ตามการหมุนเครื่อง'};
 const CAMP={full:false,shape:CAM_SHAPE[keep('ptarena:camshape')]?keep('ptarena:camshape'):'land',locked:false,mode:keep('ptarena:cammode')==='sharp'?'sharp':'smooth',net:'',res:CAM_RES[keep('ptarena:camres')]?+keep('ptarena:camres'):1080,stream:null,pc:null,sid:'',state:'idle',fps:60,facing:'environment',dev:'',devs:[],zoom:null,real:'',tries:[],wake:null,un:null,err:''};
 function vCam(){
@@ -945,7 +947,7 @@ async function camOpen(){
 }
 // asks the phone's encoder for the bitrate that suits the chosen size and smoothness; weak Wi-Fi may still lower it
 async function camBitrate(snd){
-  try{const p=snd.getParameters();if(!p.encodings||!p.encodings.length)p.encodings=[{}];p.encodings[0].maxBitrate=Math.round(CAM_RES[CAMP.res][2]*(CAMP.fps>30?1.5:1));p.encodings[0].maxFramerate=CAMP.fps;p.degradationPreference=CAMP.mode==='sharp'?'maintain-resolution':'maintain-framerate';await snd.setParameters(p)}catch(e){}
+  try{const p=snd.getParameters();if(!p.encodings||!p.encodings.length)p.encodings=[{}];p.encodings[0].maxBitrate=Math.round(camCap());p.encodings[0].maxFramerate=CAMP.fps;p.degradationPreference=CAMP.mode==='sharp'?'maintain-resolution':'maintain-framerate';await snd.setParameters(p)}catch(e){}
 }
 // what the phone is really sending, and what the browser says is holding it back
 function camNet(pc){
@@ -954,7 +956,9 @@ function camNet(pc){
     try{(await pc.getStats()).forEach(r=>{
       if(r.type!=='outbound-rtp'||r.kind!=='video')return;
       const d=last&&r.timestamp>last.timestamp?(r.timestamp-last.timestamp)/1000:0,mbps=d?((r.bytesSent-last.bytesSent)*8/d/1e6):0;
-      const why={bandwidth:'Wi‑Fi ไม่พอ',cpu:'เครื่องไม่ไหว (ร้อนหรือช้า)',other:'อื่นๆ',none:'ไม่ติดอะไร'}[r.qualityLimitationReason]||'';
+      // sending at the ceiling we set is reported by the browser as a bandwidth limit: say what it really is
+      const atCap=mbps>=camCap()/1e6*0.85;
+      const why=atCap?'ถึงเพดานที่ตั้งไว้ '+(camCap()/1e6).toFixed(0)+' Mbps (ปกติ)':{bandwidth:'เน็ตระหว่างมือถือกับโน้ตบุ๊กไม่พอ',cpu:'เครื่องไม่ไหว (ร้อนหรือช้า)',other:'อื่นๆ',none:'ไม่ติดอะไร'}[r.qualityLimitationReason]||'';
       CAMP.net=r.frameWidth?`กำลังส่ง ${r.frameWidth} × ${r.frameHeight} · ${Math.round(r.framesPerSecond||0)} fps · ${mbps.toFixed(1)} Mbps${why?' · ติดที่: '+why:''}${r.encoderImplementation?' · '+r.encoderImplementation:''}`:'';
       last=r;
     })}catch(e){}
