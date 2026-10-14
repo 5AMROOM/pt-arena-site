@@ -891,7 +891,7 @@ function vCam(){
       ${CAMP.full?`<div class="camfbar"><span class="pill ${{idle:'',wait:'warn',on:'ok',lost:'bad'}[CAMP.state]}">${{idle:'ยังไม่ได้ส่งภาพ',wait:'รอโน้ตบุ๊ก',on:'● ส่งภาพอยู่',lost:'หลุด กำลังต่อใหม่…'}[CAMP.state]}</span>${CAMP.locked?'<span class="pill ok">🔒</span>':''}<span class="camfnet" id="camfnet">${esc(CAMP.net)}</span><button class="btn" data-act="camfull">ย่อ</button></div>`:''}</div>
     <div class="small" id="camnet">${esc(CAMP.net)}</div>
     <div class="small muted" id="camgot">${CAMP.real?'กล้องมือถือให้ภาพ '+esc(CAMP.real):'ภาพจะไปขึ้นที่หน้าจับเวลาของสนามนี้ ไม่ต้องลงแอป'}</div>
-    ${CAMP.tries.length?`<div class="small muted">ลองขอ 60 fps: ${CAMP.tries.map(esc).join(' · ')}</div>`:''}
+    ${CAMP.tries.length?`<div class="small muted">ลองปรับกล้อง: ${CAMP.tries.map(esc).join(' · ')}</div>`:''}
     ${CAMP.err?`<div class="callout bad"><div><b>เปิดกล้องไม่ได้ (${esc(CAMP.err)})</b></div><ol style="margin:6px 0 0;padding-left:20px"><li>กดอนุญาตให้เว็บนี้ใช้กล้อง</li><li>iPhone: ตั้งค่า → Safari → กล้อง → อนุญาต</li><li>ปิดแอปอื่นที่ใช้กล้องอยู่ แล้วกดเริ่มใหม่</li></ol></div>`:''}
     ${CAMP.locked?`<div class="callout ok camlocked"><b>🔒 ล็อกกล้องอยู่</b><div class="small">หมุนเครื่องแล้วภาพไม่เปลี่ยน ปุ่มตั้งค่าซ่อนไว้ ปลดล็อกต้องกดค้าง 2 วินาที</div></div><button class="btn big" data-act="camfull">⛶ เต็มจอ</button><button class="btn big" id="camunlock">กดค้างเพื่อปลดล็อก</button>`:`
     ${CAMP.devs.length>1?`<label class="tset" style="color:var(--muted)"><span>เลนส์ (มุมกว้าง / ปกติ / ซูม)</span><select id="camlens">${CAMP.devs.map((d,n)=>`<option value="${esc(d.deviceId)}" ${d.deviceId===CAMP.dev?'selected':''}>${esc(lensName(d.label,n))}</option>`).join('')}</select></label>`:''}
@@ -924,6 +924,14 @@ async function camOpen(){
   const st=await navigator.mediaDevices.getUserMedia({video:{...pick,width:{ideal:w},height:{ideal:h},aspectRatio:{ideal:w/h},frameRate:{ideal:CAMP.fps}},audio:false});
   CAMP.tries=[];
   const tr=st.getVideoTracks()[0],fps=()=>Math.round(tr.getSettings().frameRate||0);
+  // some phones open smaller than asked: ask again, firmly, for the chosen size, and say what came of it
+  const got=()=>tr.getSettings().width||0,want=Math.max(w,h);
+  if(Math.max(got(),tr.getSettings().height||0)<want){
+    for(const [nm,c] of [[`บังคับ ${w}×${h}`,{width:{exact:w},height:{exact:h}}],[`ขั้นต่ำ ${w}×${h}`,{width:{min:w},height:{min:h}}]]){
+      try{await tr.applyConstraints(c);const s2=tr.getSettings();CAMP.tries.push(nm+': ได้ '+s2.width+'×'+s2.height);if(Math.max(s2.width,s2.height)>=want)break}
+      catch(e){CAMP.tries.push(nm+': ไม่ได้ ('+(e.constraint?e.constraint+' ':'')+(e.name||'error')+')')}
+    }
+  }
   if(CAMP.fps>30&&fps()<50){
     // the chosen size first, then smaller ones, then 60 at whatever size the phone picks
     const sizes=[1080,720,480].filter(r=>CAMP.mode==='sharp'?r===CAMP.res:r<=CAMP.res).map(r=>[r+'p 60',{width:{ideal:camDims(r)[0]},height:{ideal:camDims(r)[1]},frameRate:{exact:60}}]);
