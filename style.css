@@ -502,4 +502,7 @@ body.camfocus .app{padding:10px 10px 24px}
 /* timer laptop: the webcam's own lens controls */
 .lensrow{display:grid;grid-template-columns:110px minmax(0,1fr);gap:8px;align-items:center;font-size:13px;color:var(--stage-muted)}
 .lensrow select{min-height:36px}
+.camctl{flex-wrap:wrap}
+.camctl .tset{flex:1 1 30%;min-width:96px}
+#camnet:empty{display:none}
 
