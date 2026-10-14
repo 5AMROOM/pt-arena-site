@@ -862,7 +862,8 @@ function phoneMeter(){
   },2000);
 }
 // phone side
-const CAMP={stream:null,pc:null,sid:'',state:'idle',fps:60,facing:'environment',dev:'',devs:[],zoom:null,real:'',tries:[],wake:null,un:null,err:''};
+const CAM_RES={480:[854,480,2500000],720:[1280,720,5000000],1080:[1920,1080,8000000]};
+const CAMP={res:CAM_RES[keep('ptarena:camres')]?+keep('ptarena:camres'):1080,stream:null,pc:null,sid:'',state:'idle',fps:60,facing:'environment',dev:'',devs:[],zoom:null,real:'',tries:[],wake:null,un:null,err:''};
 function vCam(){
   const st={idle:['','ยังไม่ได้ส่งภาพ'],wait:['warn','รอโน้ตบุ๊กสนาม '+LOCK],on:['ok','● ส่งภาพอยู่'],lost:['bad','หลุด กำลังต่อใหม่…']}[CAMP.state];
   return`<div class="campg">
@@ -873,7 +874,7 @@ function vCam(){
     ${CAMP.err?`<div class="callout bad"><div><b>เปิดกล้องไม่ได้ (${esc(CAMP.err)})</b></div><ol style="margin:6px 0 0;padding-left:20px"><li>กดอนุญาตให้เว็บนี้ใช้กล้อง</li><li>iPhone: ตั้งค่า → Safari → กล้อง → อนุญาต</li><li>ปิดแอปอื่นที่ใช้กล้องอยู่ แล้วกดเริ่มใหม่</li></ol></div>`:''}
     ${CAMP.devs.length>1?`<label class="tset" style="color:var(--muted)"><span>เลนส์ (มุมกว้าง / ปกติ / ซูม)</span><select id="camlens">${CAMP.devs.map((d,n)=>`<option value="${esc(d.deviceId)}" ${d.deviceId===CAMP.dev?'selected':''}>${esc(lensName(d.label,n))}</option>`).join('')}</select></label>`:''}
     ${CAMP.zoom?`<label class="tset" style="color:var(--muted)"><span>ซูม <b id="camzv">${CAMP.zoom.val.toFixed(1)}×</b></span><input type="range" id="camzoom" min="${CAMP.zoom.min}" max="${CAMP.zoom.max}" step="${CAMP.zoom.step}" value="${CAMP.zoom.val}"></label>`:CAMP.stream?'<div class="small muted">มือถือรุ่นนี้ซูมผ่านเบราว์เซอร์ไม่ได้ ใช้เลือกเลนส์ หรือครอปที่หน้าจับเวลาแทน</div>':''}
-    <div class="row camctl"><label class="tset"><span>ความลื่น</span><select id="camfps">${[30,60].map(f=>`<option value="${f}" ${f===CAMP.fps?'selected':''}>${f} fps</option>`).join('')}</select></label>
+    <div class="row camctl"><label class="tset"><span>ความชัด</span><select id="camres">${Object.keys(CAM_RES).map(r=>`<option value="${r}" ${+r===CAMP.res?'selected':''}>${r}p</option>`).join('')}</select></label><label class="tset"><span>ความลื่น</span><select id="camfps">${[30,60].map(f=>`<option value="${f}" ${f===CAMP.fps?'selected':''}>${f} fps</option>`).join('')}</select></label>
       <button class="btn" data-act="camflip">สลับกล้องหน้า/หลัง</button></div>
     <button class="btn ${CAMP.stream?'':'pri'} big" data-act="camgo">${CAMP.stream?'■ หยุดส่งภาพ':'▶ เริ่มส่งภาพ'}</button>
     <p class="small muted" style="margin:0">ต่อ Wi‑Fi วงเดียวกับโน้ตบุ๊ก วางมือถือนิ่งๆ เสียบชาร์จไว้ และเปิดหน้านี้ค้างไว้ตลอด</p></div>`;
@@ -893,18 +894,24 @@ function lensName(label,n){
 // Opens the camera, then, for 60 fps, asks the open camera to change: some phone browsers refuse a frame rate
 // demanded at opening but accept it as a change afterwards. Every try and its answer is kept for the screen.
 async function camOpen(){
-  const pick=CAMP.dev?{deviceId:{exact:CAMP.dev}}:{facingMode:{ideal:CAMP.facing}};
-  const st=await navigator.mediaDevices.getUserMedia({video:{...pick,width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:CAMP.fps}},audio:false});
+  const pick=CAMP.dev?{deviceId:{exact:CAMP.dev}}:{facingMode:{ideal:CAMP.facing}},[w,h]=CAM_RES[CAMP.res];
+  const st=await navigator.mediaDevices.getUserMedia({video:{...pick,width:{ideal:w},height:{ideal:h},frameRate:{ideal:CAMP.fps}},audio:false});
   CAMP.tries=[];
   const tr=st.getVideoTracks()[0],fps=()=>Math.round(tr.getSettings().frameRate||0);
   if(CAMP.fps>30&&fps()<50){
-    for(const [nm,c] of [['1080p 60',{width:{ideal:1920},height:{ideal:1080},frameRate:{exact:60}}],['720p 60',{width:{ideal:1280},height:{ideal:720},frameRate:{exact:60}}],['60 ขนาดไหนก็ได้',{frameRate:{exact:60}}],['60 แบบขอ',{frameRate:{ideal:60}}]]){
+    // the chosen size first, then smaller ones, then 60 at whatever size the phone picks
+    const sizes=[1080,720,480].filter(r=>r<=CAMP.res).map(r=>[r+'p 60',{width:{ideal:CAM_RES[r][0]},height:{ideal:CAM_RES[r][1]},frameRate:{exact:60}}]);
+    for(const [nm,c] of [...sizes,['60 ขนาดไหนก็ได้',{frameRate:{exact:60}}],['60 แบบขอ',{frameRate:{ideal:60}}]]){
       try{await tr.applyConstraints(c);const f=fps();CAMP.tries.push(nm+': ได้ '+f+' fps');if(f>=50)break}
       catch(e){CAMP.tries.push(nm+': ไม่ได้ ('+(e.constraint?e.constraint+' ':'')+(e.name||'error')+')')}
     }
-    if(fps()<50)try{await tr.applyConstraints({width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:30}})}catch(e){}
+    if(fps()<50)try{await tr.applyConstraints({width:{ideal:w},height:{ideal:h},frameRate:{ideal:30}})}catch(e){}
   }
   return st;
+}
+// asks the phone's encoder for the bitrate that suits the chosen size and smoothness; weak Wi-Fi may still lower it
+async function camBitrate(snd){
+  try{const p=snd.getParameters();if(!p.encodings||!p.encodings.length)p.encodings=[{}];p.encodings[0].maxBitrate=Math.round(CAM_RES[CAMP.res][2]*(CAMP.fps>30?1.5:1));p.encodings[0].maxFramerate=CAMP.fps;p.degradationPreference='maintain-resolution';await snd.setParameters(p)}catch(e){}
 }
 function camRead(){
   const tr=CAMP.stream.getVideoTracks()[0],s=tr.getSettings(),cap=tr.getCapabilities?.()||{};
@@ -929,7 +936,7 @@ async function camSwap(){
   try{CAMP.stream=await camOpen()}catch(e){CAMP.stream=null;CAMP.err=e.name||'error';camStop();return}
   camRead();
   const snd=CAMP.pc?.getSenders().find(x=>x.track?.kind==='video'||!x.track);
-  try{if(snd)await snd.replaceTrack(CAMP.stream.getVideoTracks()[0]);else camOffer()}catch(e){camOffer()}
+  try{if(snd){await snd.replaceTrack(CAMP.stream.getVideoTracks()[0]);await camBitrate(snd)}else camOffer()}catch(e){camOffer()}
   render();
 }
 function camStop(){
@@ -950,7 +957,7 @@ async function camOffer(){
   };
   await pc.setLocalDescription(await pc.createOffer());
   // ask the encoder for the full picture and the chosen smoothness; the network may still lower it on weak Wi-Fi
-  try{const snd=pc.getSenders()[0],p=snd.getParameters();if(!p.encodings||!p.encodings.length)p.encodings=[{}];p.encodings[0].maxBitrate=CAMP.fps>30?10000000:6000000;p.encodings[0].maxFramerate=CAMP.fps;p.degradationPreference='maintain-resolution';await snd.setParameters(p)}catch(e){}
+  await camBitrate(pc.getSenders()[0]);
   await iceDone(pc);if(pc!==CAMP.pc)return;
   const offer={sid,offer:pc.localDescription.sdp,answer:null,asid:null,t:Date.now()};rtcSend(LOCK,offer);
   // the laptop page may open later: say it again until it answers
@@ -1336,6 +1343,7 @@ document.addEventListener('change',e=>{
   if(el.id==='gsel'){GFX=GFX_LIST[el.value]?el.value:'strip';keep('ptarena:gfx',GFX);return}
   if(el.id==='camsel'){CAMID=el.value;keep('ptarena:cam',CAMID);camOn();return}
   if(el.id==='qsel'){QUAL=el.value;keep('ptarena:camq',QUAL);camOn();return}
+  if(el.id==='camres'){CAMP.res=CAM_RES[el.value]?+el.value:1080;keep('ptarena:camres',String(CAMP.res));if(CAMP.stream)camSwap();return}
   if(el.id==='camfps'){CAMP.fps=+el.value||30;if(CAMP.stream)camSwap();return}
   if(el.dataset?.lensfocus!==undefined&&LENS){LENS.focusAuto=el.value==='auto';lensApply().then(render);return}
   if(el.id==='camlens'){CAMP.dev=el.value;if(CAMP.stream)camSwap();return}
