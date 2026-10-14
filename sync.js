@@ -197,4 +197,7 @@ async function enter(code){
 // signatures: one staff-only document per run
 const signRef=k=>doc(db,'signs',k);
 const sign=(k,d)=>setDoc(signRef(k),{...d,t:serverTimestamp()}),getSign=k=>getDoc(signRef(k)).then(s=>s.exists()?s.data():null);
-window.PT_BACKEND={push,enter,sign,getSign,role:()=>{if(venue)watchTimers()}};
+// phone camera handshake: one staff-only note per field
+const rtcRef=f=>doc(db,'rtc',venue+'_'+f);
+const rtcSend=(f,d)=>setDoc(rtcRef(f),d,{merge:true}).catch(()=>{}),rtcWatch=(f,cb)=>onSnapshot(rtcRef(f),s=>{if(!s.metadata.hasPendingWrites)cb(s.data()||null)},()=>{});
+window.PT_BACKEND={push,enter,sign,getSign,rtcSend,rtcWatch,role:()=>{if(venue)watchTimers()}};

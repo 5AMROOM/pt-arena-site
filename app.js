@@ -97,13 +97,13 @@ function queue(clsId){const r=curRound(clsId);if(!r)return[];return eligible(cls
 
 function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('on'),2400)}
 
-/* ---------- roles: the link decides what a device sees (#staff, #judge, #judge-A, #timer-A, #screen, #mc, none = viewers) ---------- */
-const ROLE_TABS={view:['team','board','field','live'],judge:['judge','board'],timer:['timer'],screen:['screen'],mc:['mc','board'],staff:TABS.map(t=>t[0])};
+/* ---------- roles: the link decides what a device sees (#staff, #judge, #judge-A, #timer-A, #cam-A, #screen, #mc, none = viewers) ---------- */
+const ROLE_TABS={view:['team','board','field','live'],judge:['judge','board'],timer:['timer'],cam:['cam'],screen:['screen'],mc:['mc','board'],staff:TABS.map(t=>t[0])};
 const STAFF_KEY='ptarena:staffcode',MYTEAM_KEY='ptarena:myteam',FIELD_KEY='ptarena:field';
 const rememberField=()=>{if(ROLE==='judge')try{localStorage.setItem(FIELD_KEY,S.ui.field)}catch(e){}};
 let ROLE='view',LOCK=null;
 function readHash(){
-  const h=decodeURIComponent(location.hash.slice(1)).trim(),m=/^(judge|timer)-(.+)$/i.exec(h);
+  const h=decodeURIComponent(location.hash.slice(1)).trim(),m=/^(judge|timer|cam)-(.+)$/i.exec(h);
   if(m){ROLE=m[1].toLowerCase();LOCK=m[2].toUpperCase()}else{LOCK=null;ROLE=h==='staff'||h==='screen'||h==='mc'||h==='judge'?h:'view'}
   // #judge without a field: the judge picks the field on the page, and this phone remembers it
   if(ROLE==='judge'&&!LOCK){try{S.ui.field=localStorage.getItem(FIELD_KEY)||S.ui.field}catch(e){}}
@@ -112,7 +112,7 @@ function readHash(){
 const staffOk=()=>{if(CLOUD)return CLOUD_STAFF;try{return localStorage.getItem(STAFF_KEY)===S.staffPin}catch(e){return false}};
 const keepStaff=()=>{if(CLOUD)return;try{localStorage.setItem(STAFF_KEY,S.staffPin)}catch(e){}};
 // the sample-data mode (?local) holds nothing real, so it asks for no code
-const needGate=()=>CLOUD&&(ROLE==='judge'||ROLE==='timer'||ROLE==='staff')&&!staffOk();
+const needGate=()=>CLOUD&&(ROLE==='judge'||ROLE==='timer'||ROLE==='cam'||ROLE==='staff')&&!staffOk();
 const rememberTeam=q=>{if(ROLE!=='staff')try{localStorage.setItem(MYTEAM_KEY,q)}catch(e){}};
 // slash = hidden, open eye = shown
 const eyeIcon=shown=>`<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>${shown?'':'<path d="M4 4l16 16"/>'}</svg>`;
@@ -134,6 +134,7 @@ function renderShell(){
   $('.tabs-wrap').hidden=tabs.length<2;
   // a judge scoring on a phone gets the whole screen for the sheet: no header, no tab bar
   document.body.classList.toggle('jfocus',ROLE==='judge'&&!needGate()&&S.ui.view==='judge');
+  document.body.classList.toggle('camfocus',ROLE==='cam'&&!needGate());
   $('#tabs').innerHTML=tabs.map(t=>`<button class="tab" role="tab" data-act="tab" data-v="${t[0]}" aria-selected="${S.ui.view===t[0]}"><b>${t[1]}</b><small>${t[2]}</small></button>`).join('');
 }
 function render(){
@@ -153,10 +154,10 @@ function render(){
   const fs=document.fullscreenElement;
   if(S.ui.view==='screen'&&fs&&fs.id==='stage'){const tmp=document.createElement('div');tmp.innerHTML=vScreen();fs.innerHTML=tmp.querySelector('#stage').innerHTML;clock();return}
   if(v==='live'&&$('#livebody')&&$('#ytbox')?.dataset.k===liveKey()){$('#livebody').innerHTML=liveBody();$('.chbar').innerHTML=chBar();return}
-  const map={overview:vOverview,checkin:vCheckin,judge:vJudge,timer:vTimer,board:vBoard,team:vTeam,field:vField,live:vLive,screen:vScreen,mc:vMc,admin:vAdmin};
+  const map={overview:vOverview,checkin:vCheckin,judge:vJudge,timer:vTimer,board:vBoard,team:vTeam,field:vField,live:vLive,cam:vCam,screen:vScreen,mc:vMc,admin:vAdmin};
   const typing=document.activeElement?.id==='tfind';
   $('#view').innerHTML=map[v]();if(typing){const i=$('#tfind');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}
-  if(v==='checkin')renderCkList();if(v==='judge'){tickSW();sigAfter()}if(v==='timer')timerAfter();if(v==='screen')clock();}
+  if(v==='checkin')renderCkList();if(v==='judge'){tickSW();sigAfter()}if(v==='timer')timerAfter();if(v==='cam')camAfter();if(v==='screen')clock();}
 
 /* ---------- overview ---------- */
 function vOverview(){
@@ -363,9 +364,11 @@ function vTimer(){
         <div><button class="btn" data-act="tfull">⛶ เต็มจอ</button></div><div class="sub2">ปุ่มล่าสุดที่รับได้: <b>${esc(LASTKEY||'ยังไม่มี')}</b></div>
         ${CAMERR?`<div><b>เปิดกล้องไม่ได้</b><ol style="margin:4px 0;padding-left:20px"><li>เช็กว่าเสียบเว็บแคมแล้ว</li><li>กดรูปกล้องบนแถบที่อยู่เว็บ แล้วเลือกอนุญาต</li><li>กดปุ่มข้างล่าง</li></ol><button class="btn sm" data-act="camon">เปิดกล้องอีกครั้ง</button></div>`:''}
         ${RECERR?`<div><b>อัดวิดีโอไม่ได้</b> <span class="sub2">${esc(RECERR)}</span></div>`:''}
-        ${CAMS.length?`<label class="tset"><span>กล้อง</span><select id="camsel" ${t.state==='run'?'disabled':''}>${CAMS.map((d,n)=>`<option value="${esc(d.deviceId)}" ${d.deviceId===CAMID?'selected':''}>${esc(d.label||'กล้อง '+(n+1))}</option>`).join('')}</select></label>`:''}
+        ${CAMS.length||PHONE||CAMID==='phone'?`<label class="tset"><span>กล้อง</span><select id="camsel" ${t.state==='run'?'disabled':''}>${CAMS.map((d,n)=>`<option value="${esc(d.deviceId)}" ${d.deviceId===CAMID?'selected':''}>${esc(d.label||'กล้อง '+(n+1))}</option>`).join('')}<option value="phone" ${CAMID==='phone'?'selected':''}>มือถือ (เปิด #cam-${esc(LOCK)} บนมือถือ)${PHONE?' · ต่ออยู่':''}</option></select></label>`:''}
+        ${CAMID==='phone'&&!PHONE?`<div class="sub2"><b>รอภาพจากมือถือ</b> เปิดลิงก์ #cam-${esc(LOCK)} บนมือถือที่ต่อ Wi‑Fi วงเดียวกัน แล้วกด เริ่มส่งภาพ</div>`:''}
         <label class="tset"><span>ความชัด</span><select id="qsel" ${t.state==='run'?'disabled':''}>${Object.entries(CAMQ).map(([k,q])=>`<option value="${k}" ${k===QUAL?'selected':''}>${q.label}</option>`).join('')}</select></label>
-        ${CAMREAL?`<div class="sub2">กล้องส่งภาพมา ${CAMREAL}</div>`:''}
+        <label class="tset"><span>ความลื่น (ภาพต่อวินาที)</span><select id="fpsel" ${t.state==='run'?'disabled':''}>${Object.entries(FPS_LIST).map(([k,v])=>`<option value="${k}" ${+k===FPS?'selected':''}>${v}</option>`).join('')}</select></label>
+        ${CAMREAL?`<div class="sub2" id="camreal">กล้องส่งภาพมา ${CAMREAL}</div>`:''}
         <div class="tset"><span>รูปแบบกราฟิก · ${Object.keys(GFX_LIST).length} แบบ</span>${(()=>{const opt=(k,tag,extra)=>{const [nm,ds]=GFX_LIST[k].split(' · '),w=GFX_SW[k]||['#333','#999'];return`<${tag} class="gopt" ${extra}><i style="background:linear-gradient(135deg,${w[0]} 50%,${w[1]} 50%)"></i><b>${esc(nm)}</b><small>${esc(ds||'')}</small></${tag}>`};
           return`<details class="gdrop"><summary>${opt(GFX,'span','')}<em aria-hidden="true">▾</em></summary><div class="glist" id="glist">${Object.keys(GFX_LIST).map(k=>opt(k,'button',`data-act="gfx" data-v="${k}" aria-pressed="${k===GFX}"`)).join('')}</div></details>`})()}</div>
         ${CAM?`<label class="tset"><span>ครอปภาพ: เลื่อนเพื่อซูม แล้วลากบนภาพเพื่อเลือกส่วนที่จะเอา</span><input type="range" id="czoom" min="1" max="3" step="0.05" value="${CROP.z}"></label>
@@ -377,7 +380,7 @@ function vTimer(){
     </div></div>`;
 }
 function timerAfter(){
-  $('#cvbox')?.append(stageCanvas());if(!CAM&&!CAMERR&&!CAMASK)camOn();if(!DIRASKED){DIRASKED=true;dirLoad()}
+  $('#cvbox')?.append(stageCanvas());if(!CAM&&!CAMERR&&!CAMASK)camOn();phoneListen();if(!DIRASKED){DIRASKED=true;dirLoad()}
   // a fresh recording has no length written in it; jumping to the end once makes the browser work it out, so the bar can be dragged
   const v=$('#clip');if(v)v.onloadedmetadata=()=>{if(v.duration===Infinity){v.ontimeupdate=()=>{v.ontimeupdate=null;v.currentTime=0};v.currentTime=1e9}};
 }
@@ -408,13 +411,17 @@ const BAR={
   gold:{panel:'rgba(12,12,14,.92)',ink:'#FFFFFF',dim:'#B9B4A6',a:'#F5D06B',b:'#C99A2E',on:'#14110A',ok:'#F5D06B',warn:'#FF9F5A',r:4,skew:0,pips:true,shade:.7,glow:null}};
 let GFX=GFX_LIST[keep('ptarena:gfx')]?keep('ptarena:gfx'):'strip';
 let CAMID=keep('ptarena:cam'),QUAL=CAMQ[keep('ptarena:camq')]?keep('ptarena:camq'):'mid',CAMS=[],CAMREAL='';
+// frames per second for the picture, the drawing and the recording; 60 needs a camera that gives 60 and a laptop that keeps up
+const FPS_LIST={25:'25 fps · เบาเครื่องสุด',30:'30 fps · ปกติ',60:'60 fps · ลื่น ไฟล์ใหญ่ขึ้นราว 1.6 เท่า'};
+let FPS=FPS_LIST[keep('ptarena:fps')]?+keep('ptarena:fps'):30,DRAWT=null;
 let CV=null,CX=null,VID=null,CSTREAM=null,G={score:0,target:0,bump:0,evn:null,pop:null};
 const FONT={ui:'"IBM Plex Sans Thai",sans-serif',head:'"Chakra Petch","IBM Plex Sans Thai",sans-serif',num:'"IBM Plex Sans Thai",sans-serif'};
+function drawLoop(){clearInterval(DRAWT);DRAWT=setInterval(()=>{try{drawStage()}catch(e){}},Math.floor(1000/FPS))}
 function stageCanvas(){
   if(CV)return CV;
   CV=document.createElement('canvas');CV.width=CAMQ[QUAL].w;CV.height=CAMQ[QUAL].h;CX=CV.getContext('2d');
   ['500 20px '+FONT.ui,'600 20px '+FONT.ui,'700 20px '+FONT.head,'600 20px '+FONT.num].forEach(f=>document.fonts?.load(f,'ทีม 0'));
-  setInterval(()=>{try{drawStage()}catch(e){}},40);
+  drawLoop();
   // drag on the picture to move the cropped window
   let drag=null;CV.style.touchAction='none';CV.style.cursor='grab';
   CV.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY};CV.setPointerCapture(e.pointerId);CV.style.cursor='grabbing'});
@@ -785,6 +792,92 @@ async function upRun(){
 window.addEventListener('online',upRun);
 // also picks the queue up again after a wait, and once the Drive link arrives from the database
 setInterval(()=>{if(UPQ.length&&!UPBUSY)upRun()},30000);
+/* Phone as a camera: #cam-A runs in the phone's browser (iPhone or Android, no app) and sends its camera straight to the
+   timer laptop of field A over the local network (WebRTC). The two pages swap a short note through the database
+   (or, in sample mode, between two tabs of one browser) to find each other. */
+const RTC_CFG={iceServers:[{urls:'stun:stun.l.google.com:19302'}]};
+const rtcBus=(()=>{let bc=null;try{bc=new BroadcastChannel('ptarena-rtc')}catch(e){}
+  return{send:(f,d)=>bc?.postMessage({...d,field:f}),watch:(f,cb)=>{const h=e=>{if(e.data?.field===f)cb(e.data)};bc?.addEventListener('message',h);return()=>bc?.removeEventListener('message',h)}}})();
+const rtcSend=(f,d)=>CLOUD?window.PT_BACKEND?.rtcSend(f,d):rtcBus.send(f,d);
+const rtcWatch=(f,cb)=>CLOUD?window.PT_BACKEND?.rtcWatch(f,cb):rtcBus.watch(f,cb);
+const iceDone=pc=>new Promise(ok=>{if(pc.iceGatheringState==='complete')return ok();const t=setTimeout(ok,2500);pc.addEventListener('icegatheringstatechange',()=>{if(pc.iceGatheringState==='complete'){clearTimeout(t);ok()}})});
+
+// laptop side
+let PHONE=null,PHONEPC=null,PHONESID='',RTCUN=null,PHONEMT=null;
+function phoneListen(){
+  if(ROLE!=='timer'||!LOCK||RTCUN)return;
+  RTCUN=rtcWatch(LOCK,d=>{
+    if(d&&d.bye&&d.bye===PHONESID){try{PHONEPC?.close()}catch(e){}PHONEPC=null;PHONE=null;if(CAMID==='phone'){CAM=null;VID=null;CAMREAL=''}if(S.ui.view==='timer')render();return}
+    if(d&&d.offer&&d.sid&&d.sid!==PHONESID&&Date.now()-(d.t||0)<120000)phoneAnswer(d).catch(()=>{});
+  })||null;
+}
+async function phoneAnswer(d){
+  PHONESID=d.sid;try{PHONEPC?.close()}catch(e){}
+  const pc=new RTCPeerConnection(RTC_CFG);PHONEPC=pc;
+  pc.ontrack=e=>{if(pc!==PHONEPC)return;PHONE=e.streams[0]||new MediaStream([e.track]);if(CAMID!=='phone')toast('มือถือส่งภาพมาแล้ว เปลี่ยนไปใช้ภาพจากมือถือ');CAMID='phone';camOn()};
+  pc.onconnectionstatechange=()=>{if(pc!==PHONEPC)return;if(pc.connectionState==='failed'||pc.connectionState==='closed'){PHONE=null;if(CAMID==='phone'){CAM=null;VID=null;CAMREAL=''}if(S.ui.view==='timer')render()}};
+  await pc.setRemoteDescription({type:'offer',sdp:d.offer});
+  await pc.setLocalDescription(await pc.createAnswer());await iceDone(pc);
+  rtcSend(LOCK,{answer:pc.localDescription.sdp,asid:d.sid});
+}
+// reads what actually arrives from the phone, so the line under the picture says what it really delivers
+function phoneMeter(){
+  clearInterval(PHONEMT);
+  PHONEMT=setInterval(async()=>{
+    if(CAMID!=='phone'||!PHONEPC){clearInterval(PHONEMT);return}
+    try{(await PHONEPC.getStats()).forEach(r=>{if(r.type==='inbound-rtp'&&r.kind==='video'&&r.frameWidth)CAMREAL=`${r.frameWidth} × ${r.frameHeight} · ${Math.round(r.framesPerSecond||0)} fps (มือถือ)`})}catch(e){}
+    const el=$('#camreal');if(el)el.textContent='กล้องส่งภาพมา '+CAMREAL;
+  },2000);
+}
+// phone side
+const CAMP={stream:null,pc:null,sid:'',state:'idle',fps:60,facing:'environment',real:'',wake:null,un:null,err:''};
+function vCam(){
+  const st={idle:['','ยังไม่ได้ส่งภาพ'],wait:['warn','รอโน้ตบุ๊กสนาม '+LOCK],on:['ok','● ส่งภาพอยู่'],lost:['bad','หลุด กำลังต่อใหม่…']}[CAMP.state];
+  return`<div class="campg">
+    <div class="row between"><b>กล้องมือถือ · สนาม ${esc(LOCK)}</b><span class="pill ${st[0]}" id="camst">${st[1]}</span></div>
+    <div class="campv"><video id="campv" playsinline muted autoplay></video>${CAMP.stream?'':'<span>กด เริ่มส่งภาพ</span>'}</div>
+    <div class="small muted" id="camgot">${CAMP.real?'กล้องมือถือให้ภาพ '+esc(CAMP.real):'ภาพจะไปขึ้นที่หน้าจับเวลาของสนามนี้ ไม่ต้องลงแอป'}</div>
+    ${CAMP.err?`<div class="callout bad"><div><b>เปิดกล้องไม่ได้ (${esc(CAMP.err)})</b></div><ol style="margin:6px 0 0;padding-left:20px"><li>กดอนุญาตให้เว็บนี้ใช้กล้อง</li><li>iPhone: ตั้งค่า → Safari → กล้อง → อนุญาต</li><li>ปิดแอปอื่นที่ใช้กล้องอยู่ แล้วกดเริ่มใหม่</li></ol></div>`:''}
+    <div class="row camctl"><label class="tset"><span>ความลื่น</span><select id="camfps">${[30,60].map(f=>`<option value="${f}" ${f===CAMP.fps?'selected':''}>${f} fps</option>`).join('')}</select></label>
+      <button class="btn" data-act="camflip">สลับกล้องหน้า/หลัง</button></div>
+    <button class="btn ${CAMP.stream?'':'pri'} big" data-act="camgo">${CAMP.stream?'■ หยุดส่งภาพ':'▶ เริ่มส่งภาพ'}</button>
+    <p class="small muted" style="margin:0">ต่อ Wi‑Fi วงเดียวกับโน้ตบุ๊ก วางมือถือนิ่งๆ เสียบชาร์จไว้ และเปิดหน้านี้ค้างไว้ตลอด</p></div>`;
+}
+function camAfter(){const v=$('#campv');if(v&&CAMP.stream&&v.srcObject!==CAMP.stream){v.srcObject=CAMP.stream;v.play().catch(()=>{})}}
+function camStatus(){const el=$('#camst');if(!el)return render();const st={idle:['','ยังไม่ได้ส่งภาพ'],wait:['warn','รอโน้ตบุ๊กสนาม '+LOCK],on:['ok','● ส่งภาพอยู่'],lost:['bad','หลุด กำลังต่อใหม่…']}[CAMP.state];el.className='pill '+st[0];el.textContent=st[1]}
+async function camStart(){
+  CAMP.err='';
+  try{CAMP.stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:CAMP.facing},width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:CAMP.fps}},audio:false})}
+  catch(e){CAMP.err=e.name||'error';render();return}
+  const s=CAMP.stream.getVideoTracks()[0].getSettings();CAMP.real=`${s.width||'?'} × ${s.height||'?'}${s.frameRate?' · '+Math.round(s.frameRate)+' fps':''}`;
+  try{CAMP.wake=await navigator.wakeLock?.request('screen')}catch(e){}
+  if(!CAMP.un)CAMP.un=rtcWatch(LOCK,d=>{const pc=CAMP.pc;if(d&&d.answer&&d.asid===CAMP.sid&&pc&&!pc.currentRemoteDescription)pc.setRemoteDescription({type:'answer',sdp:d.answer}).catch(()=>{})})||null;
+  render();camOffer();
+}
+function camStop(){
+  // tells the laptop straight away, instead of leaving it on a frozen picture until the link times out
+  if(CAMP.sid)rtcSend(LOCK,{bye:CAMP.sid,offer:null,sid:null});
+  try{CAMP.pc?.close()}catch(e){}CAMP.pc=null;CAMP.stream?.getTracks().forEach(t=>t.stop());CAMP.stream=null;CAMP.state='idle';CAMP.real='';
+  try{CAMP.wake?.release()}catch(e){}CAMP.wake=null;render();
+}
+async function camOffer(){
+  if(!CAMP.stream)return;try{CAMP.pc?.close()}catch(e){}
+  const pc=new RTCPeerConnection(RTC_CFG),sid=Date.now().toString(36)+Math.random().toString(36).slice(2,6);CAMP.pc=pc;CAMP.sid=sid;CAMP.state='wait';camStatus();
+  CAMP.stream.getTracks().forEach(t=>pc.addTrack(t,CAMP.stream));
+  pc.onconnectionstatechange=()=>{
+    if(pc!==CAMP.pc)return;const cs=pc.connectionState;
+    if(cs==='connected')CAMP.state='on';
+    else if(cs==='failed'||cs==='disconnected'){CAMP.state='lost';setTimeout(()=>{if(pc===CAMP.pc&&CAMP.stream&&pc.connectionState!=='connected')camOffer()},4000)}
+    camStatus();
+  };
+  await pc.setLocalDescription(await pc.createOffer());
+  // ask the encoder for the full picture and the chosen smoothness; the network may still lower it on weak Wi-Fi
+  try{const snd=pc.getSenders()[0],p=snd.getParameters();if(!p.encodings||!p.encodings.length)p.encodings=[{}];p.encodings[0].maxBitrate=CAMP.fps>30?10000000:6000000;p.encodings[0].maxFramerate=CAMP.fps;p.degradationPreference='maintain-resolution';await snd.setParameters(p)}catch(e){}
+  await iceDone(pc);if(pc!==CAMP.pc)return;
+  const offer={sid,offer:pc.localDescription.sdp,answer:null,asid:null,t:Date.now()};rtcSend(LOCK,offer);
+  // the laptop page may open later: say it again until it answers
+  const iv=setInterval(()=>{if(pc!==CAMP.pc||pc.currentRemoteDescription)return clearInterval(iv);rtcSend(LOCK,{...offer,t:Date.now()})},CLOUD?30000:2000);
+}
 function tickTimer(){const el=$('#tm');if(!el||!clsOfField(LOCK))return;const t=timerOf(LOCK),ms=tElapsed(t);el.textContent=fmtMs(ms);el.classList.toggle('over',ms>=limitOf(LOCK))}
 function tPress(src){
   const now=Date.now();LASTKEY=src;
@@ -796,16 +889,23 @@ function tPress(src){
 }
 async function camOn(){
   CAMASK=true;CAMERR='';
-  const q=CAMQ[QUAL],ask=id=>navigator.mediaDevices.getUserMedia({video:{...(id?{deviceId:{exact:id}}:{}),width:{ideal:q.w},height:{ideal:q.h}},audio:false});
+  if(CAMID==='phone'){
+    const q=CAMQ[QUAL];if(CAM&&CAM!==PHONE)CAM.getTracks().forEach(k=>k.stop());CAM=PHONE;CAMREAL='';VID=null;
+    if(PHONE){VID=document.createElement('video');VID.muted=true;VID.playsInline=true;VID.srcObject=PHONE;VID.play().catch(()=>{});phoneMeter()}
+    try{CAMS=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput')}catch(e){}
+    if(CV){CV.width=q.w;CV.height=q.h}CSTREAM=null;drawLoop();CAMASK=false;if(S.ui.view==='timer')render();return;
+  }
+  const q=CAMQ[QUAL],ask=id=>navigator.mediaDevices.getUserMedia({video:{...(id?{deviceId:{exact:id}}:{}),width:{ideal:q.w},height:{ideal:q.h},frameRate:{ideal:FPS}},audio:false});
   try{
-    if(CAM)CAM.getTracks().forEach(k=>k.stop());
+    if(CAM&&CAM!==PHONE)CAM.getTracks().forEach(k=>k.stop());
     // a remembered camera that is no longer plugged in must not block the page: fall back to whatever is there
     try{CAM=await ask(CAMID)}catch(e){if(!CAMID)throw e;CAMID='';CAM=await ask('')}
-    const st=CAM.getVideoTracks()[0].getSettings();CAMID=st.deviceId||CAMID;CAMREAL=st.width&&st.height?st.width+' × '+st.height:'';
+    const st=CAM.getVideoTracks()[0].getSettings();CAMID=st.deviceId||CAMID;CAMREAL=st.width&&st.height?st.width+' × '+st.height+(st.frameRate?' · '+Math.round(st.frameRate)+' fps':''):'';
     CAMS=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput');
     VID=document.createElement('video');VID.muted=true;VID.playsInline=true;VID.srcObject=CAM;VID.play().catch(()=>{});
   }catch(e){CAM=null;CAMERR=e.name||'error'}
   if(CV){CV.width=q.w;CV.height=q.h}
+  CSTREAM=null;drawLoop();   // the next recording picks up the new frame rate
   CAMASK=false;if(S.ui.view==='timer')render();
 }
 navigator.mediaDevices?.addEventListener?.('devicechange',async()=>{if(ROLE!=='timer'||!CAM)return;try{CAMS=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput')}catch(e){}if(S.ui.view==='timer')render()});
@@ -820,8 +920,8 @@ function syncRec(){
     let rec;
     // a recorder that refuses our settings must not take the clock down with it: fall back to the browser's own, then give up for this run
     // what is recorded is the picture with graphics; without that, the bare camera
-    let src=CAM;try{CSTREAM=CSTREAM||stageCanvas().captureStream(25);src=CSTREAM}catch(e){}
-    try{rec=new MediaRecorder(src,{mimeType:mime,videoBitsPerSecond:CAMQ[QUAL].bps})}catch(e){try{rec=new MediaRecorder(src)}catch(e2){RECERR=`${e2.name}: ${e2.message}`;RECFAIL=t.startAt;return}}
+    let src=CAM;try{CSTREAM=CSTREAM||stageCanvas().captureStream(FPS);src=CSTREAM}catch(e){}
+    try{rec=new MediaRecorder(src,{mimeType:mime,videoBitsPerSecond:Math.round(CAMQ[QUAL].bps*(FPS>30?1.6:1))})}catch(e){try{rec=new MediaRecorder(src)}catch(e2){RECERR=`${e2.name}: ${e2.message}`;RECFAIL=t.startAt;return}}
     REC=rec;RECERR='';
     rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};
     rec.onstop=()=>{
@@ -1023,7 +1123,7 @@ function vAdmin(){
   const oc=cls(S.ui.orderCls)||S.classes[0],oids=S.order[oc.id]||[];
   const orderRows=oids.map((id,n)=>{const t=team(id);return t?`<div class="qitem"><span class="qn">${n+1}</span><span class="tid">${t.id}</span><span style="flex:1;min-width:0">${esc(t.name)}</span><button class="btn sm" data-act="omove" data-id="${t.id}" data-d="-1" aria-label="เลื่อนขึ้น" ${n?'':'disabled'}>▲</button><button class="btn sm" data-act="omove" data-id="${t.id}" data-d="1" aria-label="เลื่อนลง" ${n<oids.length-1?'':'disabled'}>▼</button></div>`:''}).join('');
   const base=location.href.split('#')[0];
-  const links=[['คนดู · ทีมและครู',''],['จอในงาน','#screen'],['พิธีกร','#mc'],['เจ้าหน้าที่','#staff'],['กรรมการ · เลือกสนามเอง','#judge'],...fieldsSorted().map(c=>['กรรมการสนาม '+c.field+' · '+S.comps[c.comp].tag+' '+c.level,'#judge-'+c.field]),...fieldsSorted().map(c=>['จับเวลาสนาม '+c.field+' · โน้ตบุ๊ก','#timer-'+c.field])];
+  const links=[['คนดู · ทีมและครู',''],['จอในงาน','#screen'],['พิธีกร','#mc'],['เจ้าหน้าที่','#staff'],['กรรมการ · เลือกสนามเอง','#judge'],...fieldsSorted().map(c=>['กรรมการสนาม '+c.field+' · '+S.comps[c.comp].tag+' '+c.level,'#judge-'+c.field]),...fieldsSorted().map(c=>['จับเวลาสนาม '+c.field+' · โน้ตบุ๊ก','#timer-'+c.field]),...fieldsSorted().map(c=>['กล้องมือถือสนาม '+c.field+' · ส่งภาพไปโน้ตบุ๊ก','#cam-'+c.field])];
   const linkRows=links.map(l=>`<div class="qitem"><span style="flex:1;min-width:0">${esc(l[0])}<br><small class="mono muted" style="word-break:break-all">${esc(base+l[1])}</small></span><button class="btn sm" data-act="copylink" data-u="${esc(base+l[1])}">คัดลอก</button></div>`).join('');
   return`<div class="adm">
     <div class="panel"><h2>สนามและรอบ</h2><p class="small muted" style="margin:0">จับคู่รุ่นกับสนาม แต่ละสนามใช้แท็บเล็ต 1 เครื่อง</p>${fieldRows}
@@ -1058,6 +1158,8 @@ document.addEventListener('click',e=>{
   switch(a){
     case'tab':{const was=ui.view;ui.view=b.dataset.v;ui.pinFor=null;if((was==='live')!==(ui.view==='live'))window.PT_BACKEND?.role?.();break}
     case'ch':ui.liveCh=b.dataset.v;break;
+    case'camgo':if(CAMP.stream)camStop();else camStart();return;
+    case'camflip':CAMP.facing=CAMP.facing==='environment'?'user':'environment';if(CAMP.stream){camStop();camStart()}return;
     case'drivekey':S.drive={url:S.drive?.url||'',key:[...crypto.getRandomValues(new Uint8Array(16))].map(x=>x.toString(16).padStart(2,'0')).join('')};toast('สร้างกุญแจแล้ว กดคัดลอกไปวางในสคริปต์ แล้ว Deploy ใหม่');break;
     case'drivecopy':navigator.clipboard?.writeText(S.drive.key).then(()=>toast('คัดลอกกุญแจแล้ว')).catch(()=>toast('คัดลอกไม่ได้ในหน้าต่างนี้'));return;
     case'drivetest':b.disabled=true;drivePost({op:'ping'}).then(r=>toast(r.ok?'ต่อได้ · โฟลเดอร์ '+r.folder:'ตู้รับไฟล์ตอบว่า: '+r.error)).catch(()=>toast('ต่อไม่ได้ เช็กลิงก์ และเช็กว่า Deploy แบบ Anyone')).then(()=>{b.disabled=false});return;
@@ -1154,6 +1256,8 @@ document.addEventListener('change',e=>{
   if(el.id==='gsel'){GFX=GFX_LIST[el.value]?el.value:'strip';keep('ptarena:gfx',GFX);return}
   if(el.id==='camsel'){CAMID=el.value;keep('ptarena:cam',CAMID);camOn();return}
   if(el.id==='qsel'){QUAL=el.value;keep('ptarena:camq',QUAL);camOn();return}
+  if(el.id==='camfps'){CAMP.fps=+el.value||30;if(CAMP.stream){camStop();camStart()}return}
+  if(el.id==='fpsel'){FPS=FPS_LIST[el.value]?+el.value:30;keep('ptarena:fps',String(FPS));camOn();return}
   if(el.id==='osel'){S.ui.orderCls=el.value;render();return}
   if(el.id==='bsel'){S.ui.boardCls=el.value;render();return}
   if(el.id==='psel'){S.ui.fieldCls=el.value;render();return}

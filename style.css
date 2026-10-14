@@ -487,3 +487,16 @@ a.pill{text-decoration:none}
 .gdrop[open] summary{border-color:var(--stage-accent)}
 .gdrop .glist{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:8;max-height:320px;background:var(--stage);box-shadow:0 16px 36px rgba(0,0,0,.55)}
 .gdrop:not([open]) .glist{display:none}
+/* phone camera page */
+body.camfocus .top,body.camfocus .tabs-wrap{display:none}
+body.camfocus .app{padding:10px 10px 24px}
+.campg{max-width:560px;margin:0 auto;width:100%;display:flex;flex-direction:column;gap:12px}
+.campv{position:relative;aspect-ratio:16/9;background:#000;border-radius:14px;overflow:hidden;display:grid;place-items:center}
+.campv video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.campv span{color:#7d8aa0;font-size:14px}
+.camctl{align-items:flex-end;flex-wrap:nowrap}
+.camctl .tset{flex:1;color:var(--muted)}
+.camctl .tset select{min-height:46px}
+.camctl .btn{min-height:46px}
+.campg .btn.big{min-height:58px;font-size:18px;justify-content:center}
+
