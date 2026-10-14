@@ -830,7 +830,7 @@ function phoneMeter(){
   },2000);
 }
 // phone side
-const CAMP={stream:null,pc:null,sid:'',state:'idle',fps:60,facing:'environment',real:'',wake:null,un:null,err:''};
+const CAMP={stream:null,pc:null,sid:'',state:'idle',fps:60,facing:'environment',dev:'',devs:[],zoom:null,real:'',wake:null,un:null,err:''};
 function vCam(){
   const st={idle:['','ยังไม่ได้ส่งภาพ'],wait:['warn','รอโน้ตบุ๊กสนาม '+LOCK],on:['ok','● ส่งภาพอยู่'],lost:['bad','หลุด กำลังต่อใหม่…']}[CAMP.state];
   return`<div class="campg">
@@ -838,6 +838,8 @@ function vCam(){
     <div class="campv"><video id="campv" playsinline muted autoplay></video>${CAMP.stream?'':'<span>กด เริ่มส่งภาพ</span>'}</div>
     <div class="small muted" id="camgot">${CAMP.real?'กล้องมือถือให้ภาพ '+esc(CAMP.real):'ภาพจะไปขึ้นที่หน้าจับเวลาของสนามนี้ ไม่ต้องลงแอป'}</div>
     ${CAMP.err?`<div class="callout bad"><div><b>เปิดกล้องไม่ได้ (${esc(CAMP.err)})</b></div><ol style="margin:6px 0 0;padding-left:20px"><li>กดอนุญาตให้เว็บนี้ใช้กล้อง</li><li>iPhone: ตั้งค่า → Safari → กล้อง → อนุญาต</li><li>ปิดแอปอื่นที่ใช้กล้องอยู่ แล้วกดเริ่มใหม่</li></ol></div>`:''}
+    ${CAMP.devs.length>1?`<label class="tset" style="color:var(--muted)"><span>เลนส์ (มุมกว้าง / ปกติ / ซูม)</span><select id="camlens">${CAMP.devs.map((d,n)=>`<option value="${esc(d.deviceId)}" ${d.deviceId===CAMP.dev?'selected':''}>${esc(lensName(d.label,n))}</option>`).join('')}</select></label>`:''}
+    ${CAMP.zoom?`<label class="tset" style="color:var(--muted)"><span>ซูม <b id="camzv">${CAMP.zoom.val.toFixed(1)}×</b></span><input type="range" id="camzoom" min="${CAMP.zoom.min}" max="${CAMP.zoom.max}" step="${CAMP.zoom.step}" value="${CAMP.zoom.val}"></label>`:CAMP.stream?'<div class="small muted">มือถือรุ่นนี้ซูมผ่านเบราว์เซอร์ไม่ได้ ใช้เลือกเลนส์ หรือครอปที่หน้าจับเวลาแทน</div>':''}
     <div class="row camctl"><label class="tset"><span>ความลื่น</span><select id="camfps">${[30,60].map(f=>`<option value="${f}" ${f===CAMP.fps?'selected':''}>${f} fps</option>`).join('')}</select></label>
       <button class="btn" data-act="camflip">สลับกล้องหน้า/หลัง</button></div>
     <button class="btn ${CAMP.stream?'':'pri'} big" data-act="camgo">${CAMP.stream?'■ หยุดส่งภาพ':'▶ เริ่มส่งภาพ'}</button>
@@ -845,14 +847,49 @@ function vCam(){
 }
 function camAfter(){const v=$('#campv');if(v&&CAMP.stream&&v.srcObject!==CAMP.stream){v.srcObject=CAMP.stream;v.play().catch(()=>{})}}
 function camStatus(){const el=$('#camst');if(!el)return render();const st={idle:['','ยังไม่ได้ส่งภาพ'],wait:['warn','รอโน้ตบุ๊กสนาม '+LOCK],on:['ok','● ส่งภาพอยู่'],lost:['bad','หลุด กำลังต่อใหม่…']}[CAMP.state];el.className='pill '+st[0];el.textContent=st[1]}
+// lens names as phones report them, in plain words; unknown names are shown as they are
+function lensName(label,n){
+  const l=(label||'').toLowerCase();
+  if(/ultra ?wide|อัลตร้า/.test(l))return'มุมกว้างพิเศษ (0.5×) · '+label;
+  if(/tele/.test(l))return'ซูม (เทเล) · '+label;
+  if(/front|user|หน้า/.test(l))return'กล้องหน้า · '+label;
+  if(/triple|dual/.test(l))return'หลายเลนส์ (สลับเองตามซูม) · '+label;
+  return label||'กล้อง '+(n+1);
+}
+// opens the camera; for 60 fps it asks firmly first at 1080p, then at 720p, before settling for 30
+async function camOpen(){
+  const pick=CAMP.dev?{deviceId:{exact:CAMP.dev}}:{facingMode:{ideal:CAMP.facing}};
+  const ask=(w,h,f,firm)=>navigator.mediaDevices.getUserMedia({video:{...pick,width:{ideal:w},height:{ideal:h},frameRate:firm?{min:50,ideal:f}:{ideal:f}},audio:false});
+  const tries=CAMP.fps>30?[[1920,1080,60,true],[1280,720,60,true],[1920,1080,30,false]]:[[1920,1080,30,false]];
+  let err=null;
+  for(const t of tries){try{return await ask(...t)}catch(e){err=e}}
+  throw err||new Error('error');
+}
+function camRead(){
+  const tr=CAMP.stream.getVideoTracks()[0],s=tr.getSettings(),cap=tr.getCapabilities?.()||{};
+  CAMP.dev=s.deviceId||CAMP.dev;
+  CAMP.zoom=cap.zoom&&cap.zoom.max>cap.zoom.min?{min:cap.zoom.min,max:cap.zoom.max,step:cap.zoom.step||0.1,val:s.zoom||cap.zoom.min}:null;
+  CAMP.real=`${s.width||'?'} × ${s.height||'?'}${s.frameRate?' · '+Math.round(s.frameRate)+' fps':''}${cap.frameRate?.max?` (กล้องนี้บอกว่าทำได้สูงสุด ${Math.round(cap.frameRate.max)} fps${cap.width?.max?' · '+cap.width.max+' × '+cap.height.max:''})`:''}`;
+}
 async function camStart(){
   CAMP.err='';
-  try{CAMP.stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:CAMP.facing},width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:CAMP.fps}},audio:false})}
-  catch(e){CAMP.err=e.name||'error';render();return}
-  const s=CAMP.stream.getVideoTracks()[0].getSettings();CAMP.real=`${s.width||'?'} × ${s.height||'?'}${s.frameRate?' · '+Math.round(s.frameRate)+' fps':''}`;
+  try{CAMP.stream=await camOpen()}catch(e){CAMP.stream=null;CAMP.err=e.name||'error';render();return}
+  camRead();
+  // lens names only show once the camera is allowed, so the list is read after opening it
+  try{CAMP.devs=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput')}catch(e){}
   try{CAMP.wake=await navigator.wakeLock?.request('screen')}catch(e){}
   if(!CAMP.un)CAMP.un=rtcWatch(LOCK,d=>{const pc=CAMP.pc;if(d&&d.answer&&d.asid===CAMP.sid&&pc&&!pc.currentRemoteDescription)pc.setRemoteDescription({type:'answer',sdp:d.answer}).catch(()=>{})})||null;
   render();camOffer();
+}
+// another lens, side or smoothness while sending: the new picture replaces the old one on the same link, so the laptop keeps it
+async function camSwap(){
+  if(!CAMP.stream)return camStart();
+  const old=CAMP.stream;old.getTracks().forEach(t=>t.stop());   // some phones open only one camera at a time
+  try{CAMP.stream=await camOpen()}catch(e){CAMP.stream=null;CAMP.err=e.name||'error';camStop();return}
+  camRead();
+  const snd=CAMP.pc?.getSenders().find(x=>x.track?.kind==='video'||!x.track);
+  try{if(snd)await snd.replaceTrack(CAMP.stream.getVideoTracks()[0]);else camOffer()}catch(e){camOffer()}
+  render();
 }
 function camStop(){
   // tells the laptop straight away, instead of leaving it on a frozen picture until the link times out
@@ -1159,7 +1196,7 @@ document.addEventListener('click',e=>{
     case'tab':{const was=ui.view;ui.view=b.dataset.v;ui.pinFor=null;if((was==='live')!==(ui.view==='live'))window.PT_BACKEND?.role?.();break}
     case'ch':ui.liveCh=b.dataset.v;break;
     case'camgo':if(CAMP.stream)camStop();else camStart();return;
-    case'camflip':CAMP.facing=CAMP.facing==='environment'?'user':'environment';if(CAMP.stream){camStop();camStart()}return;
+    case'camflip':CAMP.facing=CAMP.facing==='environment'?'user':'environment';CAMP.dev='';if(CAMP.stream)camSwap();else render();return;
     case'drivekey':S.drive={url:S.drive?.url||'',key:[...crypto.getRandomValues(new Uint8Array(16))].map(x=>x.toString(16).padStart(2,'0')).join('')};toast('สร้างกุญแจแล้ว กดคัดลอกไปวางในสคริปต์ แล้ว Deploy ใหม่');break;
     case'drivecopy':navigator.clipboard?.writeText(S.drive.key).then(()=>toast('คัดลอกกุญแจแล้ว')).catch(()=>toast('คัดลอกไม่ได้ในหน้าต่างนี้'));return;
     case'drivetest':b.disabled=true;drivePost({op:'ping'}).then(r=>toast(r.ok?'ต่อได้ · โฟลเดอร์ '+r.folder:'ตู้รับไฟล์ตอบว่า: '+r.error)).catch(()=>toast('ต่อไม่ได้ เช็กลิงก์ และเช็กว่า Deploy แบบ Anyone')).then(()=>{b.disabled=false});return;
@@ -1256,7 +1293,8 @@ document.addEventListener('change',e=>{
   if(el.id==='gsel'){GFX=GFX_LIST[el.value]?el.value:'strip';keep('ptarena:gfx',GFX);return}
   if(el.id==='camsel'){CAMID=el.value;keep('ptarena:cam',CAMID);camOn();return}
   if(el.id==='qsel'){QUAL=el.value;keep('ptarena:camq',QUAL);camOn();return}
-  if(el.id==='camfps'){CAMP.fps=+el.value||30;if(CAMP.stream){camStop();camStart()}return}
+  if(el.id==='camfps'){CAMP.fps=+el.value||30;if(CAMP.stream)camSwap();return}
+  if(el.id==='camlens'){CAMP.dev=el.value;if(CAMP.stream)camSwap();return}
   if(el.id==='fpsel'){FPS=FPS_LIST[el.value]?+el.value:30;keep('ptarena:fps',String(FPS));camOn();return}
   if(el.id==='osel'){S.ui.orderCls=el.value;render();return}
   if(el.id==='bsel'){S.ui.boardCls=el.value;render();return}
@@ -1272,7 +1310,7 @@ document.addEventListener('change',e=>{
   if(bd==='staff'){S.staffPin=el.value.trim()||'2026';keepStaff()}
   S.ui.form=null;toast('บันทึกการตั้งค่าแล้ว');save();render();
 });
-document.addEventListener('input',e=>{if(e.target.id==='tfind'){S.ui.teamFind=e.target.value;$('#tlist').innerHTML=teamList()}if(e.target.id==='ckq'){S.ui.ckQuery=e.target.value;renderCkList()}if(e.target.id==='czoom'){CROP.z=+e.target.value;saveCrop()}});
+document.addEventListener('input',e=>{if(e.target.id==='camzoom'&&CAMP.stream){const v=+e.target.value;CAMP.zoom.val=v;const zl=$('#camzv');if(zl)zl.textContent=v.toFixed(1)+'×';CAMP.stream.getVideoTracks()[0].applyConstraints({advanced:[{zoom:v}]}).catch(()=>{})}if(e.target.id==='tfind'){S.ui.teamFind=e.target.value;$('#tlist').innerHTML=teamList()}if(e.target.id==='ckq'){S.ui.ckQuery=e.target.value;renderCkList()}if(e.target.id==='czoom'){CROP.z=+e.target.value;saveCrop()}});
 document.addEventListener('keydown',e=>{
   if(ROLE==='timer'&&S.ui.view==='timer'&&READY&&!needGate()&&clsOfField(LOCK)&&CLICKER.includes(e.key)&&!/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)){e.preventDefault();if(!e.repeat)tPress(e.key===' '?'Space bar':e.key);return}
   if(e.key!=='Enter')return;
