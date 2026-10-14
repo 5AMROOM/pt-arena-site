@@ -957,8 +957,9 @@ function camNet(pc){
       if(r.type!=='outbound-rtp'||r.kind!=='video')return;
       const d=last&&r.timestamp>last.timestamp?(r.timestamp-last.timestamp)/1000:0,mbps=d?((r.bytesSent-last.bytesSent)*8/d/1e6):0;
       // sending at the ceiling we set is reported by the browser as a bandwidth limit: say what it really is
-      const atCap=mbps>=camCap()/1e6*0.85;
-      const why=atCap?'ถึงเพดานที่ตั้งไว้ '+(camCap()/1e6).toFixed(0)+' Mbps (ปกติ)':{bandwidth:'เน็ตระหว่างมือถือกับโน้ตบุ๊กไม่พอ',cpu:'เครื่องไม่ไหว (ร้อนหรือช้า)',other:'อื่นๆ',none:'ไม่ติดอะไร'}[r.qualityLimitationReason]||'';
+      // enough for this picture: about 4 Mbps for 720p and 8 for 1080p at 30 fps, half as much again at 60
+      const atCap=mbps>=camCap()/1e6*0.85,enough=mbps>=(r.frameHeight>=1000||r.frameWidth>=1900?8:r.frameHeight>=700||r.frameWidth>=1200?4:2)*((r.framesPerSecond||30)>40?1.5:1);
+      const why=atCap?'ถึงเพดานที่ตั้งไว้ '+(camCap()/1e6).toFixed(0)+' Mbps (ปกติ)':enough&&r.qualityLimitationReason==='bandwidth'?'ส่งได้เต็มที่แล้ว (พอสำหรับภาพขนาดนี้)':{bandwidth:'เน็ตระหว่างมือถือกับโน้ตบุ๊กไม่พอ',cpu:'เครื่องไม่ไหว (ร้อนหรือช้า)',other:'อื่นๆ',none:'ไม่ติดอะไร'}[r.qualityLimitationReason]||'';
       CAMP.net=r.frameWidth?`กำลังส่ง ${r.frameWidth} × ${r.frameHeight} · ${Math.round(r.framesPerSecond||0)} fps · ${mbps.toFixed(1)} Mbps${why?' · ติดที่: '+why:''}${r.encoderImplementation?' · '+r.encoderImplementation:''}`:'';
       last=r;
     })}catch(e){}
