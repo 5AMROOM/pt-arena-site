@@ -830,13 +830,14 @@ function phoneMeter(){
   },2000);
 }
 // phone side
-const CAMP={stream:null,pc:null,sid:'',state:'idle',fps:60,facing:'environment',dev:'',devs:[],zoom:null,real:'',wake:null,un:null,err:''};
+const CAMP={stream:null,pc:null,sid:'',state:'idle',fps:60,facing:'environment',dev:'',devs:[],zoom:null,real:'',tries:[],wake:null,un:null,err:''};
 function vCam(){
   const st={idle:['','ยังไม่ได้ส่งภาพ'],wait:['warn','รอโน้ตบุ๊กสนาม '+LOCK],on:['ok','● ส่งภาพอยู่'],lost:['bad','หลุด กำลังต่อใหม่…']}[CAMP.state];
   return`<div class="campg">
     <div class="row between"><b>กล้องมือถือ · สนาม ${esc(LOCK)}</b><span class="pill ${st[0]}" id="camst">${st[1]}</span></div>
     <div class="campv"><video id="campv" playsinline muted autoplay></video>${CAMP.stream?'':'<span>กด เริ่มส่งภาพ</span>'}</div>
     <div class="small muted" id="camgot">${CAMP.real?'กล้องมือถือให้ภาพ '+esc(CAMP.real):'ภาพจะไปขึ้นที่หน้าจับเวลาของสนามนี้ ไม่ต้องลงแอป'}</div>
+    ${CAMP.tries.length?`<div class="small muted">ลองขอ 60 fps: ${CAMP.tries.map(esc).join(' · ')}</div>`:''}
     ${CAMP.err?`<div class="callout bad"><div><b>เปิดกล้องไม่ได้ (${esc(CAMP.err)})</b></div><ol style="margin:6px 0 0;padding-left:20px"><li>กดอนุญาตให้เว็บนี้ใช้กล้อง</li><li>iPhone: ตั้งค่า → Safari → กล้อง → อนุญาต</li><li>ปิดแอปอื่นที่ใช้กล้องอยู่ แล้วกดเริ่มใหม่</li></ol></div>`:''}
     ${CAMP.devs.length>1?`<label class="tset" style="color:var(--muted)"><span>เลนส์ (มุมกว้าง / ปกติ / ซูม)</span><select id="camlens">${CAMP.devs.map((d,n)=>`<option value="${esc(d.deviceId)}" ${d.deviceId===CAMP.dev?'selected':''}>${esc(lensName(d.label,n))}</option>`).join('')}</select></label>`:''}
     ${CAMP.zoom?`<label class="tset" style="color:var(--muted)"><span>ซูม <b id="camzv">${CAMP.zoom.val.toFixed(1)}×</b></span><input type="range" id="camzoom" min="${CAMP.zoom.min}" max="${CAMP.zoom.max}" step="${CAMP.zoom.step}" value="${CAMP.zoom.val}"></label>`:CAMP.stream?'<div class="small muted">มือถือรุ่นนี้ซูมผ่านเบราว์เซอร์ไม่ได้ ใช้เลือกเลนส์ หรือครอปที่หน้าจับเวลาแทน</div>':''}
@@ -857,13 +858,21 @@ function lensName(label,n){
   return label||'กล้อง '+(n+1);
 }
 // opens the camera; for 60 fps it asks firmly first at 1080p, then at 720p, before settling for 30
+// Opens the camera, then, for 60 fps, asks the open camera to change: some phone browsers refuse a frame rate
+// demanded at opening but accept it as a change afterwards. Every try and its answer is kept for the screen.
 async function camOpen(){
   const pick=CAMP.dev?{deviceId:{exact:CAMP.dev}}:{facingMode:{ideal:CAMP.facing}};
-  const ask=(w,h,f,firm)=>navigator.mediaDevices.getUserMedia({video:{...pick,width:{ideal:w},height:{ideal:h},frameRate:firm?{min:50,ideal:f}:{ideal:f}},audio:false});
-  const tries=CAMP.fps>30?[[1920,1080,60,true],[1280,720,60,true],[1920,1080,30,false]]:[[1920,1080,30,false]];
-  let err=null;
-  for(const t of tries){try{return await ask(...t)}catch(e){err=e}}
-  throw err||new Error('error');
+  const st=await navigator.mediaDevices.getUserMedia({video:{...pick,width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:CAMP.fps}},audio:false});
+  CAMP.tries=[];
+  const tr=st.getVideoTracks()[0],fps=()=>Math.round(tr.getSettings().frameRate||0);
+  if(CAMP.fps>30&&fps()<50){
+    for(const [nm,c] of [['1080p 60',{width:{ideal:1920},height:{ideal:1080},frameRate:{exact:60}}],['720p 60',{width:{ideal:1280},height:{ideal:720},frameRate:{exact:60}}],['60 ขนาดไหนก็ได้',{frameRate:{exact:60}}],['60 แบบขอ',{frameRate:{ideal:60}}]]){
+      try{await tr.applyConstraints(c);const f=fps();CAMP.tries.push(nm+': ได้ '+f+' fps');if(f>=50)break}
+      catch(e){CAMP.tries.push(nm+': ไม่ได้ ('+(e.constraint?e.constraint+' ':'')+(e.name||'error')+')')}
+    }
+    if(fps()<50)try{await tr.applyConstraints({width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:30}})}catch(e){}
+  }
+  return st;
 }
 function camRead(){
   const tr=CAMP.stream.getVideoTracks()[0],s=tr.getSettings(),cap=tr.getCapabilities?.()||{};
