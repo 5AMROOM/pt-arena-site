@@ -97,13 +97,15 @@ function queue(clsId){const r=curRound(clsId);if(!r)return[];return eligible(cls
 
 function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('on'),2400)}
 
-/* ---------- roles: the link decides what a device sees (#staff, #judge, #judge-A, #timer-A, #cam-A, #screen, #mc, none = viewers) ---------- */
-const ROLE_TABS={view:['team','board','field','live'],judge:['judge','board'],timer:['timer'],cam:['cam'],screen:['screen'],mc:['mc','board'],staff:TABS.map(t=>t[0])};
+/* ---------- roles: the link decides what a device sees (#staff, #judge, #judge-A, #timer-A, #cam-A, #screen, #mc, none = viewers;
+   #cam-ROAM and #rx-ROAM: the walking camera for the stream, phone and OBS) ---------- */
+const ROAM='ROAM';
+const ROLE_TABS={rx:['rx'],view:['team','board','field','live'],judge:['judge','board'],timer:['timer'],cam:['cam'],screen:['screen'],mc:['mc','board'],staff:TABS.map(t=>t[0])};
 const STAFF_KEY='ptarena:staffcode',MYTEAM_KEY='ptarena:myteam',FIELD_KEY='ptarena:field';
 const rememberField=()=>{if(ROLE==='judge')try{localStorage.setItem(FIELD_KEY,S.ui.field)}catch(e){}};
 let ROLE='view',LOCK=null;
 function readHash(){
-  const h=decodeURIComponent(location.hash.slice(1)).trim(),m=/^(judge|timer|cam)-(.+)$/i.exec(h);
+  const h=decodeURIComponent(location.hash.slice(1)).trim(),m=/^(judge|timer|cam|rx)-(.+)$/i.exec(h);
   if(m){ROLE=m[1].toLowerCase();LOCK=m[2].toUpperCase()}else{LOCK=null;ROLE=h==='staff'||h==='screen'||h==='mc'||h==='judge'?h:'view'}
   // #judge without a field: the judge picks the field on the page, and this phone remembers it
   if(ROLE==='judge'&&!LOCK){try{S.ui.field=localStorage.getItem(FIELD_KEY)||S.ui.field}catch(e){}}
@@ -112,7 +114,7 @@ function readHash(){
 const staffOk=()=>{if(CLOUD)return CLOUD_STAFF;try{return localStorage.getItem(STAFF_KEY)===S.staffPin}catch(e){return false}};
 const keepStaff=()=>{if(CLOUD)return;try{localStorage.setItem(STAFF_KEY,S.staffPin)}catch(e){}};
 // the sample-data mode (?local) holds nothing real, so it asks for no code
-const needGate=()=>CLOUD&&(ROLE==='judge'||ROLE==='timer'||ROLE==='cam'||ROLE==='staff')&&!staffOk();
+const needGate=()=>CLOUD&&(ROLE==='judge'||ROLE==='timer'||ROLE==='cam'||ROLE==='rx'||ROLE==='staff')&&!staffOk();
 const rememberTeam=q=>{if(ROLE!=='staff')try{localStorage.setItem(MYTEAM_KEY,q)}catch(e){}};
 // slash = hidden, open eye = shown
 const eyeIcon=shown=>`<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>${shown?'':'<path d="M4 4l16 16"/>'}</svg>`;
@@ -147,6 +149,7 @@ function renderShell(){
   // a judge scoring on a phone gets the whole screen for the sheet: no header, no tab bar
   document.body.classList.toggle('jfocus',ROLE==='judge'&&!needGate()&&S.ui.view==='judge');
   document.body.classList.toggle('camfocus',ROLE==='cam'&&!needGate());
+  document.body.classList.toggle('rxonly',ROLE==='rx'&&!needGate());
   document.body.classList.toggle('crwall',ROLE==='staff'&&!needGate()&&(S.ui.view==='devices'||S.ui.view==='onair'));
   document.body.classList.toggle('oadesk',ROLE==='staff'&&!needGate()&&S.ui.view==='onair');
   $('#tabs').innerHTML=tabs.map(t=>`<button class="tab" role="tab" data-act="tab" data-v="${t[0]}" aria-selected="${S.ui.view===t[0]}">${ICO[t[0]]?icon(t[0]):''}<b>${t[1]}</b><small>${t[2]}</small></button>`).join('');
@@ -156,7 +159,7 @@ function render(){
   if(!ROLE_TABS[ROLE].includes(S.ui.view))S.ui.view=ROLE_TABS[ROLE][0];
   renderShell();
   if(needGate()){$('#view').innerHTML=vGate();return}
-  if(LOCK&&!clsOfField(LOCK)){$('#view').innerHTML=`<div class="panel"><h2>ไม่พบสนาม ${esc(LOCK)}</h2><p class="muted">ขอลิงก์ใหม่จากแอดมิน</p></div>`;return}
+  if(LOCK&&LOCK!==ROAM&&!clsOfField(LOCK)){$('#view').innerHTML=`<div class="panel"><h2>ไม่พบสนาม ${esc(LOCK)}</h2><p class="muted">ขอลิงก์ใหม่จากแอดมิน</p></div>`;return}
   if(LOCK)S.ui.field=LOCK;
   if(!clsOfField(S.ui.field))S.ui.field=fieldsSorted()[0].field;
   const v=S.ui.view;
@@ -168,7 +171,7 @@ function render(){
   const fs=document.fullscreenElement;
   if(S.ui.view==='screen'&&fs&&fs.id==='stage'){const tmp=document.createElement('div');tmp.innerHTML=vScreen();fs.innerHTML=tmp.querySelector('#stage').innerHTML;clock();return}
   if(v==='live'&&$('#livebody')&&$('#ytbox')?.dataset.k===liveKey()){$('#livebody').innerHTML=liveBody();$('.chbar').innerHTML=chBar();return}
-  const map={overview:vOverview,checkin:vCheckin,judge:vJudge,timer:vTimer,board:vBoard,team:vTeam,field:vField,live:vLive,cam:vCam,devices:vDevices,onair:vOnair,screen:vScreen,mc:vMc,admin:vAdmin};
+  const map={rx:vRx,overview:vOverview,checkin:vCheckin,judge:vJudge,timer:vTimer,board:vBoard,team:vTeam,field:vField,live:vLive,cam:vCam,devices:vDevices,onair:vOnair,screen:vScreen,mc:vMc,admin:vAdmin};
   const typing=document.activeElement?.id==='tfind';
   $('#view').innerHTML=map[v]();if(typing){const i=$('#tfind');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}
   if(ROLE==='view')noteCheck();
@@ -917,6 +920,30 @@ function phoneMeter(){
     const el=$('#camreal');if(el)el.textContent='กล้องส่งภาพมา '+CAMREAL;
   },2000);
 }
+/* Walking camera for the stream: a phone opens #cam-ROAM (the same camera page as a field, same handshake), and OBS shows
+   #rx-ROAM as a Browser Source in the walking-camera scene. This page only shows the picture and plays its sound;
+   while no phone sends, it is see-through, so whatever sits under it in the scene shows. */
+const RX={pc:null,sid:'',un:null};
+const rxVideo=()=>{let v=document.getElementById('rxv');if(!v){v=document.createElement('video');v.id='rxv';v.playsInline=true;v.autoplay=true;v.hidden=true;document.body.append(v)}return v};
+function vRx(){
+  if(!RX.un)RX.un=rtcWatch(LOCK,d=>{
+    if(d&&d.bye&&d.bye===RX.sid){try{RX.pc?.close()}catch(e){}RX.pc=null;rxVideo().hidden=true;return}
+    if(d&&d.offer&&d.sid&&d.sid!==RX.sid&&Date.now()-(d.t||0)<120000)rxAnswer(d).catch(()=>{});
+  })||null;
+  rxVideo();return'';
+}
+async function rxAnswer(d){
+  RX.sid=d.sid;try{RX.pc?.close()}catch(e){}
+  const pc=new RTCPeerConnection(RTC_CFG);RX.pc=pc;
+  pc.ontrack=e=>{if(pc!==RX.pc)return;
+    // a short buffer: the walking camera has no clock to line up with, so it can be close to live
+    try{e.receiver.jitterBufferTarget=120}catch(x){}
+    const v=rxVideo();v.srcObject=e.streams[0]||new MediaStream([e.track]);v.hidden=false;v.play().catch(()=>{})};
+  pc.onconnectionstatechange=()=>{if(pc!==RX.pc)return;if(pc.connectionState==='failed'||pc.connectionState==='closed')rxVideo().hidden=true};
+  await pc.setRemoteDescription({type:'offer',sdp:d.offer});
+  await pc.setLocalDescription(await pc.createAnswer());await iceDone(pc);
+  rtcSend(LOCK,{answer:pc.localDescription.sdp,asid:d.sid});
+}
 // phone side
 // size choices for the phone, with the most the encoder may send for each (times 1.5 at 60 fps); a home or venue router carries this easily
 const CAM_RES={480:[854,480,4000000],720:[1280,720,10000000],1080:[1920,1080,16000000]};
@@ -924,14 +951,14 @@ const camCap=()=>CAM_RES[CAMP.res][2]*(CAMP.fps>30?1.5:1);
 const CAM_SHAPE={land:'แนวนอน',port:'แนวตั้ง',auto:'ตามการหมุนเครื่อง'};
 const CAMP={mic:null,full:false,shape:CAM_SHAPE[keep('ptarena:camshape')]?keep('ptarena:camshape'):'land',locked:false,mode:keep('ptarena:cammode')==='sharp'?'sharp':'smooth',net:'',res:CAM_RES[keep('ptarena:camres')]?+keep('ptarena:camres'):1080,stream:null,pc:null,sid:'',state:'idle',fps:60,facing:'environment',dev:'',devs:[],zoom:null,real:'',tries:[],wake:null,un:null,err:''};
 function vCam(){
-  const st={idle:['','ยังไม่ได้ส่งภาพ'],wait:['warn','รอจุดจับเวลาสนาม '+LOCK],on:['ok','● ส่งภาพอยู่'],lost:['bad','หลุด กำลังต่อใหม่…']}[CAMP.state];
+  const st={idle:['','ยังไม่ได้ส่งภาพ'],wait:['warn',camWait()],on:['ok','● ส่งภาพอยู่'],lost:['bad','หลุด กำลังต่อใหม่…']}[CAMP.state];
   return`<div class="campg">
-    <div class="row between"><b>กล้อง · สนาม ${esc(LOCK)}</b><span class="pill ${st[0]}" id="camst">${st[1]}</span></div>
+    <div class="row between"><b>${LOCK===ROAM?'กล้องเดิน · ห้องส่ง':'กล้อง · สนาม '+esc(LOCK)}</b><span class="pill ${st[0]}" id="camst">${st[1]}</span></div>
     ${CAMP.shape!=='auto'&&camPortrait()!==(CAMP.shape==='port')?`<div class="callout warn camrot"><b>หมุนมือถือเป็น${CAM_SHAPE[CAMP.shape]}</b><div class="small">ตั้งทิศภาพไว้เป็น${CAM_SHAPE[CAMP.shape]} ${camDims(CAMP.res).join(' × ')} ถือให้ตรงทิศ แล้วเปิดล็อกหมุนจอ</div></div>`:''}
     <div class="campv"><video id="campv" playsinline muted autoplay></video>${CAMP.stream?'':'<span>กด เริ่มส่งภาพ</span>'}
-      ${CAMP.full?`<div class="camfbar"><span class="pill ${{idle:'',wait:'warn',on:'ok',lost:'bad'}[CAMP.state]}">${{idle:'ยังไม่ได้ส่งภาพ',wait:'รอจุดจับเวลา',on:'● ส่งภาพอยู่',lost:'หลุด กำลังต่อใหม่…'}[CAMP.state]}</span>${CAMP.locked?'<span class="pill ok">🔒</span>':''}<span class="camfnet" id="camfnet">${esc(CAMP.net)}</span><button class="btn" data-act="camfull">ย่อ</button></div>`:''}</div>
+      ${CAMP.full?`<div class="camfbar"><span class="pill ${{idle:'',wait:'warn',on:'ok',lost:'bad'}[CAMP.state]}">${{idle:'ยังไม่ได้ส่งภาพ',wait:LOCK===ROAM?'รอห้องส่ง':'รอจุดจับเวลา',on:'● ส่งภาพอยู่',lost:'หลุด กำลังต่อใหม่…'}[CAMP.state]}</span>${CAMP.locked?'<span class="pill ok">🔒</span>':''}<span class="camfnet" id="camfnet">${esc(CAMP.net)}</span><button class="btn" data-act="camfull">ย่อ</button></div>`:''}</div>
     <div class="small" id="camnet">${esc(CAMP.net)}</div>
-    <div class="small muted" id="camgot">${CAMP.real?'ภาพที่ได้ '+esc(CAMP.real):'ภาพจะขึ้นที่จุดจับเวลาของสนามนี้ ไม่ต้องโหลดแอป'}</div>
+    <div class="small muted" id="camgot">${CAMP.real?'ภาพที่ได้ '+esc(CAMP.real):(LOCK===ROAM?'ภาพจะขึ้นที่ห้องส่ง ไม่ต้องโหลดแอป':'ภาพจะขึ้นที่จุดจับเวลาของสนามนี้ ไม่ต้องโหลดแอป')}</div>
     ${CAMP.tries.length?`<div class="small muted">ลองปรับกล้อง: ${CAMP.tries.map(esc).join(' · ')}</div>`:''}
     ${CAMP.err?`<div class="callout bad"><div><b>เปิดกล้องไม่ได้ (${esc(CAMP.err)})</b></div><ol style="margin:6px 0 0;padding-left:20px"><li>กดอนุญาตให้เว็บนี้ใช้กล้อง</li><li>iPhone: ตั้งค่า → Safari → กล้อง → อนุญาต</li><li>ปิดแอปอื่นที่ใช้กล้องอยู่ แล้วกดเริ่มใหม่</li></ol></div>`:''}
     ${CAMP.locked?`<div class="callout ok camlocked"><b>🔒 ล็อกกล้องอยู่</b><div class="small">หมุนเครื่องได้ ภาพไม่เปลี่ยน · กดค้าง 2 วิ เพื่อปลดล็อก</div></div><button class="btn big" data-act="camfull">⛶ เต็มจอ</button><button class="btn big" id="camunlock">กดค้างเพื่อปลดล็อก</button>`:`
@@ -944,7 +971,8 @@ function vCam(){
     <p class="small muted camtip" style="margin:0">ต่อ Wi‑Fi เดียวกับจุดจับเวลา · วางมือถือให้นิ่ง · เสียบชาร์จ · เปิดหน้านี้ค้างไว้</p></div>`;
 }
 function camAfter(){const pv=$('#campv');if(pv){const r=+(CTRL[LOCK]?.turn?.rot??CAMP.rotSeen??0),fl=(CTRL[LOCK]?.turn?.flip??CAMP.flipSeen)==='on';pv.style.transform=`rotate(${r}deg)${fl?' scaleX(-1)':''}`}const v=$('#campv');if(v&&CAMP.stream&&v.srcObject!==CAMP.stream){v.srcObject=CAMP.stream;v.play().catch(()=>{})}}
-function camStatus(){const el=$('#camst');if(!el||CAMP.full)return render();const st={idle:['','ยังไม่ได้ส่งภาพ'],wait:['warn','รอจุดจับเวลาสนาม '+LOCK],on:['ok','● ส่งภาพอยู่'],lost:['bad','หลุด กำลังต่อใหม่…']}[CAMP.state];el.className='pill '+st[0];el.textContent=st[1]}
+const camWait=()=>LOCK===ROAM?'รอห้องส่ง':'รอจุดจับเวลาสนาม '+LOCK;
+function camStatus(){const el=$('#camst');if(!el||CAMP.full)return render();const st={idle:['','ยังไม่ได้ส่งภาพ'],wait:['warn',camWait()],on:['ok','● ส่งภาพอยู่'],lost:['bad','หลุด กำลังต่อใหม่…']}[CAMP.state];el.className='pill '+st[0];el.textContent=st[1]}
 // lens names as phones report them, in plain words; unknown names are shown as they are
 function lensName(label,n){
   const l=(label||'').toLowerCase();
@@ -1519,14 +1547,21 @@ const OA_ADBOX={x:800,y:200,w:1040,h:585};
 // the sound folder holds three files with fixed names: the break bed (loops), the card sting, the show opener
 const OA_SND={loop:'pt_loop.wav',sting:'pt_sting.wav',open:'pt_open.wav'};
 const OA_BRK={break:'พักการแข่งขัน',match:'ก่อนเริ่มแข่ง',live:'ก่อนเริ่มไลฟ์'};
+// break music: the file in the sound folder, picked per break
+const OA_BGM={'pt_loop.wav':'สดใส ปลุกใจ','pt_loop_chill.wav':'ชิลล์ (vaportrap)','pt_loop_house.wav':'แดดเช้า (house)','pt_loop_wave.wav':'ลอยๆ (wave)'};
 // tools/studio_helper.py on this computer keeps copies of the clips that OBS can jump inside
 const OA_HELPER='http://127.0.0.1:8788';
+// the walking camera (DJI Osmo Pocket 4P through the Mimo app) sends RTMP to MediaMTX on this computer
+// (rtmp://<this computer>:1935/live/osmo); OBS reads it back over RTSP, which carries the camera's H.265 picture well
+const OA_OSMO='PT Osmo',OA_OSMO_URL='rtsp://127.0.0.1:8554/live/osmo';
+// the phone as the walking camera: our own camera page, no app (see #cam-ROAM / #rx-ROAM)
+const OA_PHONE='PT มือถือ',oaSite=()=>location.origin+location.pathname+location.search;
 const OA={dir:null,perm:'none',list:[],order:[],played:new Set(),bad:new Map(),sizes:new Map(),auto:true,delay:0,prog:'all',skipSetup:true,cur:null,nextM:null,phase:'idle',err:'',
-  ws:'ws://127.0.0.1:4455',pw:'',base:'',ads:'',snd:'',credit:'',brk:null,cache:{},helperOk:false,hlGroup:'',hlRound:1,hl:null,brkMode:'break',brkMin:5,brkAuto:true,obsWant:false,obsState:'off',obsErr:'',scene:'',stat:null,hold:false,offAir:false,shown:0,cursor:0,dur:0,paused:false,gen:0,waitAt:0,waitFn:null};
+  ws:'ws://127.0.0.1:4455',pw:'',base:'',ads:'',snd:'',credit:'',brk:null,cache:{},helperOk:false,hlGroup:'',hlRound:1,hl:null,brkMode:'break',brkMin:5,brkAuto:true,bgm:'pt_loop.wav',obsWant:false,obsState:'off',obsErr:'',scene:'',stat:null,hold:false,offAir:false,shown:0,cursor:0,dur:0,paused:false,gen:0,waitAt:0,waitFn:null};
 try{const k=JSON.parse(localStorage.getItem('ptarena:oa')||'{}');OA.order=k.order||[];OA.played=new Set(k.played||[]);OA.auto=k.auto!==false;OA.delay=k.delay||0;OA.prog=k.prog||'all';OA.skipSetup=k.skipSetup!==false;
   OA.ws=k.ws||OA.ws;OA.pw=k.pw||'';OA.base=k.base||'';OA.obsWant=!!k.obsWant;
-  OA.ads=k.ads||'';OA.snd=k.snd||'';OA.credit=k.credit||'';OA.brkMode=k.brkMode||'break';OA.brkMin=k.brkMin||5;OA.brkAuto=k.brkAuto!==false}catch(e){}
-const oaKeep=()=>{try{localStorage.setItem('ptarena:oa',JSON.stringify({order:OA.order,played:[...OA.played],auto:OA.auto,delay:OA.delay,prog:OA.prog,skipSetup:OA.skipSetup,ws:OA.ws,pw:OA.pw,base:OA.base,obsWant:OA.obsWant,ads:OA.ads,snd:OA.snd,credit:OA.credit,brkMode:OA.brkMode,brkMin:OA.brkMin,brkAuto:OA.brkAuto}))}catch(e){}};
+  OA.ads=k.ads||'';OA.snd=k.snd||'';OA.credit=k.credit||'';OA.brkMode=k.brkMode||'break';OA.brkMin=k.brkMin||5;OA.brkAuto=k.brkAuto!==false;OA.bgm=OA_BGM[k.bgm]?k.bgm:'pt_loop.wav'}catch(e){}
+const oaKeep=()=>{try{localStorage.setItem('ptarena:oa',JSON.stringify({order:OA.order,played:[...OA.played],auto:OA.auto,delay:OA.delay,prog:OA.prog,skipSetup:OA.skipSetup,ws:OA.ws,pw:OA.pw,base:OA.base,obsWant:OA.obsWant,ads:OA.ads,snd:OA.snd,credit:OA.credit,brkMode:OA.brkMode,brkMin:OA.brkMin,brkAuto:OA.brkAuto,bgm:OA.bgm}))}catch(e){}};
 const oaGroup=m=>`${m.prog} · สนาม ${m.field}`;
 const oaTime=v=>{const t=typeof v==='number'?v:new Date(v||0).getTime();return isFinite(t)?t:0};
 
@@ -1623,7 +1658,8 @@ async function obsReady(){
   if(OA.scene===OA_SCENE)oaBackOnAir();
   oaSay();obsStat();oaDraw()}
 function obsEvent(t,d){
-  if(t==='CurrentProgramSceneChanged'){OA.scene=d.sceneName;OA.scene===OA_SCENE?oaBackOnAir():oaOffAir();oaDraw()}
+  // the graphics follow the scene: the corner mark on the walking camera, the replay's own state when it comes back
+  if(t==='CurrentProgramSceneChanged'){OA.scene=d.sceneName;OA.scene===OA_SCENE?oaBackOnAir():oaOffAir();oaSay();oaDraw()}
   else if(t==='MediaInputPlaybackEnded'&&d.inputName===OA_CLIP&&OA.phase==='play'&&Date.now()-OA.t0>1500)oaDone();
   else if(t==='CustomEvent'&&d.pt===1&&d.k==='hello')oaSay();
   else if(t==='StreamStateChanged'||t==='RecordStateChanged')obsStat();
@@ -1642,6 +1678,7 @@ const oaIdleMsg=()=>({sub:VENUES.find(v=>v[0]===S.venue)[1]});
 // a graphics page that has just loaded asks what is on; this answers with the present state
 function oaSay(){const m=OA.cur;
   if(OA.brk)OBS.say('break',oaBrkMsg());
+  else if(OA.scene===OA_CAM)OBS.say('cam',oaIdleMsg());
   else if(OA.phase==='play'&&m)OBS.say(OA.cover?'intro':'play',oaInfo(m));
   else if(OA.phase==='result'&&m)OBS.say('result',oaRes(m));
   else if(OA.phase==='next'&&OA.nextM)OBS.say('next',oaInfo(OA.nextM));
@@ -1674,9 +1711,18 @@ async function obsSetup(){
     await fit(OA_SCENE,OA_CLIP,full);await fit(OA_SCENE,OA_GFX,full,true);
     // break: the shop's ads in their window, the music bed (starts with the scene, loops), the same graphics on top
     await place(OA_BREAK,OA_ADS,'slideshow_v2',{files:OA.ads?[{value:OA.ads,hidden:false,selected:false}]:[],slide_time:6000,transition:'fade',transition_speed:700,playback_behavior:'always_play',playback_mode:'loop',slide_mode:'mode_auto',use_custom_size:'1600x900'});
-    await place(OA_BREAK,OA_MUSIC,'ffmpeg_source',{is_local_file:true,local_file:snd(OA_SND.loop),looping:true,restart_on_activate:true,close_when_inactive:true});
+    await place(OA_BREAK,OA_MUSIC,'ffmpeg_source',{is_local_file:true,local_file:snd(OA.bgm),looping:true,restart_on_activate:true,close_when_inactive:true});
     await place(OA_BREAK,OA_GFX,'browser_source',{url:url.href,width:1920,height:1080,css:'',shutdown:false,restart_when_active:false});
     await fit(OA_BREAK,OA_ADS,OA_ADBOX);await fit(OA_BREAK,OA_GFX,full,true);
+    // walking camera: picks the picture up again by itself when the camera reconnects
+    await place(OA_CAM,OA_OSMO,'ffmpeg_source',{is_local_file:false,input:OA_OSMO_URL,input_format:'',reconnect_delay_sec:2,buffering_mb:1,restart_on_activate:false,close_when_inactive:false,hw_decode:true,rtsp_transport:'tcp'});
+    await fit(OA_CAM,OA_OSMO,full);
+    // on top of the Osmo: see-through while no phone sends, so the Osmo shows; its sound goes through OBS
+    await place(OA_CAM,OA_PHONE,'browser_source',{url:oaSite()+'#rx-'+ROAM,width:1920,height:1080,css:'',shutdown:false,restart_when_active:false,reroute_audio:true});
+    await fit(OA_CAM,OA_PHONE,full,true);
+    // our mark on the walking camera: the same graphics page, which shows only the corner mark there
+    await place(OA_CAM,OA_GFX,'browser_source',{url:url.href,width:1920,height:1080,css:'',shutdown:false,restart_when_active:false});
+    await fit(OA_CAM,OA_GFX,full,true);
     await OBS.req('PressInputPropertiesButton',{inputName:OA_GFX,propertyName:'refreshnocache'}).catch(()=>{});
     toast('ตั้งฉากใน OBS แล้ว: '+[OA_SCENE,OA_BREAK,OA_CAM].join(' · '));
   }catch(e){toast('ตั้งฉากไม่สำเร็จ: '+e.message)}
@@ -1690,6 +1736,8 @@ const oaBrkMsg=()=>({mode:OA.brk.mode,endsAt:OA.brk.endsAt,credit:OA.credit,sub:
 async function oaBreak(){
   if(!OBS.ok)return toast('ยังไม่ได้ต่อ OBS');
   OA.brk={mode:OA.brkMode,endsAt:Date.now()+OA.brkMin*60000};
+  // the chosen music is set before the scene comes up, which starts it from the top
+  if(OA.snd)await OBS.req('SetInputSettings',{inputName:OA_MUSIC,inputSettings:{local_file:oaPath(OA.snd,OA.bgm)}}).catch(()=>{});
   OBS.say('break',oaBrkMsg());
   try{await OBS.req('SetCurrentProgramScene',{sceneName:OA_BREAK})}catch(e){toast('สลับไปฉากพักเบรกไม่ได้: '+e.message+' · กด "ตั้งฉากให้ใน OBS" ก่อน');OA.brk=null;oaSay()}
   oaDraw();
@@ -1865,11 +1913,12 @@ function vOnair(){
         <label class="cc"><span>รหัส WebSocket</span><span class="pwbox"><input type="password" id="oapw" value="${esc(OA.pw)}" autocomplete="off"><button type="button" class="eye" data-act="oaeye" aria-label="ดูรหัส">👁</button></span></label>
         <label class="cc wide2"><span>ที่อยู่โฟลเดอร์แมตช์ในเครื่อง (โฟลเดอร์เดียวกับที่เลือกด้านบน)</span><input type="text" id="oabase" value="${esc(OA.base)}" placeholder="เช่น G:\\My Drive\\RoboArena · ก๊อปจากแถบที่อยู่ของ File Explorer" autocomplete="off"></label>
         <label class="cc wide2"><span>โฟลเดอร์รูปและ GIF โฆษณา (เล่นวนในฉากพักเบรก)</span><input type="text" id="oaads" value="${esc(OA.ads)}" placeholder="เช่น C:\\stream\\ads" autocomplete="off"></label>
-        <label class="cc wide2"><span>โฟลเดอร์เสียง (ไฟล์ชื่อ ${OA_SND.loop} · ${OA_SND.sting} · ${OA_SND.open})</span><input type="text" id="oasnd" value="${esc(OA.snd)}" placeholder="เช่น C:\\stream\\music" autocomplete="off"></label>
+        <label class="cc wide2"><span>โฟลเดอร์เสียง (ไฟล์ชื่อ ${Object.keys(OA_BGM).join(' · ')} · ${OA_SND.sting} · ${OA_SND.open})</span><input type="text" id="oasnd" value="${esc(OA.snd)}" placeholder="เช่น C:\\stream\\music" autocomplete="off"></label>
         <label class="cc wide2"><span>เครดิตเพลง (ขึ้นมุมจอตอนพักเบรก เว้นว่างได้)</span><input type="text" id="oacredit" value="${esc(OA.credit)}" autocomplete="off"></label>
       </div>
       <div class="row"><button class="btn ${on?'':'pri'}" data-act="oaconnect">${on?'↻ ต่อใหม่':'🔌 ต่อ OBS'}</button><button class="btn" data-act="oasetup" ${on?'':'disabled'}>🎬 ตั้งฉากให้ใน OBS</button></div>
       <p class="small muted" style="margin:0">เปลี่ยนโฟลเดอร์แล้ว กด "ตั้งฉากให้ใน OBS" อีกครั้ง</p>
+      <p class="small muted" style="margin:0">กล้องเดินด้วยมือถือ: เปิดลิงก์ <b class="mono">${esc(oaSite()+'#cam-'+ROAM)}</b> ในมือถือ ใส่รหัสเจ้าหน้าที่ แล้วกดเริ่มส่งภาพ (ครั้งแรกใน OBS: คลิกขวา "PT มือถือ" → Interact แล้วใส่รหัสเจ้าหน้าที่ 1 ครั้ง)</p>
     </details>`;
   return`<div class="oa">
     <header class="oahead">
@@ -1901,6 +1950,7 @@ function vOnair(){
           ${OA.brk?`<div class="oabrkt"><span>${esc(OA_BRK[OA.brk.mode])}</span><b class="mono" id="oabrk">${fmtMs(Math.max(0,OA.brk.endsAt-Date.now())).split('.')[0]}</b></div>
             <div class="row"><button class="btn sm" data-act="oabrkmore" data-v="1">+1 นาที</button><button class="btn sm" data-act="oabrkmore" data-v="5">+5 นาที</button><button class="btn pri" data-act="oabrkend">⏭ จบช่วงนี้ กลับรีเพลย์</button></div>`
           :`<div class="row"><label class="cc"><span>ช่วง</span><select id="oabrkmode">${Object.entries(OA_BRK).map(([k,t])=>`<option value="${k}" ${OA.brkMode===k?'selected':''}>${t}</option>`).join('')}</select></label>
+            <label class="cc"><span>เพลง</span><select id="oabgm">${Object.entries(OA_BGM).map(([f,t])=>`<option value="${f}" ${OA.bgm===f?'selected':''}>${t}</option>`).join('')}</select></label>
             <label class="cc"><span>นาน</span><select id="oabrkmin">${[1,2,3,5,10,15,20,30].map(n=>`<option value="${n}" ${OA.brkMin===n?'selected':''}>${n} นาที</option>`).join('')}</select></label>
             <button class="btn sm" data-act="oabrkauto" aria-pressed="${OA.brkAuto}">${OA.brkAuto?'✓':'✕'} ครบเวลากลับรีเพลย์เอง</button></div>
             <button class="btn pri" data-act="oabrk" ${on?'':'disabled'}>☕ เริ่ม${esc(OA_BRK[OA.brkMode])}</button>`}
@@ -2231,6 +2281,7 @@ document.addEventListener('change',e=>{
   if(el.id==='oahlg'){OA.hlGroup=el.value;render();return}
   if(el.id==='oahlr'){OA.hlRound=+el.value;render();return}
   if(el.id==='oabrkmode'){OA.brkMode=el.value;oaKeep();render();return}
+  if(el.id==='oabgm'){OA.bgm=el.value;oaKeep();return}
   if(el.id==='oabrkmin'){OA.brkMin=+el.value;oaKeep();return}
   if(el.id==='oadelay'){OA.delay=+el.value;oaKeep();render();return}
   if(el.id==='gsel'){GFX=GFX_LIST[el.value]?el.value:'strip';keep('ptarena:gfx',GFX);return}

@@ -85,6 +85,16 @@ body.result #cres .in,body.next #cnext .in,body.title #cnext .in,body.intro #cne
 #bclock.long{font-size:112px} /* h:mm:ss is two characters wider; keep it inside the panel */
 #bsub{position:absolute;left:96px;top:815px;width:644px;font-size:30px;color:#c4d6f0}
 #bcredit{position:absolute;left:96px;bottom:60px;width:644px;font-size:20px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* the walking camera wears our mark in the top-left corner, small and half see-through so the picture stays the point */
+.bug{position:absolute;left:44px;top:40px;display:flex;align-items:center;gap:16px;padding:12px 22px 12px 12px;background:rgba(8,15,30,.62);border:1px solid #375a9188;border-radius:14px;
+  transform:translateX(-30px);opacity:0;visibility:hidden;transition:transform .6s cubic-bezier(.2,.8,.2,1),opacity .6s,visibility 0s .6s}
+body.cam .bug{transform:none;opacity:1;visibility:visible;transition:transform .6s cubic-bezier(.2,.8,.2,1),opacity .6s}
+.bug .bm{width:54px;height:54px;font-size:21px}
+.bug b{display:block;font-size:24px;font-weight:800;letter-spacing:3px}
+.bug small{display:block;font-size:17px;color:#a5bfdf}
+.bug .live{display:flex;align-items:center;gap:8px;margin-left:10px;padding:5px 12px;border-radius:7px;background:#e5484d;font-size:16px;font-weight:800;letter-spacing:2px}
+.bug .live i{width:10px;height:10px;border-radius:50%;background:#fff;animation:blink 1.6s ease-in-out infinite}
+@keyframes blink{50%{opacity:.25}}
 </style>
 </head>
 <body class="idle">
@@ -117,6 +127,7 @@ body.result #cres .in,body.next #cnext .in,body.title #cnext .in,body.intro #cne
   <div class="in" id="bsub"></div>
   <div class="in" id="bcredit"></div>
 </div>
+<div class="bug"><div class="bm">PT</div><div><b>ROBOARENA</b><small id="bugsub"></small></div><span class="live"><i></i>LIVE</span></div>
 <div class="sweep" id="sweep"></div>
 <script>
 const $=id=>document.getElementById(id);
@@ -140,6 +151,7 @@ function show(m){
   // a free card on the team-card layout: highlight titles and ranks
   if(m.k==='title'){set('nk',m.eyebrow);set('nk2',m.tag);set('nteam',m.title);set('nschool',m.sub)}
   document.querySelector('#cnext .hb').style.display=m.k==='title'?'none':'';
+  if(m.k==='cam')set('bugsub',m.sub);
   if(m.k==='idle'){set('ititle',m.title||'โปรดรอสักครู่');set('isub',m.sub)}
   if(m.k==='break'){const t=BRK[m.mode]||BRK.break,end=Number(m.endsAt)||0;set('bk',t[0]);set('btitle',t[1]);set('bline',t[2]);
     set('bsub',m.sub);set('bcredit',m.credit?'♪ '+m.credit:'');
@@ -147,8 +159,8 @@ function show(m){
     const f=()=>{const s=Math.max(0,Math.ceil((end-Date.now())/1000)),h=Math.floor(s/3600),c=$('bclock');
       c.classList.toggle('long',h>0);c.textContent=(h?h+':'+p2(Math.floor(s/60)%60):p2(Math.floor(s/60)))+':'+p2(s%60)};
     f();tick=setInterval(f,250)}
-  const card=k=>k==='play'?'':k==='intro'||k==='title'?'next':k;
-  if(card(m.k)!==card(now)&&m.k!=='play'){const s=$('sweep');s.classList.remove('go');void s.offsetWidth;s.classList.add('go')}
+  const card=k=>k==='play'||k==='cam'?'':k==='intro'||k==='title'?'next':k;
+  if(card(m.k)!==card(now)&&card(m.k)){const s=$('sweep');s.classList.remove('go');void s.offsetWidth;s.classList.add('go')}
   now=m.k;document.body.className=m.k;
 }
 // obs-websocket 5: hello → identify (with the password when one is set) → listen for the studio's custom events.

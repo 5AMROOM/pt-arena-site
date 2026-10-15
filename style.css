@@ -844,4 +844,10 @@ body.oadesk .tab[aria-selected=true]{background:#3268f5;box-shadow:none}
 .lgo-fb{background:linear-gradient(135deg,#2f8bff,#1458c8)}
 .lgo-tt{background:linear-gradient(135deg,#111,#2a2a2a);border:1px solid #25f4ee66}
 .lgo-tt i{background:linear-gradient(135deg,#25f4ee,#fe2c55)}
+/* #rx-ROAM inside OBS: nothing but the phone's picture, see-through while no phone sends */
+html:has(body.rxonly),body.rxonly{background:transparent!important}
+body.rxonly:before{display:none}
+body.rxonly .app,body.rxonly #toast,body.rxonly #net{display:none!important}
+#rxv{position:fixed;inset:0;width:100vw;height:100vh;object-fit:contain;background:#000}
+#rxv[hidden]{display:none}
 
