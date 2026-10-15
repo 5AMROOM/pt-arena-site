@@ -19,7 +19,7 @@ body{font-family:"Segoe UI","Leelawadee UI",Tahoma,sans-serif;color:#edf4ff;line
 .card{position:absolute;inset:0;padding:70px 96px 60px;display:flex;flex-direction:column;gap:30px;opacity:0;visibility:hidden;transition:opacity .5s,visibility 0s .5s;
   background:radial-gradient(ellipse at 80% 0,#18386b66,transparent 55%),#080f1e}
 .card:before{content:'';position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(#638dce07 1px,transparent 1px),linear-gradient(90deg,#638dce07 1px,transparent 1px);background-size:66px 66px}
-body.result #cres,body.next #cnext,body.intro #cnext,body.idle #cidle,body.break #cbrk{opacity:1;visibility:visible;transition:opacity .5s}
+body.result #cres,body.next #cnext,body.title #cnext,body.intro #cnext,body.idle #cidle,body.break #cbrk{opacity:1;visibility:visible;transition:opacity .5s}
 .card>*{position:relative}
 header{display:flex;align-items:center;justify-content:space-between}
 .brand{display:flex;align-items:center;gap:20px;font-size:36px;font-weight:800;letter-spacing:3px}
@@ -71,7 +71,7 @@ header{display:flex;align-items:center;justify-content:space-between}
 .sweep.go{animation:sweep .7s cubic-bezier(.6,0,.3,1)}
 @keyframes sweep{0%{transform:translateX(-120%);opacity:1}100%{transform:translateX(120%);opacity:1}}
 .card .in{transition:transform .6s cubic-bezier(.2,.8,.2,1),opacity .6s;transform:translateY(24px);opacity:0}
-body.result #cres .in,body.next #cnext .in,body.intro #cnext .in,body.idle #cidle .in,body.break #cbrk .in{transform:none;opacity:1}
+body.result #cres .in,body.next #cnext .in,body.title #cnext .in,body.intro #cnext .in,body.idle #cidle .in,body.break #cbrk .in{transform:none;opacity:1}
 /* the break card: OBS plays the shop-ad slideshow UNDER this page at x800 y200 1040×585, so the card cuts that
    rectangle out of itself. An evenodd clip-path on the whole card (background, grid, children) is one rule CEF
    has drawn reliably for years, and the frame and label sit just outside the hole so the clip leaves them alone. */
@@ -137,6 +137,9 @@ function show(m){
     for(const x of m.missions||[]){const d=document.createElement('div');d.className='mi';
       d.innerHTML='<div><b></b><small></small></div><strong class="mono"></strong>';d.querySelector('b').textContent=x.label;d.querySelector('small').textContent=x.pts+' PTS EACH';
       const st=d.querySelector('strong');st.textContent=x.n;const sp=document.createElement('span');sp.textContent='/'+x.max;st.append(sp);$('rms').append(d)}}
+  // a free card on the team-card layout: highlight titles and ranks
+  if(m.k==='title'){set('nk',m.eyebrow);set('nk2',m.tag);set('nteam',m.title);set('nschool',m.sub)}
+  document.querySelector('#cnext .hb').style.display=m.k==='title'?'none':'';
   if(m.k==='idle'){set('ititle',m.title||'โปรดรอสักครู่');set('isub',m.sub)}
   if(m.k==='break'){const t=BRK[m.mode]||BRK.break,end=Number(m.endsAt)||0;set('bk',t[0]);set('btitle',t[1]);set('bline',t[2]);
     set('bsub',m.sub);set('bcredit',m.credit?'♪ '+m.credit:'');
@@ -144,7 +147,7 @@ function show(m){
     const f=()=>{const s=Math.max(0,Math.ceil((end-Date.now())/1000)),h=Math.floor(s/3600),c=$('bclock');
       c.classList.toggle('long',h>0);c.textContent=(h?h+':'+p2(Math.floor(s/60)%60):p2(Math.floor(s/60)))+':'+p2(s%60)};
     f();tick=setInterval(f,250)}
-  const card=k=>k==='play'?'':k==='intro'?'next':k;
+  const card=k=>k==='play'?'':k==='intro'||k==='title'?'next':k;
   if(card(m.k)!==card(now)&&m.k!=='play'){const s=$('sweep');s.classList.remove('go');void s.offsetWidth;s.classList.add('go')}
   now=m.k;document.body.className=m.k;
 }
