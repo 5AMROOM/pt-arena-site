@@ -1507,5 +1507,7 @@ document.addEventListener('keydown',e=>{
 });
 readHash();
 render();
+// keeps the page on this device, so it opens again when the hall's internet is down (see sw.js)
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 // a timer laptop picks up clips that had not gone up to Drive when the page was last closed
 if(ROLE==='timer')setTimeout(upLoad,3000);
