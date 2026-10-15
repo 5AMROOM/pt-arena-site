@@ -1431,34 +1431,45 @@ function vDevices(){
     const tl=one('timer'),cm=one('cam'),jg=one('judge'),t=timerOf(f),tm=t.state!=='idle'&&team(t.team)||queue(c.id)[0];
     const snap=SNAPS[f+'_timer']||SNAPS[f+'_cam'],probs=issues.filter(x=>x.f===f);
     const sc=t.state!=='idle'?liveScore(f):null;
-    return`<div class="cr-tile ${probs.length?'bad':''}">
+    return`<div class="cr-tile ${probs.length?'bad':''} ${S.ui.crHi===f?'hi':''}" id="crtile-${f}">
       <div class="cr-head"><b>สนาม ${f}</b><span>${esc(S.comps[c.comp].tag)} ${esc(c.level)}</span><span class="cr-leds">${led(tl,'โน้ตบุ๊ก')}${led(cm,'มือถือ')}${led(jg,'กรรมการ')}</span></div>
-      <div class="cr-pic">${snap?`<img src="${snap.img}" alt="ภาพสนาม ${f}"><span class="cr-age">${ago(Math.max(0,(now-snap.t)/1000))}ที่แล้ว</span>`:'<span class="cr-nopic">ยังไม่มีภาพ</span>'}
-        ${tl?.rec?'<span class="cr-rec">● REC</span>':''}<button class="btn sm cr-snap" data-act="ctrlcmd" data-f="${f}" data-t="${tl&&live(tl)?'timer':'cam'}" data-op="snap">ดูภาพตอนนี้</button></div>
+      <div class="cr-pic" id="crpic-${f}">${snap?`<img src="${snap.img}" alt="ภาพสนาม ${f}"><span class="cr-age">${ago(Math.max(0,(now-snap.t)/1000))}ที่แล้ว</span>`:'<span class="cr-nopic">ยังไม่มีภาพ</span>'}
+        ${tl?.rec?'<span class="cr-rec">● REC</span>':''}</div>
       <div class="cr-live"><div><b>${tm?esc(tm.name):'ไม่มีทีม'}</b><small>${tm?tm.id:''}${t.state==='run'?' · กำลังแข่ง':t.state==='stop'?' · หยุดแล้ว รอส่งคะแนน':' · รอเริ่ม'}</small></div>
         <span class="cr-clock mono" ${t.state!=='idle'?`data-tm="${f}"`:''}>${fmtMs(tElapsed(t))}</span><span class="cr-score mono">${sc??'–'}</span></div>
       ${probs.length?`<div class="devp">${probs.map(p=>`<span>${esc(p.txt)}</span>`).join('')}</div>`:''}
       <div class="small muted">${tl?`ไดรฟ์ ${tl.drive?(tl.upQ?'ค้าง '+tl.upQ:'ส่งครบ'):'ยังไม่ตั้ง'} · เสียง ${esc(tl.sound||'-')}${tl.camReal?' · '+esc(tl.camReal.split(' (')[0]):''}`:'โน้ตบุ๊กยังไม่เปิดหน้าจับเวลา'}${cm?` · มือถือ ${esc(cm.net||cm.camState||'')}`:''}</div>
-      <details class="cr-set"><summary>ตั้งค่าเครื่องในสนามนี้</summary>
-        <div class="cr-grp"><b>โน้ตบุ๊กจับเวลา</b><div class="cr-ctl">${timerCtl(f)}</div>
-          <div class="row"><button class="btn sm" data-act="ctrlcmd" data-f="${f}" data-t="timer" data-op="upnow">ส่งคลิปค้างตอนนี้</button><button class="btn sm" data-act="ctrlcmd" data-f="${f}" data-t="timer" data-op="reload">รีโหลดหน้า</button></div></div>
-        <div class="cr-grp"><b>มือถือกล้อง</b><div class="cr-ctl">${camCtl(f)}</div>
-          <div class="row"><button class="btn sm" data-act="ctrlcmd" data-f="${f}" data-t="cam" data-op="snap">ดูภาพจากมือถือ</button><button class="btn sm" data-act="ctrlcmd" data-f="${f}" data-t="cam" data-op="reload">รีโหลดหน้า</button></div></div>
-      </details></div>`};
+      <div class="cr-act">
+        <button class="btn sm pri" data-act="ctrlopen" data-f="${f}">⚙ ตั้งค่า</button>
+        <button class="btn sm" data-act="ctrlcmd" data-f="${f}" data-t="${tl&&live(tl)?'timer':'cam'}" data-op="snap">ดูภาพ</button>
+        <button class="btn sm" data-act="ctrlcmd" data-f="${f}" data-t="timer" data-op="upnow" ${tl?.upQ||tl?.upFail?'':'disabled'}>ส่งคลิปค้าง${tl?.upQ?' ('+tl.upQ+')':''}</button>
+        <button class="btn sm" data-act="ctrlcmd" data-f="${f}" data-t="timer" data-op="reload" ${t.state==='run'?'disabled title="กำลังแข่ง รีโหลดแล้วคลิปจะขาด"':''}>รีโหลดโน้ตบุ๊ก</button>
+      </div></div>`};
   const allPick=(part,key,opts,label)=>`<label class="cc"><span>${label}</span><select data-ctrl="*|${part}|${key}"><option value="">—</option>${opts.map(([v,t])=>`<option value="${v}">${esc(t)}</option>`).join('')}</select></label>`;
-  return`<div class="cr">
+  // the settings side panel: one field, or every field at once
+  const cf=S.ui.crField,drawer=!cf?'':cf==='*'?`<div class="cr-drawer"><div class="row between"><h3>ตั้งค่าทุกสนาม</h3><button class="btn sm" data-act="ctrlclose">✕ ปิด</button></div>
+      <p class="small muted" style="margin:0">เลือกแล้วส่งไปทั้ง ${fieldsSorted().length} สนามทันที สนามที่กำลังแข่งจะปรับหลังจบรอบ</p>
+      <div class="cr-grp"><b>โน้ตบุ๊กจับเวลา</b><div class="cr-ctl">${allPick('timer','gfx',O.gfx,'กราฟิก')}${allPick('timer','src',O.src,'กล้อง')}${allPick('timer','qual',O.qual,'ความชัด')}${allPick('timer','fps',O.fps,'ความลื่น')}${allPick('timer','audio',O.audio,'เสียง')}</div></div>
+      <div class="cr-grp"><b>มือถือกล้อง</b><div class="cr-ctl">${allPick('cam','shape',O.shape,'ทิศภาพ')}${allPick('cam','res',O.res,'ความชัด')}${allPick('cam','fps',O.cfps,'fps')}${allPick('cam','mode',O.mode,'เน้น')}${allPick('cam','locked',O.locked,'ล็อก')}</div></div></div>`
+    :(()=>{const c=cls(fieldsSorted().find(x=>x.field===cf)?.id),run=timerOf(cf).state==='run';return`<div class="cr-drawer"><div class="row between"><h3>ตั้งค่า สนาม ${cf}${c?' · '+esc(S.comps[c.comp].tag)+' '+esc(c.level):''}</h3><button class="btn sm" data-act="ctrlclose">✕ ปิด</button></div>
+      ${run?'<div class="callout warn small">สนามนี้กำลังแข่ง ค่าโน้ตบุ๊กจะปรับหลังจบรอบ</div>':''}
+      <div class="cr-grp"><b>โน้ตบุ๊กจับเวลา</b><div class="cr-ctl">${timerCtl(cf)}</div>
+        <div class="row"><button class="btn sm" data-act="ctrlcmd" data-f="${cf}" data-t="timer" data-op="snap">ดูภาพจากโน้ตบุ๊ก</button><button class="btn sm" data-act="ctrlcmd" data-f="${cf}" data-t="timer" data-op="upnow">ส่งคลิปค้างตอนนี้</button><button class="btn sm" data-act="ctrlcmd" data-f="${cf}" data-t="timer" data-op="reload" ${run?'disabled':''}>รีโหลดหน้า</button></div></div>
+      <div class="cr-grp"><b>มือถือกล้อง</b><div class="cr-ctl">${camCtl(cf)}</div>
+        <div class="row"><button class="btn sm" data-act="ctrlcmd" data-f="${cf}" data-t="cam" data-op="snap">ดูภาพจากมือถือ</button><button class="btn sm" data-act="ctrlcmd" data-f="${cf}" data-t="cam" data-op="reload">รีโหลดหน้า</button></div></div></div>`})();
+  return`<div class="cr ${cf?'drawer-open':''}">
     <div class="cr-top">
-      <div><h2>ห้องควบคุม</h2><div class="small muted">ออนไลน์ ${all.filter(live).length} เครื่อง · อัปเดตเองทุก 5 วินาที</div></div>
-      <div class="cr-sum ${issues.length?'bad':'ok'}">${issues.length?`ต้องดู ${issues.length} เรื่อง`:all.some(live)?'ทุกเครื่องปกติ':'ยังไม่มีเครื่องรายงาน'}</div>
-      <div class="row"><button class="btn sm" data-act="ctrlsnapall">ดูภาพทุกสนาม</button>
-        <button class="btn sm" data-act="ctrlauto" aria-pressed="${CTRLAUTO}">${CTRLAUTO?'■ หยุดภาพอัตโนมัติ':'ภาพอัตโนมัติทุก 30 วิ'}</button>
-        <button class="btn sm" data-act="ctrlsound" aria-pressed="${CTRLSOUND}">${CTRLSOUND?'🔔 เสียงเตือนเปิด':'🔕 เปิดเสียงเตือน'}</button>
+      <div class="cr-title"><h2>ห้องควบคุม</h2><span class="small muted">ออนไลน์ ${all.filter(live).length} เครื่อง · อัปเดตเองทุก 5 วินาที</span></div>
+      <div class="cr-sum ${issues.length?'bad':'ok'}">${issues.length?`⚠ ต้องดู ${issues.length} เรื่อง`:all.some(live)?'✓ ทุกเครื่องปกติ':'ยังไม่มีเครื่องรายงาน'}</div>
+      <div class="cr-tools"><button class="btn sm pri" data-act="ctrlopen" data-f="*">⚙ ตั้งค่าทุกสนาม</button><button class="btn sm" data-act="ctrlsnapall">ดูภาพทุกสนาม</button>
+        <button class="btn sm" data-act="ctrlauto" aria-pressed="${CTRLAUTO}">${CTRLAUTO?'■ หยุดภาพอัตโนมัติ':'ภาพอัตโนมัติ 30 วิ'}</button>
+        <button class="btn sm" data-act="ctrlsound" aria-pressed="${CTRLSOUND}">${CTRLSOUND?'🔔 เสียงเตือน':'🔕 เสียงเตือน'}</button>
         ${gone.length?`<button class="btn sm" data-act="devclean">ล้างเครื่องที่หายไป (${gone.length})</button>`:''}</div>
     </div>
-    <details class="panel cr-all"><summary><b>ใช้กับทุกสนาม</b> <span class="small muted">เลือกแล้วส่งไปทุกสนามทันที</span></summary>
-      <div class="cr-ctl">${allPick('timer','gfx',O.gfx,'กราฟิก')}${allPick('timer','qual',O.qual,'ความชัด')}${allPick('timer','fps',O.fps,'ความลื่น')}${allPick('timer','audio',O.audio,'เสียง')}${allPick('cam','res',O.res,'มือถือ ความชัด')}${allPick('cam','fps',O.cfps,'มือถือ fps')}${allPick('cam','mode',O.mode,'มือถือ เน้น')}</div></details>
+    ${issues.length?`<div class="cr-issues">${issues.map(x=>`<button data-act="crgo" data-f="${x.f}"><b>สนาม ${x.f||'-'}</b> ${esc(x.txt)}</button>`).join('')}</div>`:''}
     <div class="cr-body"><div class="cr-grid">${fieldsSorted().map(tile).join('')}</div>
       <div class="panel cr-log"><h3>เหตุการณ์</h3>${CTRLLOG.length?CTRLLOG.map(l=>`<div class="${l.bad?'bad':'ok'}"><span class="mono">${l.at}</span> ${esc(l.txt)}</div>`).join(''):'<p class="small muted" style="margin:0">ยังไม่มีอะไรเกิดขึ้น</p>'}</div></div>
+    ${drawer}
   </div>`;
 }
 
@@ -1609,6 +1620,9 @@ document.addEventListener('click',e=>{
     case'tab':{const was=ui.view;ui.view=b.dataset.v;ui.pinFor=null;if((was==='live')!==(ui.view==='live'))window.PT_BACKEND?.role?.();break}
     case'ch':ui.liveCh=b.dataset.v;break;
     case'ctrlcmd':ctrlCmd(b.dataset.f,b.dataset.t,b.dataset.op);toast(b.dataset.op==='reload'?'สั่งรีโหลดแล้ว':b.dataset.op==='upnow'?'สั่งส่งคลิปแล้ว':'ขอภาพแล้ว รอสักครู่');return;
+    case'ctrlopen':ui.crField=b.dataset.f;break;
+    case'ctrlclose':ui.crField=null;break;
+    case'crgo':{const f=b.dataset.f;ui.crHi=f;render();document.getElementById('crtile-'+f)?.scrollIntoView({block:'center',behavior:'smooth'});setTimeout(()=>{if(ui.crHi===f){ui.crHi=null;render()}},2500);return}
     case'ctrlsnapall':fieldsSorted().forEach(c=>ctrlCmd(c.field,'timer','snap'));toast('ขอภาพทุกสนามแล้ว');return;
     case'ctrlauto':CTRLAUTO=!CTRLAUTO;if(CTRLAUTO)fieldsSorted().forEach(c=>ctrlCmd(c.field,'timer','snap'));break;
     case'ctrlsound':CTRLSOUND=!CTRLSOUND;if(CTRLSOUND){noteSoundReady();noteSound(1)}break;
