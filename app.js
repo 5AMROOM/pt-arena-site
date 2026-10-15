@@ -1,5 +1,5 @@
 const VENUES=[['C','ภาคกลาง · นนทบุรี','14–15 พ.ย. 2569'],['S','ภาคใต้ · สุราษฎร์ธานี','21–22 พ.ย. 2569'],['E','ภาคตะวันออก · ชลบุรี','28–29 พ.ย. 2569'],['N','ภาคเหนือ · แพร่','19–20 ธ.ค. 2569'],['NE','ภาคตะวันออกเฉียงเหนือ · ร้อยเอ็ด','26–27 ธ.ค. 2569']];
-const TABS=[['overview','ภาพรวมสนาม','หัวหน้ากรรมการ'],['devices','ห้องควบคุม','หัวหน้างาน'],['checkin','เช็กอิน & ตรวจหุ่น','จุดลงทะเบียน'],['judge','กรรมการให้คะแนน','ประจำสนาม'],['board','กระดานผล','ทุกคน'],['live','สด','ดูแข่งสด'],['team','หน้าทีม','ครู · นักเรียน'],['field','สนาม','ภาพสนาม'],['screen','จอใหญ่','จอในงาน'],['mc','เรียกคิว','พิธีกร'],['admin','ตั้งค่า','แอดมิน']];
+const TABS=[['overview','ภาพรวมสนาม','หัวหน้ากรรมการ'],['devices','ห้องควบคุม','หัวหน้างาน'],['onair','ห้องส่ง','ออกอากาศ'],['checkin','เช็กอิน & ตรวจหุ่น','จุดลงทะเบียน'],['judge','กรรมการให้คะแนน','ประจำสนาม'],['board','กระดานผล','ทุกคน'],['live','สด','ดูแข่งสด'],['team','หน้าทีม','ครู · นักเรียน'],['field','สนาม','ภาพสนาม'],['screen','จอใหญ่','จอในงาน'],['mc','เรียกคิว','พิธีกร'],['admin','ตั้งค่า','แอดมิน']];
 // Scoring and the inspection list follow the rule PDFs linked from the registration site; nothing here is our own rule. A mission with "needs" only counts once the missions
 // it names are complete ('all' = every mission without "needs"). Retries cost no points; they only break ties.
 // "closes": once this mission is scored the listed ones can no longer go up (KidsBiT: yellow is the last box collected).
@@ -122,7 +122,7 @@ document.addEventListener('fullscreenchange',()=>{if(S.ui.view==='timer'&&!docum
 window.addEventListener('hashchange',()=>{readHash();window.PT_BACKEND?.role?.();render()});
 
 /* ---------- shell ---------- */
-const ICO={team:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/>',
+const ICO={onair:'<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M8 2l4 4 4-4M10 10l5 2.5-5 2.5z"/>',team:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/>',
   live:'<circle cx="12" cy="12" r="2"/><path d="M8.5 8.5a5 5 0 0 0 0 7M15.5 8.5a5 5 0 0 1 0 7M5.6 5.6a9 9 0 0 0 0 12.8M18.4 5.6a9 9 0 0 1 0 12.8"/>',
   board:'<path d="M8 4h8v6a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 14v4M8 20h8"/>',
   field:'<path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v14M15 6v14"/>',
@@ -147,7 +147,8 @@ function renderShell(){
   // a judge scoring on a phone gets the whole screen for the sheet: no header, no tab bar
   document.body.classList.toggle('jfocus',ROLE==='judge'&&!needGate()&&S.ui.view==='judge');
   document.body.classList.toggle('camfocus',ROLE==='cam'&&!needGate());
-  document.body.classList.toggle('crwall',ROLE==='staff'&&!needGate()&&S.ui.view==='devices');
+  document.body.classList.toggle('crwall',ROLE==='staff'&&!needGate()&&(S.ui.view==='devices'||S.ui.view==='onair'));
+  document.body.classList.toggle('oadesk',ROLE==='staff'&&!needGate()&&S.ui.view==='onair');
   $('#tabs').innerHTML=tabs.map(t=>`<button class="tab" role="tab" data-act="tab" data-v="${t[0]}" aria-selected="${S.ui.view===t[0]}">${ICO[t[0]]?icon(t[0]):''}<b>${t[1]}</b><small>${t[2]}</small></button>`).join('');
 }
 function render(){
@@ -167,7 +168,7 @@ function render(){
   const fs=document.fullscreenElement;
   if(S.ui.view==='screen'&&fs&&fs.id==='stage'){const tmp=document.createElement('div');tmp.innerHTML=vScreen();fs.innerHTML=tmp.querySelector('#stage').innerHTML;clock();return}
   if(v==='live'&&$('#livebody')&&$('#ytbox')?.dataset.k===liveKey()){$('#livebody').innerHTML=liveBody();$('.chbar').innerHTML=chBar();return}
-  const map={overview:vOverview,checkin:vCheckin,judge:vJudge,timer:vTimer,board:vBoard,team:vTeam,field:vField,live:vLive,cam:vCam,devices:vDevices,screen:vScreen,mc:vMc,admin:vAdmin};
+  const map={overview:vOverview,checkin:vCheckin,judge:vJudge,timer:vTimer,board:vBoard,team:vTeam,field:vField,live:vLive,cam:vCam,devices:vDevices,onair:vOnair,screen:vScreen,mc:vMc,admin:vAdmin};
   const typing=document.activeElement?.id==='tfind';
   $('#view').innerHTML=map[v]();if(typing){const i=$('#tfind');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}
   if(ROLE==='view')noteCheck();
@@ -1505,6 +1506,363 @@ function vDevices(){
   </div>`;
 }
 
+/* ---------- on air: matches recorded by RoboArena, played out through OBS ---------- */
+// RoboArena writes one folder per team: <match>.match.json (result and timeline) beside the clip it names; they reach this
+// computer through a Google Drive folder kept on disk. OBS plays the clip itself (Media Source "PT คลิป"); the clip already
+// carries RoboArena's match graphics, so ours (Browser Source "PT กราฟิก" = overlay.html) show only between clips, drawn in
+// RoboArena's look. This page is the desk: it reads the folder, keeps the queue, and drives OBS through obs-websocket.
+const OA_SCENE='PT รีเพลย์',OA_CAM='PT กล้องเดิน',OA_BREAK='PT พักเบรก',OA_CLIP='PT คลิป',OA_GFX='PT กราฟิก',OA_ADS='PT โฆษณา',OA_MUSIC='PT เพลง',OA_STING='PT เสียงคั่น';
+// the ads sit in this window of the 1920×1080 break screen; overlay.html leaves the same window see-through
+const OA_ADBOX={x:800,y:200,w:1040,h:585};
+// the sound folder holds three files with fixed names: the break bed (loops), the card sting, the show opener
+const OA_SND={loop:'pt_loop.wav',sting:'pt_sting.wav',open:'pt_open.wav'};
+const OA_BRK={break:'พักการแข่งขัน',match:'ก่อนเริ่มแข่ง',live:'ก่อนเริ่มไลฟ์'};
+const OA={dir:null,perm:'none',list:[],order:[],played:new Set(),bad:new Map(),sizes:new Map(),auto:true,delay:0,prog:'all',skipSetup:true,cur:null,nextM:null,phase:'idle',err:'',
+  ws:'ws://127.0.0.1:4455',pw:'',base:'',ads:'',snd:'',credit:'',brk:null,brkMode:'break',brkMin:5,brkAuto:true,obsWant:false,obsState:'off',obsErr:'',scene:'',stat:null,hold:false,offAir:false,shown:0,cursor:0,dur:0,paused:false,gen:0,waitAt:0,waitFn:null};
+try{const k=JSON.parse(localStorage.getItem('ptarena:oa')||'{}');OA.order=k.order||[];OA.played=new Set(k.played||[]);OA.auto=k.auto!==false;OA.delay=k.delay||0;OA.prog=k.prog||'all';OA.skipSetup=k.skipSetup!==false;
+  OA.ws=k.ws||OA.ws;OA.pw=k.pw||'';OA.base=k.base||'';OA.obsWant=!!k.obsWant;
+  OA.ads=k.ads||'';OA.snd=k.snd||'';OA.credit=k.credit||'';OA.brkMode=k.brkMode||'break';OA.brkMin=k.brkMin||5;OA.brkAuto=k.brkAuto!==false}catch(e){}
+const oaKeep=()=>{try{localStorage.setItem('ptarena:oa',JSON.stringify({order:OA.order,played:[...OA.played],auto:OA.auto,delay:OA.delay,prog:OA.prog,skipSetup:OA.skipSetup,ws:OA.ws,pw:OA.pw,base:OA.base,obsWant:OA.obsWant,ads:OA.ads,snd:OA.snd,credit:OA.credit,brkMode:OA.brkMode,brkMin:OA.brkMin,brkAuto:OA.brkAuto}))}catch(e){}};
+const oaGroup=m=>`${m.prog} · สนาม ${m.field}`;
+const oaTime=v=>{const t=typeof v==='number'?v:new Date(v||0).getTime();return isFinite(t)?t:0};
+
+// the only place that knows RoboArena's file layout: if their files change, only this changes.
+// Everything is turned into plain strings and numbers here, so nothing from a file reaches the page as markup.
+function oaParse(d,dir,rel){
+  const m=d.match||{},r=d.result||d.latestScore||{},ev=Array.isArray(d.timeline)?d.timeline:[],at=t=>ev.find(e=>e.type===t);
+  const sub=ev.filter(e=>e.type==='result-submitted').pop(),num=(v,f=0)=>isFinite(+v)&&v!==null&&v!==''?+v:f,str=v=>v==null?'':String(v);
+  return{id:str(d.matchId||m.id),team:str(m.team||r.team),teamId:str(m.teamId||r.teamId),school:str(m.school||r.school),field:str(m.field||r.field||'-'),round:num(m.round||r.round,1),
+    prog:str(d.rules?.name||m.competition),comp:str(m.competition||r.competition),
+    missions:(d.rules?.missions||[]).map(x=>({id:str(x.id),label:str(x.label),pts:num(x.pts),max:num(x.max)})),
+    total:num(r.total??sub?.total),items:r.items||{},retry:num(r.retry),ms:num(r.ms??m.ms),ok:!!r.submitted,at:oaTime(r.submittedAt||sub?.at||d.createdAt),
+    // when the run starts and ends inside the clip, and every score change with the total it made
+    start:num(at('match-started')?.videoMs,0),end:(v=>v==null?null:num(v))(ev.find(e=>e.type==='phase-changed'&&e.phase==='finished')?.videoMs??at('session-ended')?.videoMs),
+    steps:ev.filter(e=>e.type==='score-adjusted'&&e.videoMs!=null&&!e.afterVideo).map(e=>({v:num(e.videoMs),total:num(e.total)})).sort((a,b)=>a.v-b.v),
+    file:str(d.video?.file),vok:d.video?.status==='saved',dir,rel}}
+async function oaScan(){
+  if(!OA.dir||OA.perm!=='ok'||OA.scanning)return;
+  OA.scanning=true;const out=new Map();
+  const walk=async(h,rel)=>{for await(const [n,x] of h.entries()){
+    if(x.kind==='directory'){if(rel.length<2)await walk(x,[...rel,n])}
+    else if(/\.match\.json$/i.test(n)){try{const m=oaParse(JSON.parse(await (await x.getFile()).text()),h,rel);if(m.id&&m.file&&!out.has(m.id))out.set(m.id,m)}catch(e){}}}};
+  try{await walk(OA.dir,[]);OA.err=''}catch(e){OA.err='อ่านโฟลเดอร์ไม่ได้'}
+  // Drive brings the small result file long before the clip: a clip counts only once it is on disk and has stopped growing
+  for(const m of out.values()){let size=-1;try{size=(await (await m.dir.getFileHandle(m.file)).getFile()).size}catch(e){}
+    const was=OA.sizes.get(m.id);m.synced=size>0&&(was===size||OA.sizes.get(m.id+':ok')===size);if(m.synced)OA.sizes.set(m.id+':ok',size);OA.sizes.set(m.id,size)}
+  OA.scanning=false;
+  OA.list=[...out.values()].sort((a,b)=>a.at-b.at);
+  let grew=false;for(const m of OA.list)if(!OA.order.includes(m.id)){OA.order.push(m.id);grew=true}
+  if(grew)oaKeep();
+  // the page is drawn again only when something about the matches changed, so a button is never swapped under the mouse
+  const sig=OA.list.map(m=>m.id+m.ok+m.vok+m.synced+m.total+oaReady(m)).join()+OA.err;
+  if(sig!==OA.sig){OA.sig=sig;oaDraw()}
+  // a match that has just come in starts by itself when the stream is sitting on the break card
+  if(OA.auto&&OA.wantRun&&OA.phase==='idle'&&!OA.hold&&OBS.ok)oaNext();
+}
+async function oaLoad(){
+  try{OA.dir=await kv('readonly',st=>st.get('oadir'))||null;if(OA.dir){OA.perm=await OA.dir.queryPermission({mode:'read'})==='granted'?'ok':'ask';await oaScan()}}catch(e){OA.dir=null}
+  oaDraw();
+}
+async function oaPick(fresh){
+  try{
+    if(OA.dir&&!fresh){if(await OA.dir.requestPermission({mode:'read'})==='granted')OA.perm='ok'}
+    else{OA.dir=await showDirectoryPicker({mode:'read'});OA.perm='ok';OA.sizes.clear();await kv('readwrite',st=>st.put(OA.dir,'oadir'))}
+  }catch(e){if(e.name!=='AbortError')toast('เปิดโฟลเดอร์ไม่ได้ ใช้ Chrome หรือ Edge บนคอม')}
+  await oaScan();render();
+}
+// what goes out next: confirmed, clip on disk, old enough for the hold-back, not played, did not fail, in the chosen programme
+const oaReady=m=>m.ok&&m.vok&&m.synced&&!OA.bad.has(m.id)&&Date.now()-m.at>=OA.delay*60000;
+const oaQueue=()=>OA.order.map(id=>OA.list.find(m=>m.id===id)).filter(m=>m&&!OA.played.has(m.id)&&(OA.prog==='all'||oaGroup(m)===OA.prog));
+const oaDraw=()=>{if(S.ui.view==='onair'&&!document.activeElement?.closest?.('.oa input,.oa select'))render()};
+// the folder typed for OBS must be the one picked for this page, or OBS would look for the clips somewhere else
+const oaBaseWarn=()=>{if(!OA.base||!OA.dir)return'';const last=OA.base.replace(/[\\/]+$/,'').split(/[\\/]/).pop();return last.toLowerCase()===OA.dir.name.toLowerCase()?'':`ที่อยู่โฟลเดอร์ลงท้ายด้วย "${last}" แต่โฟลเดอร์ที่เลือกชื่อ "${OA.dir.name}" ต้องเป็นโฟลเดอร์เดียวกัน`};
+
+// obs-websocket 5, spoken directly: hello → identify (password hashed with the salt and challenge OBS gives) → requests and events
+const obsSha=async s=>btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)))));
+const OBS={ws:null,ok:false,n:0,wait:new Map(),
+  drop(why){this.ok=false;for(const w of this.wait.values())w.no(new Error(why));this.wait.clear()},
+  connect(){
+    const old=this.ws;this.ws=null;this.drop('ต่อใหม่');if(old)try{old.close()}catch(e){}
+    OA.obsState='connecting';OA.obsErr='';let ws;
+    try{ws=new WebSocket(OA.ws,'obswebsocket.json')}catch(e){OA.obsState='off';OA.obsErr='ที่อยู่ OBS ไม่ถูก';return}
+    this.ws=ws;
+    ws.onmessage=async e=>{if(this.ws!==ws)return;const m=JSON.parse(e.data);
+      // events wanted: general (our own messages), scenes, outputs (live and recording), media inputs (the clip ended)
+      if(m.op===0){const a=m.d.authentication,d={rpcVersion:1,eventSubscriptions:1|4|64|256};if(a)d.authentication=await obsSha(await obsSha(OA.pw+a.salt)+a.challenge);ws.send(JSON.stringify({op:1,d}))}
+      else if(m.op===2){this.ok=true;OA.obsState='on';obsReady()}
+      else if(m.op===7){const w=this.wait.get(m.d.requestId);if(w){this.wait.delete(m.d.requestId);m.d.requestStatus.result?w.ok(m.d.responseData||{}):w.no(Object.assign(new Error(m.d.requestStatus.comment||'OBS ตอบว่าไม่ได้'),{code:m.d.requestStatus.code}))}}
+      else if(m.op===5)obsEvent(m.d.eventType,m.d.eventData||{})};
+    ws.onclose=e=>{if(this.ws!==ws)return;const was=this.ok;this.ws=null;this.drop('หลุดจาก OBS');
+      OA.obsState='off';OA.obsErr=e.code===4009?'รหัสผ่านไม่ถูก':was?'หลุดจาก OBS กำลังต่อใหม่':'ต่อ OBS ไม่ได้';
+      if(e.code!==4009&&OA.obsWant)setTimeout(()=>{if(OA.obsWant&&!OBS.ws)OBS.connect()},3000);
+      oaDraw()};
+  },
+  req(type,data){return new Promise((ok,no)=>{if(!this.ok||!this.ws)return no(new Error('ยังไม่ได้ต่อ OBS'));const id='r'+(++this.n);this.wait.set(id,{ok,no});
+    this.ws.send(JSON.stringify({op:6,d:{requestType:type,requestId:id,requestData:data||{}}}));
+    setTimeout(()=>{if(this.wait.has(id)){this.wait.delete(id);no(new Error('OBS ไม่ตอบ'))}},5000)})},
+  // what the graphics show: a message every PT Arena graphics page connected to the same OBS hears
+  say(k,data){if(OA.brk&&k!=='break')return Promise.resolve();return this.req('BroadcastCustomEvent',{eventData:{pt:1,k,...data}}).catch(()=>{})}
+};
+async function obsReady(){
+  try{OA.scene=(await OBS.req('GetSceneList')).currentProgramSceneName}catch(e){}
+  // a scene change missed while the link was down still releases the queue
+  if(OA.scene===OA_SCENE)oaBackOnAir();
+  oaSay();obsStat();oaDraw()}
+function obsEvent(t,d){
+  if(t==='CurrentProgramSceneChanged'){OA.scene=d.sceneName;OA.scene===OA_SCENE?oaBackOnAir():oaOffAir();oaDraw()}
+  else if(t==='MediaInputPlaybackEnded'&&d.inputName===OA_CLIP&&OA.phase==='play'&&Date.now()-OA.t0>1500)oaDone();
+  else if(t==='CustomEvent'&&d.pt===1&&d.k==='hello')oaSay();
+  else if(t==='StreamStateChanged'||t==='RecordStateChanged')obsStat();
+}
+// the walking camera goes on air: a clip that is running waits where it is, and nothing new starts
+function oaOffAir(){if(OA.phase==='play'&&!OA.paused&&!OA.offAir){OA.offAir=true;oaMedia('PAUSE')}}
+function oaBackOnAir(){
+  if(OA.offAir){OA.offAir=false;if(OA.phase==='play')oaMedia('PLAY')}
+  if(OA.hold){OA.hold=false;if(OA.wantRun&&OA.phase==='idle')oaNext()}}
+const oaInfo=m=>({team:m.team,teamId:m.teamId,school:m.school,field:m.field,round:m.round,prog:m.prog});
+function oaRes(m){
+  const lab=id=>S.comps[m.comp]?.missions?.find(x=>x.id===id)?.label||m.missions.find(x=>x.id===id)?.label||id;
+  return{...oaInfo(m),total:m.total,max:m.missions.reduce((a,x)=>a+x.pts*x.max,0),time:fmtMs(m.ms),retry:m.retry,
+    missions:m.missions.map(x=>({label:lab(x.id),n:+m.items[x.id]||0,max:x.max,pts:x.pts}))}}
+const oaIdleMsg=()=>({sub:VENUES.find(v=>v[0]===S.venue)[1]});
+// a graphics page that has just loaded asks what is on; this answers with the present state
+function oaSay(){const m=OA.cur;
+  if(OA.brk)OBS.say('break',oaBrkMsg());
+  else if(OA.phase==='play'&&m)OBS.say(OA.cover?'intro':'play',oaInfo(m));
+  else if(OA.phase==='result'&&m)OBS.say('result',oaRes(m));
+  else if(OA.phase==='next'&&OA.nextM)OBS.say('next',oaInfo(OA.nextM));
+  else OBS.say('idle',oaIdleMsg())}
+
+const oaPath=(dir,f)=>dir.replace(/[\\/]+$/,'')+'\\'+f;
+// one click makes what the stream needs in OBS; scenes and sources already there are reused, never removed
+async function obsSetup(){
+  try{
+    // a new address each time, so OBS's built-in browser cannot keep an old copy of the graphics
+    const url=new URL('overlay.html',location.href);url.search='?v='+Date.now();url.hash=new URLSearchParams({ws:OA.ws,pw:OA.pw}).toString();
+    const vs=await OBS.req('GetVideoSettings'),W=vs.baseWidth,k=W/1920;
+    const scenes=new Set((await OBS.req('GetSceneList')).scenes.map(x=>x.sceneName));
+    for(const sc of[OA_SCENE,OA_CAM,OA_BREAK])if(!scenes.has(sc))await OBS.req('CreateScene',{sceneName:sc});
+    const inputs=new Set((await OBS.req('GetInputList')).inputs.map(x=>x.inputName));
+    // a source in a scene: made when missing, settings brought up to date, added to the scene when it is not there yet
+    const place=async(scene,name,kind,set)=>{
+      if(!inputs.has(name)){await OBS.req('CreateInput',{sceneName:scene,inputName:name,inputKind:kind,inputSettings:set});inputs.add(name);return}
+      await OBS.req('SetInputSettings',{inputName:name,inputSettings:set});
+      const there=(await OBS.req('GetSceneItemList',{sceneName:scene})).sceneItems.some(x=>x.sourceName===name);
+      if(!there)await OBS.req('CreateSceneItem',{sceneName:scene,sourceName:name})};
+    const fit=async(scene,name,box,top)=>{const{sceneItemId}=await OBS.req('GetSceneItemId',{sceneName:scene,sourceName:name});
+      await OBS.req('SetSceneItemTransform',{sceneName:scene,sceneItemId,sceneItemTransform:{positionX:box.x*k,positionY:box.y*k,alignment:5,boundsType:'OBS_BOUNDS_SCALE_INNER',boundsAlignment:0,boundsWidth:box.w*k,boundsHeight:box.h*k}});
+      if(top){const n=(await OBS.req('GetSceneItemList',{sceneName:scene})).sceneItems.length;await OBS.req('SetSceneItemIndex',{sceneName:scene,sceneItemId,sceneItemIndex:n-1})}};
+    const full={x:0,y:0,w:1920,h:1080},snd=f=>OA.snd?oaPath(OA.snd,f):'';
+    // replay: the clip, a sting for the cards, the graphics on top
+    await place(OA_SCENE,OA_CLIP,'ffmpeg_source',{is_local_file:true,looping:false,restart_on_activate:false,close_when_inactive:false,hw_decode:true,clear_on_media_end:false});
+    await place(OA_SCENE,OA_STING,'ffmpeg_source',{is_local_file:true,local_file:snd(OA_SND.sting),looping:false,restart_on_activate:false,close_when_inactive:false});
+    await place(OA_SCENE,OA_GFX,'browser_source',{url:url.href,width:1920,height:1080,css:'',shutdown:false,restart_when_active:false});
+    await fit(OA_SCENE,OA_CLIP,full);await fit(OA_SCENE,OA_GFX,full,true);
+    // break: the shop's ads in their window, the music bed (starts with the scene, loops), the same graphics on top
+    await place(OA_BREAK,OA_ADS,'slideshow_v2',{files:OA.ads?[{value:OA.ads,hidden:false,selected:false}]:[],slide_time:6000,transition:'fade',transition_speed:700,playback_behavior:'always_play',playback_mode:'loop',slide_mode:'mode_auto',use_custom_size:'1600x900'});
+    await place(OA_BREAK,OA_MUSIC,'ffmpeg_source',{is_local_file:true,local_file:snd(OA_SND.loop),looping:true,restart_on_activate:true,close_when_inactive:true});
+    await place(OA_BREAK,OA_GFX,'browser_source',{url:url.href,width:1920,height:1080,css:'',shutdown:false,restart_when_active:false});
+    await fit(OA_BREAK,OA_ADS,OA_ADBOX);await fit(OA_BREAK,OA_GFX,full,true);
+    await OBS.req('PressInputPropertiesButton',{inputName:OA_GFX,propertyName:'refreshnocache'}).catch(()=>{});
+    toast('ตั้งฉากใน OBS แล้ว: '+[OA_SCENE,OA_BREAK,OA_CAM].join(' · '));
+  }catch(e){toast('ตั้งฉากไม่สำเร็จ: '+e.message)}
+  oaDraw();
+}
+// a short sound when a card comes up, and the opener when a countdown to the start runs out
+function oaSound(f){if(!OA.snd||!OBS.ok)return;OBS.req('SetInputSettings',{inputName:OA_STING,inputSettings:{local_file:oaPath(OA.snd,f)}}).then(()=>oaMedia('RESTART',OA_STING)).catch(()=>{})}
+
+// break: the break scene with the ads and music, and a countdown; when it runs out the replay comes back by itself
+const oaBrkMsg=()=>({mode:OA.brk.mode,endsAt:OA.brk.endsAt,credit:OA.credit,sub:VENUES.find(v=>v[0]===S.venue)[1]});
+async function oaBreak(){
+  if(!OBS.ok)return toast('ยังไม่ได้ต่อ OBS');
+  OA.brk={mode:OA.brkMode,endsAt:Date.now()+OA.brkMin*60000};
+  OBS.say('break',oaBrkMsg());
+  try{await OBS.req('SetCurrentProgramScene',{sceneName:OA_BREAK})}catch(e){toast('สลับไปฉากพักเบรกไม่ได้: '+e.message+' · กด "ตั้งฉากให้ใน OBS" ก่อน');OA.brk=null;oaSay()}
+  oaDraw();
+}
+function oaBrkMore(min){if(!OA.brk)return;OA.brk.endsAt=Math.max(Date.now(),OA.brk.endsAt)+min*60000;OBS.say('break',oaBrkMsg());oaDraw()}
+async function oaBrkEnd(){
+  if(!OA.brk)return;const mode=OA.brk.mode;OA.brk=null;
+  oaSay();if(mode!=='break')oaSound(OA_SND.open);
+  try{await OBS.req('SetCurrentProgramScene',{sceneName:OA_SCENE})}catch(e){toast('สลับกลับฉากรีเพลย์ไม่ได้: '+e.message)}
+  oaDraw();
+}
+async function obsStat(){
+  if(!OBS.ok)return;
+  try{const[s,r,g]=await Promise.all([OBS.req('GetStreamStatus'),OBS.req('GetRecordStatus'),OBS.req('GetStats')]);OA.stat={s,r,g}}catch(e){}
+  const el=document.getElementById('oastat');if(el)el.innerHTML=oaStatHtml();
+}
+function oaStatHtml(){
+  const x=OA.stat;if(!OBS.ok||!x)return'';
+  const drop=x.s.outputTotalFrames?x.s.outputSkippedFrames/x.s.outputTotalFrames*100:0,tc=t=>esc((t||'00:00:00').split('.')[0]);
+  return`<span class="oas ${x.s.outputActive?'live':''}">${x.s.outputActive?'● LIVE '+tc(x.s.outputTimecode):'○ OFF AIR'}</span>
+    <span class="oas ${x.r.outputActive?'rec':''}">${x.r.outputActive?'⏺ REC '+tc(x.r.outputTimecode):'○ REC'}</span>
+    <span class="oas ${drop>1?'bad':''}">DROP ${drop.toFixed(1)}%</span>
+    <span class="oas ${x.g.cpuUsage>80?'bad':''}">CPU ${Math.round(x.g.cpuUsage||0)}%</span>
+    <span class="oas ${x.g.activeFps<28?'bad':''}">${Math.round(x.g.activeFps||0)} FPS</span>`;
+}
+
+// the desk's own clock runs in a worker: a page in the background has its timers slowed, a worker does not
+let OA_TICKS=null;
+function oaClock(){
+  if(OA_TICKS)return;
+  const tick=()=>{oaTick();if(OA.waitAt&&Date.now()>=OA.waitAt){const f=OA.waitFn;OA.waitAt=0;OA.waitFn=null;f?.()}
+    if(OA.brk){const left=OA.brk.endsAt-Date.now(),el=document.getElementById('oabrk');if(el)el.textContent=fmtMs(Math.max(0,left)).split('.')[0];if(left<=0&&OA.brkAuto)oaBrkEnd()}
+    if(Date.now()-(OA.statAt||0)>2000){OA.statAt=Date.now();obsStat()}
+    if(Date.now()-(OA.scanAt||0)>10000){OA.scanAt=Date.now();if(OA.perm==='ok')oaScan()}};
+  try{OA_TICKS=new Worker(URL.createObjectURL(new Blob(['setInterval(()=>postMessage(0),250)'],{type:'text/javascript'})));OA_TICKS.onmessage=tick}
+  catch(e){OA_TICKS=setInterval(tick,250)}
+}
+const oaWait=(ms,fn)=>{OA.waitAt=Date.now()+ms;OA.waitFn=fn};
+const oaStopWait=()=>{OA.waitAt=0;OA.waitFn=null};
+const oaMedia=(a,input=OA_CLIP)=>OBS.req('TriggerMediaInputAction',{inputName:input,mediaAction:'OBS_WEBSOCKET_MEDIA_INPUT_ACTION_'+a}).catch(()=>{});
+
+// a clip that cannot be played is set aside (shown in the waiting list) and the queue moves on
+function oaFail(m,why){
+  if(m)OA.bad.set(m.id,why);toast((m?m.team+': ':'')+why);
+  OA.cur=null;OA.phase='idle';
+  if(OA.auto&&OA.wantRun&&OBS.ok)oaWait(1500,oaNext);else oaToIdle();
+  oaDraw();
+}
+async function oaPlay(m){
+  if(!m)return oaToIdle();
+  if(!OBS.ok){toast('ยังไม่ได้ต่อ OBS');return oaToIdle()}
+  if(!OA.base){toast('กรอกที่อยู่โฟลเดอร์ในเครื่องก่อน (ตั้งค่า OBS)');return oaToIdle()}
+  // the walking camera is on air: the clip waits until the replay scene is back
+  if(OA.scene&&OA.scene!==OA_SCENE){OA.hold=true;OA.wantRun=true;return oaToIdle()}
+  oaStopWait();
+  const gen=++OA.gen,path=[OA.base.replace(/[\\/]+$/,''),...m.rel,m.file].join('\\');
+  OA.cur=m;OA.nextM=null;OA.phase='load';OA.wantRun=true;OA.offAir=false;OA.paused=false;
+  try{await OBS.req('SetInputSettings',{inputName:OA_CLIP,inputSettings:{is_local_file:true,local_file:path}});await oaMedia('RESTART')}
+  catch(e){if(gen===OA.gen)oaFail(m,'OBS เปิดคลิปไม่ได้ '+e.message+(e.code===600?' · กด "ตั้งฉากให้ใน OBS" ก่อน':''));return}
+  if(gen!==OA.gen)return;
+  OA.phase='play';OA.shown=0;OA.cursor=0;OA.dur=0;OA.t0=Date.now();OA.seen=false;
+  // RoboArena's clips carry no length or index, so OBS cannot jump inside them (tested: a jump ends the clip).
+  // The robot set-up at the start is covered by the get-ready card instead, lifted 3 s before the run starts.
+  OA.cover=OA.skipSetup&&m.start>4000;
+  OBS.say(OA.cover?'intro':'play',oaInfo(m));
+  oaDraw();
+}
+async function oaTick(){
+  if(OA.phase!=='play'||!OBS.ok||OA.ticking)return;
+  OA.ticking=true;const gen=OA.gen,m=OA.cur;
+  try{
+    const r=await OBS.req('GetMediaInputStatus',{inputName:OA_CLIP});
+    if(gen!==OA.gen||OA.cur!==m||OA.phase!=='play')return;
+    const st=r.mediaState,t=r.mediaCursor??0;OA.cursor=t;OA.dur=r.mediaDuration>0?r.mediaDuration:0;
+    if(!OA.offAir)OA.paused=st==='OBS_MEDIA_STATE_PAUSED';
+    if(st==='OBS_MEDIA_STATE_PLAYING')OA.seen=true;
+    // the file would not open, or never started: set it aside instead of sitting on a black picture
+    const age=Date.now()-OA.t0;
+    if(!OA.seen&&(age>10000||(age>3000&&/ERROR|NONE|STOPPED/.test(st))))return oaFail(m,'เปิดคลิปไม่ได้ ตรวจว่าไฟล์อยู่ในเครื่องครบ และที่อยู่โฟลเดอร์ถูก');
+    if(OA.cover&&t>=m.start-3000){OA.cover=false;OBS.say('play',oaInfo(m))}
+    let sc=0;for(const s of m.steps){if(s.v<=t)sc=s.total;else break}
+    OA.shown=sc;
+    // a little after the run ends there is nothing more to see
+    if(OA.seen&&age>1500&&(st==='OBS_MEDIA_STATE_ENDED'||(m.end!=null&&t>m.end+2500)))return oaDone();
+    const span=m.end!=null?m.end+2500:OA.dur,p=document.getElementById('oaprog');if(p&&span>0)p.style.width=Math.min(100,t/span*100)+'%';
+    const c=document.getElementById('oaclock');if(c)c.textContent=fmtMs(Math.max(0,t-(m.start||0)));
+    const b=document.getElementById('oascore');if(b)b.textContent=sc;
+  }catch(e){}finally{OA.ticking=false}
+}
+// the run is over: the confirmed result, then who is next, then the next clip
+function oaDone(){
+  const m=OA.cur;if(!m||OA.phase!=='play')return;
+  oaMedia('PAUSE');OA.played.add(m.id);oaKeep();OA.phase='result';OBS.say('result',oaRes(m));if(!OA.brk)oaSound(OA_SND.sting);oaDraw();
+  oaWait(8000,()=>{
+    const n=OA.auto&&oaQueue().find(oaReady);
+    if(!n)return oaToIdle();
+    if(OA.scene&&OA.scene!==OA_SCENE){OA.hold=true;return oaToIdle()}
+    OA.phase='next';OA.nextM=n;OBS.say('next',oaInfo(n));if(!OA.brk)oaSound(OA_SND.sting);oaDraw();
+    // dropped or played while its card was up: take whatever is next now
+    oaWait(5000,()=>oaPlay(OA.played.has(n.id)||OA.bad.has(n.id)?oaQueue().find(oaReady):n))});
+}
+function oaToIdle(){OA.gen++;OA.phase='idle';OA.cur=null;OA.nextM=null;OA.cover=false;OBS.say('idle',oaIdleMsg());oaDraw()}
+function oaNext(){const n=oaQueue().find(oaReady);if(n)return oaPlay(n);oaToIdle()}
+function oaIdle(){oaStopWait();oaMedia('STOP');OA.wantRun=false;OA.hold=false;OA.offAir=false;oaToIdle()}
+function oaMove(id,d){const i=OA.order.indexOf(id),j=i+d;if(i<0||j<0||j>=OA.order.length)return;[OA.order[i],OA.order[j]]=[OA.order[j],OA.order[i]];oaKeep()}
+
+function vOnair(){
+  if(ROLE==='staff'&&!OA.loaded){OA.loaded=true;oaClock();oaLoad();if(OA.obsWant&&!OBS.ws)OBS.connect()}
+  const on=OBS.ok,q=oaQueue(),ready=q.filter(oaReady),wait=q.filter(m=>!oaReady(m)),done=OA.order.map(id=>OA.list.find(m=>m.id===id)).filter(m=>m&&OA.played.has(m.id));
+  const groups=[...new Set(OA.list.map(oaGroup))],cur=OA.cur,warn=oaBaseWarn();
+  const why=m=>OA.bad.has(m.id)?'⚠ '+OA.bad.get(m.id):!m.ok?'รอยืนยันผล':!m.vok?'คลิปยังไม่บันทึก':!m.synced?'กำลังซิงก์คลิปจากไดรฟ์':'ปล่อยได้อีก '+Math.max(1,Math.ceil((OA.delay*60000-(Date.now()-m.at))/60000))+' นาที';
+  const row=(m,i,kind)=>`<div class="oaq ${cur?.id===m.id?'now':''}"><span class="oan mono">${kind==='ready'?String(i+1).padStart(2,'0'):''}</span>
+    <div class="who"><b>${esc(m.team)}</b><small>${esc(oaGroup(m))} · ROUND ${esc(m.round)}${kind==='wait'?' · '+esc(why(m)):''}</small></div>
+    <b class="mono oasc">${esc(m.total)}</b>
+    <span class="oabtn">${kind==='done'?`<button class="btn sm" data-act="oaagain" data-v="${esc(m.id)}" title="เล่นซ้ำ">↺</button>`
+      :`<button class="btn sm" data-act="oaup" data-v="${esc(m.id)}" title="เลื่อนขึ้น">▲</button><button class="btn sm" data-act="oadown" data-v="${esc(m.id)}" title="เลื่อนลง">▼</button>${kind==='ready'?`<button class="btn sm" data-act="oaplay" data-v="${esc(m.id)}" title="เล่นอันนี้เลย" ${on?'':'disabled'}>▶</button>`:''}${OA.bad.has(m.id)?`<button class="btn sm" data-act="oaretry" data-v="${esc(m.id)}" title="ลองใหม่">↻</button>`:''}<button class="btn sm" data-act="oadrop" data-v="${esc(m.id)}" title="ไม่เล่น">✕</button>`}</span></div>`;
+  const live=OA.stat?.s?.outputActive,rec=OA.stat?.r?.outputActive;
+  const state=OA.phase==='play'?(OA.offAir?'รอกลับฉากรีเพลย์':OA.paused?'PAUSED · หยุดชั่วคราว':OA.cover?'GET READY · บังช่วงเตรียมหุ่น':'ON AIR · กำลังเล่น'):OA.phase==='load'?'LOADING · กำลังเปิดคลิป':OA.phase==='result'?'RESULT · ขึ้นผลการแข่ง':OA.phase==='next'?'NEXT · ขึ้นทีมถัดไป':OA.hold?'HOLD · รอกลับฉากรีเพลย์':'STAND BY · หน้าพัก';
+  const setup=`<details class="panel oaobs" ${on&&OA.base&&!warn?'':'open'}><summary><span class="oah"><i></i>OBS CONNECTION · ตั้งค่า OBS</span> <span class="tagx ${on?'good':OA.obsState==='connecting'?'':'bad'}">${on?'CONNECTED':OA.obsState==='connecting'?'CONNECTING…':'OFFLINE'}</span></summary>
+      ${OA.obsErr&&!on?`<div class="callout bad small">${esc(OA.obsErr)}<br>1. เปิด OBS<br>2. OBS เมนู Tools → WebSocket Server Settings → ติ๊ก Enable WebSocket server<br>3. กด Show Connect Info แล้วก๊อปรหัสมาวางด้านล่าง</div>`:''}
+      ${warn?`<div class="callout warn small">${esc(warn)}</div>`:''}
+      <div class="oaform">
+        <label class="cc"><span>ที่อยู่ OBS</span><input type="text" id="oaws" value="${esc(OA.ws)}" autocomplete="off"></label>
+        <label class="cc"><span>รหัส WebSocket</span><span class="pwbox"><input type="password" id="oapw" value="${esc(OA.pw)}" autocomplete="off"><button type="button" class="eye" data-act="oaeye" aria-label="ดูรหัส">👁</button></span></label>
+        <label class="cc wide2"><span>ที่อยู่โฟลเดอร์แมตช์ในเครื่อง (โฟลเดอร์เดียวกับที่เลือกด้านบน)</span><input type="text" id="oabase" value="${esc(OA.base)}" placeholder="เช่น G:\\My Drive\\RoboArena · ก๊อปจากแถบที่อยู่ของ File Explorer" autocomplete="off"></label>
+        <label class="cc wide2"><span>โฟลเดอร์รูปและ GIF โฆษณา (เล่นวนในฉากพักเบรก)</span><input type="text" id="oaads" value="${esc(OA.ads)}" placeholder="เช่น C:\\stream\\ads" autocomplete="off"></label>
+        <label class="cc wide2"><span>โฟลเดอร์เสียง (ไฟล์ชื่อ ${OA_SND.loop} · ${OA_SND.sting} · ${OA_SND.open})</span><input type="text" id="oasnd" value="${esc(OA.snd)}" placeholder="เช่น C:\\stream\\music" autocomplete="off"></label>
+        <label class="cc wide2"><span>เครดิตเพลง (ขึ้นมุมจอตอนพักเบรก เว้นว่างได้)</span><input type="text" id="oacredit" value="${esc(OA.credit)}" autocomplete="off"></label>
+      </div>
+      <div class="row"><button class="btn ${on?'':'pri'}" data-act="oaconnect">${on?'↻ ต่อใหม่':'🔌 ต่อ OBS'}</button><button class="btn" data-act="oasetup" ${on?'':'disabled'}>🎬 ตั้งฉากให้ใน OBS</button></div>
+      <p class="small muted" style="margin:0">เปลี่ยนโฟลเดอร์แล้ว กด "ตั้งฉากให้ใน OBS" อีกครั้ง</p>
+    </details>`;
+  return`<div class="oa">
+    <header class="oahead">
+      <div class="oabrand"><div class="oabm">PT</div><div>ROBOARENA<small>BROADCAST DESK · ห้องส่ง</small></div></div>
+      <div class="oastat" id="oastat">${oaStatHtml()}</div>
+    </header>
+    <div class="oahero">
+      <div class="oahero-l">
+        <div class="eyebrow2">${esc(state)}</div>
+        ${cur?`<h1>${esc(cur.team)}</h1><div class="oahb"><span>FIELD<b>${esc(cur.field)}</b></span><span>ROUND<b>${esc(cur.round)}</b></span><span>EVENT<b>${esc(cur.prog)}</b></span><span>TIME<b class="mono" id="oaclock">00:00.00</b></span></div>`
+          :`<h1 class="muted">${ready.length?`พร้อมเล่น ${ready.length} แมตช์`:'ยังไม่มีแมตช์ที่พร้อม'}</h1>`}
+      </div>
+      ${cur?`<div class="oascore"><span>SCORE</span><b class="mono" id="oascore">${esc(OA.shown)}</b></div>`:''}
+      <div class="oaline"><i id="oaprog" style="width:0"></i></div>
+    </div>
+    <div class="oagrid">
+      <div class="oacol">
+        <div class="panel"><div class="oah"><i></i>PLAYOUT · คุมการเล่น</div>
+          <div class="row oactl">
+            ${OA.phase==='play'?`<button class="btn" data-act="oapause" ${OA.offAir?'disabled':''}>${OA.paused?'▶ เล่นต่อ':'⏸ หยุดชั่วคราว'}</button><button class="btn" data-act="oaskip">⏭ จบคลิปนี้</button>`
+              :`<button class="btn pri" data-act="oago" ${ready.length&&on?'':'disabled'}>▶ เริ่มเล่นคิว</button>`}
+            <button class="btn" data-act="oaidle" ${OA.phase==='idle'&&!OA.wantRun?'disabled':''}>☕ หน้าพัก</button>
+          </div></div>
+        <div class="panel"><div class="oah"><i></i>PROGRAM · ฉากที่ออกอากาศ</div>
+          <div class="row">${[[OA_SCENE,'🎞 รีเพลย์'],[OA_BREAK,'☕ พักเบรก'],[OA_CAM,'🎥 กล้องเดิน']].map(([s,t])=>`<button class="btn oascb" data-act="oascene" data-v="${esc(s)}" aria-pressed="${OA.scene===s}" ${on?'':'disabled'}>${t}</button>`).join('')}</div>
+          ${on&&OA.scene&&OA.scene!==OA_SCENE&&OA.scene!==OA_CAM&&OA.scene!==OA_BREAK?`<p class="small muted" style="margin:0">ตอนนี้ OBS อยู่ฉาก "${esc(OA.scene)}"</p>`:''}
+          ${on?`<div class="row"><button class="btn ${live?'bad':''}" data-act="oastream">${live?'■ หยุดไลฟ์':'● เริ่มไลฟ์'}</button><button class="btn" data-act="oarec">${rec?'■ หยุดอัด':'⏺ เริ่มอัด'}</button></div>`:''}</div>
+        <div class="panel oabrkp ${OA.brk?'on':''}"><div class="oah"><i></i>BREAK · พักเบรก / นับถอยหลัง</div>
+          ${OA.brk?`<div class="oabrkt"><span>${esc(OA_BRK[OA.brk.mode])}</span><b class="mono" id="oabrk">${fmtMs(Math.max(0,OA.brk.endsAt-Date.now())).split('.')[0]}</b></div>
+            <div class="row"><button class="btn sm" data-act="oabrkmore" data-v="1">+1 นาที</button><button class="btn sm" data-act="oabrkmore" data-v="5">+5 นาที</button><button class="btn pri" data-act="oabrkend">⏭ จบช่วงนี้ กลับรีเพลย์</button></div>`
+          :`<div class="row"><label class="cc"><span>ช่วง</span><select id="oabrkmode">${Object.entries(OA_BRK).map(([k,t])=>`<option value="${k}" ${OA.brkMode===k?'selected':''}>${t}</option>`).join('')}</select></label>
+            <label class="cc"><span>นาน</span><select id="oabrkmin">${[1,2,3,5,10,15,20,30].map(n=>`<option value="${n}" ${OA.brkMin===n?'selected':''}>${n} นาที</option>`).join('')}</select></label>
+            <button class="btn sm" data-act="oabrkauto" aria-pressed="${OA.brkAuto}">${OA.brkAuto?'✓':'✕'} ครบเวลากลับรีเพลย์เอง</button></div>
+            <button class="btn pri" data-act="oabrk" ${on?'':'disabled'}>☕ เริ่ม${esc(OA_BRK[OA.brkMode])}</button>`}
+        </div>
+        <div class="panel oaset"><div class="oah" style="width:100%"><i></i>RUNDOWN · ตั้งคิว</div>
+          <label class="cc"><span>รายการ</span><select id="oaprogsel"><option value="all">ทุกรายการ</option>${groups.map(g=>`<option ${OA.prog===g?'selected':''}>${esc(g)}</option>`).join('')}</select></label>
+          <label class="cc"><span>หน่วงก่อนปล่อย</span><select id="oadelay">${[0,5,10,15,30,60].map(n=>`<option value="${n}" ${OA.delay===n?'selected':''}>${n?n+' นาทีหลังยืนยันผล':'ไม่หน่วง'}</option>`).join('')}</select></label>
+          <button class="btn sm" data-act="oaauto" aria-pressed="${OA.auto}">${OA.auto?'✓':'✕'} เล่นต่ออัตโนมัติ</button>
+          <button class="btn sm" data-act="oaskipset" aria-pressed="${OA.skipSetup}">${OA.skipSetup?'✓':'✕'} บังช่วงเตรียมหุ่น</button>
+        </div>
+        <div class="panel oasrc"><div class="oah"><i></i>SOURCE · โฟลเดอร์แมตช์</div><div class="row">
+          ${!OA.dir?`<button class="btn pri" data-act="oapick">📂 เลือกโฟลเดอร์แมตช์</button>`:OA.perm!=='ok'?`<button class="btn pri" data-act="oaperm">📂 เปิดโฟลเดอร์ ${esc(OA.dir.name)}</button><button class="btn sm" data-act="oapick" data-v="new">เลือกใหม่</button>`
+            :`<span class="tagx">📂 ${esc(OA.dir.name)} · ${OA.list.length} MATCHES</span><button class="btn sm" data-act="oapick" data-v="new">เปลี่ยนโฟลเดอร์</button>`}</div>
+          ${OA.err?`<div class="callout bad small">${OA.err} · กด "เปลี่ยนโฟลเดอร์" แล้วเลือกใหม่</div>`:''}</div>
+        ${setup}
+      </div>
+      <div class="oacol">
+        <div class="panel"><div class="oah"><i></i>QUEUE · คิว <span class="mono">${ready.length}</span></div>${ready.length?ready.map((m,i)=>row(m,i,'ready')).join(''):'<p class="small muted" style="margin:0">ว่าง · แมตช์ที่ยืนยันผลแล้วจะเข้ามาเอง</p>'}</div>
+        ${wait.length?`<div class="panel"><div class="oah"><i></i>WAITING · รอ <span class="mono">${wait.length}</span></div>${wait.map((m,i)=>row(m,i,'wait')).join('')}</div>`:''}
+        ${done.length?`<details class="panel"><summary class="oah"><i></i>PLAYED · เล่นแล้ว <span class="mono">${done.length}</span></summary>${done.map((m,i)=>row(m,i,'done')).join('')}</details>`:''}
+      </div>
+    </div>
+  </div>`;
+}
+
 /* ---------- team phone ---------- */
 // the team this phone picked; viewers pick once and the phone remembers
 const myTeam=()=>{const q=S.ui.teamQuery.trim().toLowerCase();return q&&S.teams.find(x=>x.id.toLowerCase()===q)||null};
@@ -1658,6 +2016,30 @@ document.addEventListener('click',e=>{
     case'ctrlopen':ui.crField=b.dataset.f;break;
     case'ctrlclose':ui.crField=null;break;
     case'crgo':{const f=b.dataset.f;ui.crHi=f;render();document.getElementById('crtile-'+f)?.scrollIntoView({block:'center',behavior:'smooth'});setTimeout(()=>{if(ui.crHi===f){ui.crHi=null;render()}},2500);return}
+    case'oapick':oaPick(b.dataset.v==='new'||!OA.dir);return;
+    case'oaperm':oaPick(false);return;
+    case'oaconnect':OA.obsWant=true;oaKeep();OBS.connect();break;
+    case'oasetup':obsSetup();return;
+    case'oaeye':{const i=$('#oapw');if(i)i.type=i.type==='password'?'text':'password';return}
+    case'oascene':OBS.req('SetCurrentProgramScene',{sceneName:b.dataset.v}).catch(e=>toast('สลับฉากไม่ได้: '+e.message));return;
+    case'oastream':{const on=OA.stat?.s?.outputActive;if(on&&!confirm('หยุดไลฟ์ตอนนี้?'))return;OBS.req(on?'StopStream':'StartStream').then(()=>toast(on?'หยุดไลฟ์แล้ว':'เริ่มไลฟ์แล้ว')).catch(e=>toast('ไลฟ์ไม่ได้: '+e.message));return}
+    case'oarec':{const on=OA.stat?.r?.outputActive;OBS.req(on?'StopRecord':'StartRecord').then(()=>toast(on?'หยุดอัดแล้ว':'เริ่มอัดแล้ว')).catch(e=>toast('อัดไม่ได้: '+e.message));return}
+    case'oago':OA.wantRun=true;oaNext();return;
+    case'oaplay':oaPlay(OA.list.find(x=>x.id===b.dataset.v));return;
+    case'oapause':oaMedia(OA.paused?'PLAY':'PAUSE').then(()=>{OA.paused=!OA.paused;render()});return;
+    case'oaskip':oaDone();return;
+    case'oaidle':oaIdle();return;
+    case'oaup':oaMove(b.dataset.v,-1);break;
+    case'oadown':oaMove(b.dataset.v,1);break;
+    case'oadrop':OA.played.add(b.dataset.v);oaKeep();break;
+    case'oaagain':OA.played.delete(b.dataset.v);oaKeep();break;
+    case'oaretry':OA.bad.delete(b.dataset.v);break;
+    case'oabrk':oaBreak();return;
+    case'oabrkend':oaBrkEnd();return;
+    case'oabrkmore':oaBrkMore(+b.dataset.v);return;
+    case'oabrkauto':OA.brkAuto=!OA.brkAuto;oaKeep();break;
+    case'oaauto':OA.auto=!OA.auto;oaKeep();break;
+    case'oaskipset':OA.skipSetup=!OA.skipSetup;oaKeep();break;
     case'ctrlsnapall':fieldsSorted().forEach(c=>ctrlCmd(c.field,'timer','snap'));toast('ขอภาพทุกสนามแล้ว');return;
     case'ctrlauto':CTRLAUTO=!CTRLAUTO;if(CTRLAUTO)fieldsSorted().forEach(c=>ctrlCmd(c.field,'timer','snap'));break;
     case'ctrlsound':CTRLSOUND=!CTRLSOUND;if(CTRLSOUND){noteSoundReady();noteSound(1)}break;
@@ -1770,6 +2152,12 @@ document.addEventListener('change',e=>{
   if(el.id==='venue'){S.venue=el.value;toast('เปลี่ยนเป็น'+VENUES.find(v=>v[0]===el.value)[1]+(CLOUD?'':' (โหมดตัวอย่างใช้ข้อมูลชุดเดียวกัน)'));save();render();return}
   if(el.dataset?.ctrl){const [f,part,key]=el.dataset.ctrl.split('|'),v=el.value;if(!v)return;
     (f==='*'?fieldsSorted().map(c=>c.field):[f]).forEach(x=>ctrlSend(x,part,{[key]:v}));toast(f==='*'?'ใช้กับทุกสนามแล้ว':'ส่งคำสั่งแล้ว');render();return}
+  if(el.id==='oaprogsel'){OA.prog=el.value;oaKeep();render();return}
+  // Explorer's "Copy as path" wraps the path in quotes
+  if(['oaws','oapw','oabase','oaads','oasnd','oacredit'].includes(el.id)){OA[el.id.slice(2)]=/^oa(base|ads|snd)$/.test(el.id)?el.value.trim().replace(/^"|"$/g,''):el.value.trim();oaKeep();render();return}
+  if(el.id==='oabrkmode'){OA.brkMode=el.value;oaKeep();render();return}
+  if(el.id==='oabrkmin'){OA.brkMin=+el.value;oaKeep();return}
+  if(el.id==='oadelay'){OA.delay=+el.value;oaKeep();render();return}
   if(el.id==='gsel'){GFX=GFX_LIST[el.value]?el.value:'strip';keep('ptarena:gfx',GFX);return}
   if(el.id==='camsel'){CAMID=el.value;keep('ptarena:cam',CAMID);camOn();return}
   if(el.id==='qsel'){QUAL=el.value;keep('ptarena:camq',QUAL);camOn();return}

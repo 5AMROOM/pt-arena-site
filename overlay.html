@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>PT Arena · กราฟิกออกอากาศ</title>
+<!-- OBS Browser Source, 1920×1080, see-through. OBS plays the RoboArena clip under it; the clip already carries
+     RoboArena's own match graphics, so during a run this page shows nothing at all. Between runs it fills the
+     screen with cards drawn in RoboArena's look: setup, result, next, stand by, and a break countdown.
+     The studio page (ห้องส่ง) tells it what to show through OBS's websocket.
+     Address: overlay.html#ws=ws://127.0.0.1:4455&pw=<websocket password> -->
+<style>
+:root{--line:#263c60;--muted:#91a8c7;--blue:#6099ff;--brand:#3268f5}
+*{box-sizing:border-box;margin:0}
+html,body{width:1920px;height:1080px;background:transparent;overflow:hidden}
+body{font-family:"Segoe UI","Leelawadee UI",Tahoma,sans-serif;color:#edf4ff;line-height:1.35}
+.mono{font-family:Consolas,"Courier New",monospace;font-variant-numeric:tabular-nums;font-weight:700}
+
+/* the cards: RoboArena's match report, laid out for a 1920×1080 screen */
+.card{position:absolute;inset:0;padding:70px 96px 60px;display:flex;flex-direction:column;gap:30px;opacity:0;visibility:hidden;transition:opacity .5s,visibility 0s .5s;
+  background:radial-gradient(ellipse at 80% 0,#18386b66,transparent 55%),#080f1e}
+.card:before{content:'';position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(#638dce07 1px,transparent 1px),linear-gradient(90deg,#638dce07 1px,transparent 1px);background-size:66px 66px}
+body.result #cres,body.next #cnext,body.intro #cnext,body.idle #cidle,body.break #cbrk{opacity:1;visibility:visible;transition:opacity .5s}
+.card>*{position:relative}
+header{display:flex;align-items:center;justify-content:space-between}
+.brand{display:flex;align-items:center;gap:20px;font-size:36px;font-weight:800;letter-spacing:3px}
+.brand small{display:block;font-size:14px;letter-spacing:4px;color:var(--muted);font-weight:700}
+.bm{display:grid;place-items:center;width:76px;height:76px;background:var(--brand);clip-path:polygon(18% 0,100% 0,100% 82%,82% 100%,0 100%,0 18%);font-size:28px;font-weight:800;letter-spacing:1px}
+.tag{font-size:17px;letter-spacing:2.4px;font-weight:700;border:1px solid #375785;padding:10px 18px;border-radius:7px;color:#abc8f5;white-space:nowrap}
+.tag.good{color:#89e2c0;border-color:#2d655e}
+.hero{position:relative;overflow:hidden;padding:46px 56px 52px;background:linear-gradient(115deg,#183b77,#142843 65%,#172452);border:1px solid #375a91;border-radius:22px}
+.hero:after{content:'';position:absolute;width:460px;height:460px;right:40px;top:-190px;border:52px solid #729fff0d;transform:rotate(45deg)}
+.hero-line{position:absolute;bottom:0;left:0;height:5px;width:65%;background:linear-gradient(90deg,#76caff,#4662f5,transparent)}
+.eyebrow{font-size:17px;font-weight:700;letter-spacing:3px;color:#9dbfee;text-transform:uppercase}
+.hero h1{font-size:96px;line-height:1.15;margin:16px 0 22px;letter-spacing:-1px;overflow-wrap:anywhere}
+.hero p{font-size:30px;color:#c4d6f0}
+.hb{display:flex;flex-wrap:wrap;gap:46px;font-size:17px;letter-spacing:2px;color:#a5bfdf;font-weight:700;margin-top:22px}
+.hb b{color:#fff;margin-left:10px;font-size:28px;letter-spacing:0}
+.grid{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:26px}
+.panel{background:linear-gradient(135deg,#14233b,#0d192b);border:1px solid var(--line);border-radius:18px;padding:30px 36px;min-width:0}
+.panel .eyebrow{font-size:15px}
+.score{font-size:132px;line-height:1.1;color:#91c3ff}
+.score small{font-size:44px;color:#7692b8}
+.clock{font-size:92px;line-height:1.3;letter-spacing:-3px}
+.panel>span{display:block;color:var(--muted);font-size:20px}
+.panel>span b{color:#d9e9ff;margin-left:10px}
+.ms{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:26px}
+.mi{display:flex;align-items:center;gap:16px;padding:22px 28px;background:linear-gradient(135deg,#14233b,#0d192b);border:1px solid var(--line);border-radius:16px}
+.mi div{flex:1;min-width:0}
+.mi b{display:block;font-size:24px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mi small{display:block;font-size:14px;color:var(--muted);letter-spacing:1.5px;margin-top:4px}
+.mi strong{font-size:46px}
+.mi strong span{font-size:24px;color:var(--muted)}
+.idle-mid{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;text-align:center}
+.idle-mid .bm{width:150px;height:150px;font-size:56px}
+.idle-mid h1{font-size:120px;line-height:1.1}
+.idle-mid p{font-size:34px;color:#a5bfdf;letter-spacing:2px}
+/* the result fills the screen: the block sits in the middle, numbers sized to read from across a hall */
+#cres .grid{margin-top:auto;grid-template-columns:1.2fr 1fr 1fr}
+#cres .ms{margin-bottom:auto}
+#cres .grid>*{padding:40px 44px}
+#rteam{font-size:78px!important}
+#cres .score{font-size:180px;line-height:1}
+#cres .score small{font-size:56px}
+#cres .clock{font-size:118px;line-height:1.35}
+#cres .mi{padding:30px 34px}
+#cres .mi b{font-size:28px}
+#cres .mi strong{font-size:64px}
+#cres .mi strong span{font-size:30px}
+/* a blue stripe sweeps across every time a card changes */
+.sweep{position:absolute;inset:0;pointer-events:none;background:linear-gradient(100deg,transparent 40%,#3268f5 40%,#76caff 52%,transparent 52%);transform:translateX(-120%);opacity:0}
+.sweep.go{animation:sweep .7s cubic-bezier(.6,0,.3,1)}
+@keyframes sweep{0%{transform:translateX(-120%);opacity:1}100%{transform:translateX(120%);opacity:1}}
+.card .in{transition:transform .6s cubic-bezier(.2,.8,.2,1),opacity .6s;transform:translateY(24px);opacity:0}
+body.result #cres .in,body.next #cnext .in,body.intro #cnext .in,body.idle #cidle .in,body.break #cbrk .in{transform:none;opacity:1}
+/* the break card: OBS plays the shop-ad slideshow UNDER this page at x800 y200 1040×585, so the card cuts that
+   rectangle out of itself. An evenodd clip-path on the whole card (background, grid, children) is one rule CEF
+   has drawn reliably for years, and the frame and label sit just outside the hole so the clip leaves them alone. */
+#cbrk{clip-path:polygon(evenodd,0 0,1920px 0,1920px 1080px,0 1080px,0 0,800px 200px,1840px 200px,1840px 785px,800px 785px,800px 200px)}
+#cbrk .bk-frame{position:absolute;left:796px;top:196px;width:1048px;height:593px;border:2px solid #375a91}
+#cbrk .bk-ad{position:absolute;left:798px;top:162px;font-size:15px}
+#cbrk .bk-left{position:absolute;left:96px;top:200px;width:644px;height:585px;display:flex;flex-direction:column;padding:40px 48px 44px}
+#cbrk .hero h1{font-size:62px;line-height:1.2;margin:14px 0 0;letter-spacing:0}
+#cbrk .hero p{margin-top:auto}
+#bclock{font-size:150px;line-height:1.1;letter-spacing:-4px;color:#91c3ff;margin-top:6px}
+#bclock.long{font-size:112px} /* h:mm:ss is two characters wider; keep it inside the panel */
+#bsub{position:absolute;left:96px;top:815px;width:644px;font-size:30px;color:#c4d6f0}
+#bcredit{position:absolute;left:96px;bottom:60px;width:644px;font-size:20px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+</style>
+</head>
+<body class="idle">
+
+<div class="card" id="cnext">
+  <header class="in"><div class="brand"><div class="bm">PT</div><div>ROBOARENA<small>THAILAND YOUTH ROBOTICS CHAMPIONSHIP 2026</small></div></div><span class="tag" id="nk2">NEXT MATCH</span></header>
+  <div class="hero in" style="margin:auto 0"><div class="eyebrow" id="nk">ทีมถัดไป · NEXT MATCH</div><h1 id="nteam"></h1><p id="nschool"></p>
+    <div class="hb"><span>FIELD<b id="nfield"></b></span><span>ROUND<b id="nround"></b></span><span>EVENT<b id="nprog"></b></span></div><div class="hero-line"></div></div>
+</div>
+
+<div class="card" id="cres">
+  <header class="in"><div class="brand"><div class="bm">PT</div><div>ROBOARENA<small>OFFICIAL MATCH RESULT</small></div></div><span class="tag good">RESULT CONFIRMED · ยืนยันผลแล้ว</span></header>
+  <div class="grid in">
+    <div class="hero" style="padding:34px 44px"><div class="eyebrow" id="rprog"></div><h1 id="rteam" style="font-size:66px;margin:12px 0 10px"></h1><p id="rschool" style="font-size:24px"></p><div class="hero-line"></div></div>
+    <div class="panel"><div class="eyebrow">TOTAL SCORE · คะแนน</div><div class="score mono"><span id="rsc"></span><small id="rmax"></small></div><span>ยืนยันผลแล้ว</span></div>
+    <div class="panel"><div class="eyebrow">MATCH TIME · เวลา</div><div class="clock mono" id="rtime"></div><span>RETRY<b id="rretry"></b></span></div>
+  </div>
+  <div class="ms in" id="rms"></div>
+</div>
+
+<div class="card" id="cidle">
+  <header class="in"><div class="brand"><div class="bm">PT</div><div>ROBOARENA<small>THAILAND YOUTH ROBOTICS CHAMPIONSHIP 2026</small></div></div><span class="tag">STAND BY</span></header>
+  <div class="idle-mid in"><div class="bm">PT</div><h1 id="ititle">โปรดรอสักครู่</h1><p id="isub"></p></div>
+</div>
+
+<div class="card" id="cbrk">
+  <header class="in"><div class="brand"><div class="bm">PT</div><div>ROBOARENA<small>THAILAND YOUTH ROBOTICS CHAMPIONSHIP 2026</small></div></div><span class="tag">STAND BY</span></header>
+  <div class="eyebrow bk-ad in">SPONSOR · พื้นที่โฆษณา</div><div class="bk-frame in"></div>
+  <div class="hero bk-left in"><div class="eyebrow" id="bk"></div><h1 id="btitle"></h1><p id="bline"></p><div class="mono" id="bclock">00:00</div><div class="hero-line"></div></div>
+  <div class="in" id="bsub"></div>
+  <div class="in" id="bcredit"></div>
+</div>
+<div class="sweep" id="sweep"></div>
+<script>
+const $=id=>document.getElementById(id);
+const opt=Object.fromEntries(new URLSearchParams(location.hash.slice(1)));
+const set=(id,t)=>{$(id).textContent=t??''};
+let now='idle',tick=0;
+const BRK={live:['ON AIR SOON','การถ่ายทอดสดจะเริ่มในอีก',''],match:['MATCH STARTS SOON','การแข่งขันจะเริ่มในอีก',''],
+  break:['BREAK · พักการแข่งขัน','พักการแข่งขัน','จะกลับมาในอีก']};
+const p2=n=>String(n).padStart(2,'0');
+// one message from the studio page = what the screen shows now
+function show(m){
+  if(m.k==='score')return;
+  clearInterval(tick);
+  if(m.k==='next'||m.k==='intro'){set('nk',m.k==='intro'?'เตรียมความพร้อม · SETUP':'ทีมถัดไป · NEXT MATCH');set('nk2',m.k==='intro'?'SETUP':'NEXT MATCH');
+    set('nteam',m.team);set('nschool',m.school);set('nfield',m.field);set('nround',m.round);set('nprog',m.prog)}
+  if(m.k==='result'){set('rprog',m.prog+' · FIELD '+m.field+' · ROUND '+m.round);set('rteam',m.team);set('rschool',m.school);set('rsc',m.total);set('rmax',m.max?'/'+m.max:'');
+    set('rtime',m.time);set('rretry',m.retry);$('rms').innerHTML='';
+    for(const x of m.missions||[]){const d=document.createElement('div');d.className='mi';
+      d.innerHTML='<div><b></b><small></small></div><strong class="mono"></strong>';d.querySelector('b').textContent=x.label;d.querySelector('small').textContent=x.pts+' PTS EACH';
+      const st=d.querySelector('strong');st.textContent=x.n;const sp=document.createElement('span');sp.textContent='/'+x.max;st.append(sp);$('rms').append(d)}}
+  if(m.k==='idle'){set('ititle',m.title||'โปรดรอสักครู่');set('isub',m.sub)}
+  if(m.k==='break'){const t=BRK[m.mode]||BRK.break,end=Number(m.endsAt)||0;set('bk',t[0]);set('btitle',t[1]);set('bline',t[2]);
+    set('bsub',m.sub);set('bcredit',m.credit?'♪ '+m.credit:'');
+    // count from the clock in this page, so a late or repeated message never makes the time jump
+    const f=()=>{const s=Math.max(0,Math.ceil((end-Date.now())/1000)),h=Math.floor(s/3600),c=$('bclock');
+      c.classList.toggle('long',h>0);c.textContent=(h?h+':'+p2(Math.floor(s/60)%60):p2(Math.floor(s/60)))+':'+p2(s%60)};
+    f();tick=setInterval(f,250)}
+  const card=k=>k==='play'?'':k==='intro'?'next':k;
+  if(card(m.k)!==card(now)&&m.k!=='play'){const s=$('sweep');s.classList.remove('go');void s.offsetWidth;s.classList.add('go')}
+  now=m.k;document.body.className=m.k;
+}
+// obs-websocket 5: hello → identify (with the password when one is set) → listen for the studio's custom events.
+// When the link drops the screen keeps what it shows; a wrong password stops the retries.
+const b64=buf=>btoa(String.fromCharCode(...new Uint8Array(buf)));
+const sha=async s=>b64(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)));
+function connect(){
+  let ws;try{ws=new WebSocket(opt.ws||'ws://127.0.0.1:4455','obswebsocket.json')}catch(e){console.warn('bad OBS address',e);return}
+  ws.onmessage=async e=>{const m=JSON.parse(e.data);
+    if(m.op===0){const a=m.d.authentication;const d={rpcVersion:1,eventSubscriptions:1};
+      if(a)d.authentication=await sha(await sha((opt.pw||'')+a.salt)+a.challenge);ws.send(JSON.stringify({op:1,d}))}
+    else if(m.op===2)ws.send(JSON.stringify({op:6,d:{requestType:'BroadcastCustomEvent',requestId:'hi',requestData:{eventData:{pt:1,k:'hello'}}}}));
+    else if(m.op===5&&m.d.eventType==='CustomEvent'&&m.d.eventData?.pt===1&&m.d.eventData.k!=='hello')show(m.d.eventData)};
+  ws.onclose=e=>{if(e.code===4009){console.warn('OBS websocket password is wrong: run "ตั้งฉากให้ใน OBS" again');return}setTimeout(connect,2000)};
+}
+connect();
+</script>
+</body>
+</html>
