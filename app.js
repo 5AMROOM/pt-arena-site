@@ -1227,11 +1227,13 @@ function vField(){
     ${ROLE==='staff'?`<p class="note" style="margin:0"><b>วิธีใส่ภาพ</b> · วางไฟล์ในโฟลเดอร์ <span class="mono">fields</span> ตั้งชื่อตามสนาม เช่น <span class="mono">A.jpg</span> ถึง <span class="mono">G.jpg</span> และ <span class="mono">map.jpg</span> สำหรับผังงาน ใช้ jpg png หรือ webp ได้</p>`:''}</div>`;
 }
 
-/* ---------- live: one channel per competition, video on top when a link is set, the fields of that competition under it ---------- */
+/* ---------- live: the stream itself is watched on YouTube, Facebook or TikTok (the event site links there too, nothing is embedded);
+   this tab gives the three links and, per competition, what is happening on each field right now ---------- */
 function channels(){const m=[];fieldsSorted().forEach(c=>{const tag=S.comps[c.comp].tag;let ch=m.find(x=>x.tag===tag);if(!ch)m.push(ch={id:c.comp,tag,cls:[]});ch.cls.push(c)});return m}
-const ytId=u=>{const m=/(?:youtu\.be\/|[?&]v=|\/live\/|\/embed\/|\/shorts\/)([\w-]{11})/.exec(u||'');return m?m[1]:null};
+const LIVE_SITES=[['yt','YouTube','youtube.com/@ชื่อช่อง/live'],['fb','Facebook','facebook.com/ชื่อเพจ/live'],['tt','TikTok','tiktok.com/@ชื่อบัญชี/live']];
+const liveLinks=()=>LIVE_SITES.map(([k,n])=>[k,n,((S.live||{})[k]||'').trim()]).filter(x=>/^https:\/\//.test(x[2]));
 function liveCh(){const all=channels(),mine=ROLE==='staff'?null:myTeam();return all.find(x=>x.id===S.ui.liveCh)||(mine&&all.find(x=>x.cls.some(c=>c.id===mine.cls)))||all[0]}
-const liveKey=()=>{const ch=liveCh();return ch.id+'|'+((S.live||{})[ch.id]||'')};
+const liveKey=()=>liveLinks().map(x=>x[2]).join('|');
 const chBar=()=>{const on=liveCh();return channels().map(ch=>`<button class="ch" data-act="ch" data-v="${ch.id}" aria-pressed="${ch.id===on.id}"><b>${esc(ch.tag)}</b><small>สนาม ${ch.cls.map(c=>c.field).join(' ')}${ch.cls.some(c=>timerOf(c.field).state==='run')?' <i class="dot"></i>':''}</small></button>`).join('')};
 function liveBody(){
   const ch=liveCh(),mine=ROLE==='staff'?null:myTeam();
@@ -1253,10 +1255,10 @@ function liveBody(){
     </div>`}).join('');
 }
 function vLive(){
-  const ch=liveCh(),url=((S.live||{})[ch.id]||'').trim(),id=ytId(url);
-  const video=id?`<div class="yt"><iframe src="https://www.youtube-nocookie.com/embed/${id}?playsinline=1&rel=0" title="ไลฟ์ ${esc(ch.tag)}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>`
-    :/^https:\/\//.test(url)?`<a class="btn pri big" style="justify-content:center" href="${esc(url)}" target="_blank" rel="noopener">▶ ดูไลฟ์</a>`:'';
-  return`<div class="live"><div class="chbar">${chBar()}</div><div id="ytbox" data-k="${esc(liveKey())}">${video}</div><div id="livebody" class="grid">${liveBody()}</div></div>`;
+  const links=liveLinks();
+  const go=links.length?`<div class="lgo">${links.map(([k,n,u])=>`<a class="lgo-${k}" href="${esc(u)}" target="_blank" rel="noopener"><i aria-hidden="true">▶</i><span><small>ดูไลฟ์ทาง</small><b>${n}</b></span></a>`).join('')}</div>`
+    :'<p class="small muted" style="margin:0;text-align:center">ลิงก์ไลฟ์จะขึ้นที่นี่ก่อนเริ่มถ่ายทอดสด</p>';
+  return`<div class="live"><div id="ytbox" data-k="${esc(liveKey())}">${go}</div><div class="chbar">${chBar()}</div><div id="livebody" class="grid">${liveBody()}</div></div>`;
 }
 
 /* ---------- "your turn" alerts on a team's phone: one when a single team is ahead, one when it is their turn.
@@ -1558,6 +1560,16 @@ async function oaScan(){
   if(sig!==OA.sig){OA.sig=sig;oaDraw()}
   // a match that has just come in starts by itself when the stream is sitting on the break card
   if(OA.auto&&OA.wantRun&&OA.phase==='idle'&&!OA.hold&&OBS.ok)oaNext();
+  oaWarm();
+}
+// Google Drive can keep a file "online only" until something opens it; reading the next two clips through once
+// makes Drive bring them down to this computer before OBS needs them. One clip at a time, best effort.
+async function oaWarm(){
+  if(OA.warming)return;OA.warm=OA.warm||new Set();
+  const m=oaQueue().filter(x=>x.synced&&x.id!==OA.cur?.id).slice(0,2).find(x=>!OA.warm.has(x.id));if(!m)return;
+  OA.warming=true;
+  try{const r=(await (await m.dir.getFileHandle(m.file)).getFile()).stream().getReader();while(!(await r.read()).done);OA.warm.add(m.id)}catch(e){}
+  OA.warming=false;
 }
 async function oaLoad(){
   try{OA.dir=await kv('readonly',st=>st.get('oadir'))||null;if(OA.dir){OA.perm=await OA.dir.queryPermission({mode:'read'})==='granted'?'ok':'ask';await oaScan()}}catch(e){OA.dir=null}
@@ -1996,8 +2008,8 @@ C102,ทีม Lotus,โรงเรียนตัวอย่างวิท�
     <div class="panel"><h2>ส่งคลิปขึ้น Google Drive</h2><p class="small muted" style="margin:0">คลิปยังเซฟในเครื่องจับเวลาเหมือนเดิม และอัปโหลดสำเนาขึ้นไดรฟ์ให้อัตโนมัติ วิธีตั้งค่าอยู่ใน README หัวข้อ "ส่งคลิปขึ้น Google Drive"</p>
       <label class="tset" style="color:var(--muted)"><span>ลิงก์สคริปต์อัปโหลด (ได้ตอน Deploy)</span><input type="text" inputmode="url" placeholder="https://script.google.com/macros/s/…/exec" value="${esc(S.drive?.url||'')}" data-bind="driveurl" style="width:100%"></label>
       <div class="row"><span class="pill ${S.drive?.key?'ok':'warn'}">${S.drive?.key?'มีกุญแจแล้ว':'ยังไม่มีกุญแจ'}</span><button class="btn sm" data-act="drivekey">${S.drive?.key?'สร้างกุญแจใหม่':'สร้างกุญแจ'}</button>${S.drive?.key?`<button class="btn sm" data-act="drivecopy">คัดลอกกุญแจ</button>`:''}<button class="btn sm" data-act="drivetest" ${S.drive?.url&&S.drive?.key?'':'disabled'}>ทดสอบ</button></div></div>
-    <div class="panel"><h2>ไลฟ์ของแต่ละช่อง</h2><p class="small muted" style="margin:0">วางลิงก์ YouTube Live ของช่องนั้น ไลฟ์จะขึ้นในแท็บ "สด" ลิงก์อื่น เช่น Zoom จะขึ้นเป็นปุ่มกดเปิด เว้นว่างได้</p>
-      ${channels().map(ch=>`<label class="tset" style="color:var(--muted)"><span>${esc(ch.tag)} · สนาม ${ch.cls.map(c=>c.field).join(' ')}</span><input type="text" inputmode="url" placeholder="https://youtube.com/live/…" value="${esc((S.live||{})[ch.id]||'')}" data-bind="live" data-c="${ch.id}" style="width:100%"></label>`).join('')}</div>
+    <div class="panel"><h2>ลิงก์ไลฟ์</h2><p class="small muted" style="margin:0">ใช้ลิงก์ประจำช่องที่ไม่เปลี่ยนทุกครั้งที่ไลฟ์ ขึ้นเป็นปุ่มในแท็บ "สด" ช่องที่เว้นว่างจะไม่มีปุ่ม</p>
+      ${LIVE_SITES.map(([k,n,ex])=>`<label class="tset" style="color:var(--muted)"><span>${n}</span><input type="text" inputmode="url" placeholder="https://${ex}" value="${esc((S.live||{})[k]||'')}" data-bind="live" data-c="${k}" style="width:100%"></label>`).join('')}</div>
     <div class="panel"><h2>ลำดับการแข่ง</h2><p class="small muted" style="margin:0">เรียงตามผลจับสลากของแต่ละรุ่น</p>
       <select id="osel" aria-label="เลือกรุ่น">${S.classes.map(c=>`<option value="${c.id}" ${c.id===oc.id?'selected':''}>${esc(S.comps[c.comp].tag)} ${esc(c.level)}</option>`).join('')}</select>
       <div>${orderRows||'<span class="muted small">ยังไม่มีทีมในรุ่นนี้</span>'}</div></div>
@@ -2024,7 +2036,8 @@ document.addEventListener('click',e=>{
     case'oascene':OBS.req('SetCurrentProgramScene',{sceneName:b.dataset.v}).catch(e=>toast('สลับฉากไม่ได้: '+e.message));return;
     case'oastream':{const on=OA.stat?.s?.outputActive;if(on&&!confirm('หยุดไลฟ์ตอนนี้?'))return;OBS.req(on?'StopStream':'StartStream').then(()=>toast(on?'หยุดไลฟ์แล้ว':'เริ่มไลฟ์แล้ว')).catch(e=>toast('ไลฟ์ไม่ได้: '+e.message));return}
     case'oarec':{const on=OA.stat?.r?.outputActive;OBS.req(on?'StopRecord':'StartRecord').then(()=>toast(on?'หยุดอัดแล้ว':'เริ่มอัดแล้ว')).catch(e=>toast('อัดไม่ได้: '+e.message));return}
-    case'oago':OA.wantRun=true;oaNext();return;
+    // start means start: when OBS shows another scene, the replay scene comes up and the queue begins on it
+    case'oago':OA.wantRun=true;if(OA.scene&&OA.scene!==OA_SCENE){OA.hold=true;OBS.req('SetCurrentProgramScene',{sceneName:OA_SCENE}).catch(e=>toast('สลับฉากไม่ได้: '+e.message))}else oaNext();return;
     case'oaplay':oaPlay(OA.list.find(x=>x.id===b.dataset.v));return;
     case'oapause':oaMedia(OA.paused?'PLAY':'PAUSE').then(()=>{OA.paused=!OA.paused;render()});return;
     case'oaskip':oaDone();return;

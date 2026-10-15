@@ -831,4 +831,17 @@ body.oadesk .tab[aria-selected=true]{background:#3268f5;box-shadow:none}
 .oabrkt{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
 .oabrkt span{font-size:13px;color:var(--ra-muted)}
 .oabrkt b{font-size:44px;color:#91c3ff}
+/* live: one big button per platform, in its own colour */
+.lgo{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:10px}
+@media (max-width:700px){.lgo{grid-template-columns:minmax(0,1fr)}}
+.lgo a{display:flex;align-items:center;gap:14px;padding:14px 18px;border-radius:18px;color:#fff;text-decoration:none;min-height:64px;box-shadow:0 8px 22px rgba(0,0,0,.35);transition:transform .08s}
+.lgo a:active{transform:scale(.98)}
+.lgo i{font-style:normal;width:38px;height:38px;flex:none;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.2);font-size:15px}
+.lgo span{display:flex;flex-direction:column;line-height:1.25}
+.lgo small{font-size:12px;opacity:.85}
+.lgo b{font-family:var(--f-display);font-size:20px}
+.lgo-yt{background:linear-gradient(135deg,#ff2d3d,#c4001a)}
+.lgo-fb{background:linear-gradient(135deg,#2f8bff,#1458c8)}
+.lgo-tt{background:linear-gradient(135deg,#111,#2a2a2a);border:1px solid #25f4ee66}
+.lgo-tt i{background:linear-gradient(135deg,#25f4ee,#fe2c55)}
 
