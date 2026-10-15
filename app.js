@@ -1548,7 +1548,7 @@ const OA_ADBOX={x:800,y:200,w:1040,h:585};
 const OA_SND={loop:'pt_loop.wav',sting:'pt_sting.wav',open:'pt_open.wav'};
 const OA_BRK={break:'พักการแข่งขัน',match:'ก่อนเริ่มแข่ง',live:'ก่อนเริ่มไลฟ์'};
 // break music: the file in the sound folder, picked per break
-const OA_BGM={'pt_loop.wav':'สดใส ปลุกใจ','pt_loop_chill.wav':'ชิลล์ (vaportrap)','pt_loop_house.wav':'แดดเช้า (house)','pt_loop_wave.wav':'ลอยๆ (wave)'};
+const OA_BGM={'pt_loop.wav':'สดใส ปลุกใจ','pt_loop_chill.wav':'ชิลล์ (vaportrap)','pt_loop_house.wav':'แดดเช้า (house)','pt_loop_wave.wav':'ลอยๆ (wave)','pt_loop_hiphop.wav':'ฮิปฮอป (boom-bap)','pt_loop_funk.wav':'ฟังก์ (funk)'};
 // tools/studio_helper.py on this computer keeps copies of the clips that OBS can jump inside
 const OA_HELPER='http://127.0.0.1:8788';
 // the walking camera (DJI Osmo Pocket 4P through the Mimo app) sends RTMP to MediaMTX on this computer
