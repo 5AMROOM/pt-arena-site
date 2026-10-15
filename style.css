@@ -606,4 +606,34 @@ body.camfull .campv{position:fixed;inset:0;border-radius:0;aspect-ratio:auto;z-i
 .cr-drawer .cc select{min-height:40px;font-size:14px}
 .cr.drawer-open .cr-body{margin-right:min(420px,100vw)}
 @media (max-width:1100px){.cr.drawer-open .cr-body{margin-right:0}}
+/* control room as a wall: every field side by side on one screen, nothing to scroll */
+body.crwall .top,body.crwall #demo{display:none}
+body.crwall .app{max-width:none;padding:8px 12px 12px;gap:8px}
+body.crwall .tabs-wrap{margin-inline:-12px;padding-inline:12px}
+.cr{gap:8px}
+.cr-top{padding:8px 12px;position:static}
+.cr-top h2{font-size:18px}
+.cr-grid{grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
+@media (min-width:1200px){.cr-grid{grid-template-columns:repeat(7,minmax(0,1fr))}}
+@media (min-width:700px) and (max-width:1199px){.cr-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.cr-tile{padding:8px;gap:6px}
+.cr-head{flex-wrap:nowrap;align-items:center;gap:8px}
+.cr-letter{font-family:var(--f-display);font-size:30px;line-height:1;min-width:26px}
+.cr-what{font-size:12px;color:var(--muted);line-height:1.25;flex:1;min-width:0}
+.cr-leds{flex-direction:column;align-items:flex-end;gap:2px;margin-left:0}
+.led{font-size:10px;padding:0 6px}
+.cr-live{gap:6px}
+.cr-live b{font-size:14px}
+.cr-live small{font-size:11px}
+.cr-clock{font-size:15px}
+.cr-score{font-size:22px;min-width:28px}
+.cr-info{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cr-tile .devp span{font-size:11px;padding:1px 8px}
+.cr-act{gap:4px;padding-top:6px}
+.cr-act .btn{min-height:30px;padding:2px 6px;font-size:12px;flex:1 1 40%}
+.cr-body{grid-template-columns:minmax(0,1fr)}
+.cr-log{max-height:150px;position:static;display:block;columns:3 280px;column-gap:20px}
+.cr-log h3{column-span:all;margin-bottom:6px}
+.cr-log div{break-inside:avoid;margin-bottom:4px}
+.cr.drawer-open .cr-body,.cr.drawer-open .cr-grid{margin-right:0}
 
