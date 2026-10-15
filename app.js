@@ -1,5 +1,5 @@
 const VENUES=[['C','ภาคกลาง · นนทบุรี','14–15 พ.ย. 2569'],['S','ภาคใต้ · สุราษฎร์ธานี','21–22 พ.ย. 2569'],['E','ภาคตะวันออก · ชลบุรี','28–29 พ.ย. 2569'],['N','ภาคเหนือ · แพร่','19–20 ธ.ค. 2569'],['NE','ภาคตะวันออกเฉียงเหนือ · ร้อยเอ็ด','26–27 ธ.ค. 2569']];
-const TABS=[['overview','ภาพรวมสนาม','หัวหน้ากรรมการ'],['devices','ห้องควบคุม','หัวหน้างาน'],['checkin','เช็กอิน & ตรวจหุ่น','จุดลงทะเบียน'],['judge','กรรมการให้คะแนน','แท็บเล็ตประจำสนาม'],['board','กระดานผล','ทุกคน'],['live','สด','ดูการแข่งสด'],['team','หน้าทีม','มือถือครู/นักเรียน'],['field','สนาม','ภาพสนามแข่ง'],['screen','โหมดจอ','ถ้ามีจอในงาน'],['mc','เรียกคิว','พิธีกร'],['admin','ตั้งค่า','แอดมิน']];
+const TABS=[['overview','ภาพรวมสนาม','หัวหน้ากรรมการ'],['devices','ห้องควบคุม','หัวหน้างาน'],['checkin','เช็กอิน & ตรวจหุ่น','จุดลงทะเบียน'],['judge','กรรมการให้คะแนน','ประจำสนาม'],['board','กระดานผล','ทุกคน'],['live','สด','ดูแข่งสด'],['team','หน้าทีม','ครู · นักเรียน'],['field','สนาม','ภาพสนาม'],['screen','จอใหญ่','จอในงาน'],['mc','เรียกคิว','พิธีกร'],['admin','ตั้งค่า','แอดมิน']];
 // Scoring and the inspection list follow the rule PDFs linked from the registration site; nothing here is our own rule. A mission with "needs" only counts once the missions
 // it names are complete ('all' = every mission without "needs"). Retries cost no points; they only break ties.
 // "closes": once this mission is scored the listed ones can no longer go up (KidsBiT: yellow is the last box collected).
@@ -122,6 +122,18 @@ document.addEventListener('fullscreenchange',()=>{if(S.ui.view==='timer'&&!docum
 window.addEventListener('hashchange',()=>{readHash();window.PT_BACKEND?.role?.();render()});
 
 /* ---------- shell ---------- */
+const ICO={team:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/>',
+  live:'<circle cx="12" cy="12" r="2"/><path d="M8.5 8.5a5 5 0 0 0 0 7M15.5 8.5a5 5 0 0 1 0 7M5.6 5.6a9 9 0 0 0 0 12.8M18.4 5.6a9 9 0 0 1 0 12.8"/>',
+  board:'<path d="M8 4h8v6a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 14v4M8 20h8"/>',
+  field:'<path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v14M15 6v14"/>',
+  judge:'<path d="M9 3h6v4H9zM8 5H5v16h14V5h-3M9 13l2 2 4-4"/>',
+  flag:'<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',
+  bell:'<path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 21h4"/>',
+  check:'<path d="M5 12l5 5 9-10"/>',
+  wait:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  alert:'<path d="M12 3l10 18H2zM12 10v4M12 17.5v.5"/>',
+  play:'<path d="M7 4l13 8-13 8z"/>'};
+const icon=n=>`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICO[n]}</svg>`;
 function renderShell(){
   const tabs=needGate()?[]:TABS.filter(t=>ROLE_TABS[ROLE].includes(t[0]));
   $('#venue').innerHTML=VENUES.map(v=>`<option value="${v[0]}" ${v[0]===S.venue?'selected':''}>${v[1]} · ${v[2]}</option>`).join('');
@@ -136,7 +148,7 @@ function renderShell(){
   document.body.classList.toggle('jfocus',ROLE==='judge'&&!needGate()&&S.ui.view==='judge');
   document.body.classList.toggle('camfocus',ROLE==='cam'&&!needGate());
   document.body.classList.toggle('crwall',ROLE==='staff'&&!needGate()&&S.ui.view==='devices');
-  $('#tabs').innerHTML=tabs.map(t=>`<button class="tab" role="tab" data-act="tab" data-v="${t[0]}" aria-selected="${S.ui.view===t[0]}"><b>${t[1]}</b><small>${t[2]}</small></button>`).join('');
+  $('#tabs').innerHTML=tabs.map(t=>`<button class="tab" role="tab" data-act="tab" data-v="${t[0]}" aria-selected="${S.ui.view===t[0]}">${ICO[t[0]]?icon(t[0]):''}<b>${t[1]}</b><small>${t[2]}</small></button>`).join('');
 }
 function render(){
   if(!READY){$('#view').innerHTML='<p class="muted">กำลังโหลด…</p>';return}
@@ -302,7 +314,7 @@ function vJudge(){
         <div class="jm retry"><div class="lbl"><b>Retry</b><small>ไม่หักคะแนน</small></div><div class="jstep"><button data-act="pdec" aria-label="ลด" ${f.pen?'':'disabled'}>−</button><span><b>${f.pen}</b></span><button data-act="pinc" aria-label="เพิ่ม">+</button></div><div class="sub muted small">ครั้ง</div></div></div>
       <div class="jbar"><div class="jsum"><span class="small muted">รวม</span><b class="n">${formTotal(f)}</b></div>
         ${f.confirm?`<button class="jok ${f.nosign?'':'on'}" data-act="signopen">${f.nosign?'ทีมไม่เซ็น':'✓ เซ็นแล้ว'}</button><button class="btn pri big" data-act="submit">${f.editRunId?'บันทึก':'ส่งคะแนน'}</button>`
-          :`<button class="btn pri big" data-act="signopen">ให้ทีมเซ็น</button>`}</div>
+          :`<button class="btn pri big" data-act="signopen">ยืนยันผล</button>`}</div>
     </div>`}
   const qhtml=q.map((t,i)=>`<div class="qitem ${i===0?'now':''}"><span class="qn">${i+1}</span><span class="tid">${t.id}</span><span style="flex:1;min-width:0">${esc(t.name)}</span>${i===0?'<span class="pill ac">ในสนาม</span>':''}</div>`).join('');
   const done=S.runs.filter(x=>team(x.team)?.cls===c.id).sort((a,b)=>b.ts-a.ts);
@@ -364,7 +376,7 @@ function vTimer(){
       <div class="tbox"><button class="tbig mono ${t.state}" id="tm" data-act="tpress" aria-label="เริ่มหรือหยุดเวลา">${fmtMs(tElapsed(t))}</button>
         <div style="font-size:18px">${label}</div>
         <div><button class="btn" data-act="tfull">⛶ เต็มจอ</button></div><div class="sub2">ปุ่มที่กดล่าสุด: <b>${esc(LASTKEY||'ยังไม่มี')}</b></div>
-        ${CAMERR?`<div><b>เปิดกล้องไม่ได้</b><ol style="margin:4px 0;padding-left:20px"><li>เช็กว่าเสียบเว็บแคมแล้ว</li><li>กดรูปกล้องบนแถบที่อยู่เว็บ แล้วเลือกอนุญาต</li><li>กดปุ่มข้างล่าง</li></ol><button class="btn sm" data-act="camon">เปิดกล้องอีกครั้ง</button></div>`:''}
+        ${CAMERR?`<div><b>เปิดกล้องไม่ได้</b><ol style="margin:4px 0;padding-left:20px"><li>เช็กว่าเสียบกล้องแล้ว</li><li>กดรูปกล้องบนแถบที่อยู่เว็บ แล้วเลือกอนุญาต</li><li>กดปุ่มข้างล่าง</li></ol><button class="btn sm" data-act="camon">เปิดกล้องอีกครั้ง</button></div>`:''}
         ${RECERR?`<div><b>อัดวิดีโอไม่ได้</b> <span class="sub2">${esc(RECERR)}</span></div>`:''}
         ${CAMS.length||PHONE||CAMID==='phone'?`<label class="tset"><span>กล้อง</span><select id="camsel" ${t.state==='run'?'disabled':''}>${CAMS.map((d,n)=>`<option value="${esc(d.deviceId)}" ${d.deviceId===CAMID?'selected':''}>${esc(d.label||'กล้อง '+(n+1))}</option>`).join('')}<option value="phone" ${CAMID==='phone'?'selected':''}>กล้องมือถือ (#cam-${esc(LOCK)})${PHONE?' · ต่ออยู่':''}</option></select></label>`:''}
         ${CAMID==='phone'&&!PHONE?`<div class="sub2"><b>รอภาพจากมือถือ</b> เปิดลิงก์ #cam-${esc(LOCK)} บนมือถือที่ต่อ Wi‑Fi เดียวกัน แล้วกด ▶ เริ่มส่งภาพ</div>`:''}
@@ -376,7 +388,7 @@ function vTimer(){
           return`<details class="gdrop"><summary>${opt(GFX,'span','')}<em aria-hidden="true">▾</em></summary><div class="glist" id="glist">${Object.keys(GFX_LIST).map(k=>opt(k,'button',`data-act="gfx" data-v="${k}" aria-pressed="${k===GFX}"`)).join('')}</div></details>`})()}</div>
         ${lensPanel()}
         ${CAM?`<label class="tset"><span>ครอปภาพ: เลื่อนแถบเพื่อซูม ลากบนภาพเพื่อเลือกส่วน</span><input type="range" id="czoom" min="1" max="3" step="0.05" value="${CROP.z}"></label>
-        <div><button class="btn sm" data-act="cropreset">ภาพเต็ม</button></div>`:''}
+        <div class="row"><button class="btn sm" data-act="cropreset">ภาพเต็ม</button><button class="btn sm" data-act="rotl" title="หมุนซ้าย 90°">⟲ หมุนซ้าย</button><button class="btn sm" data-act="rotr" title="หมุนขวา 90°">⟳ หมุนขวา</button><button class="btn sm" data-act="flip" aria-pressed="${FLIP}">⇋ กลับด้าน</button><span class="sub2">${ROT}°${FLIP?' · กลับด้าน':''}</span></div>`:''}
         <div class="sub2">เซฟคลิปที่: <b>${esc(DIR&&DIRSTATE==='ok'?DIR.name:'Downloads')}</b>${SAVED?`<br>ล่าสุด: ${esc(SAVED)}`:''}</div>
         ${S.drive?.url?`<div class="sub2" id="upst">${esc(upText())}</div>`:''}
         ${canPick?`<div class="row">${DIR&&DIRSTATE==='ask'?`<button class="btn sm pri" data-act="dirpick">ใช้โฟลเดอร์ ${esc(DIR.name)} ต่อ</button>`:''}<button class="btn sm" data-act="dirnew">เลือกโฟลเดอร์</button></div>`:''}
@@ -397,6 +409,9 @@ const LOGO=new Image();LOGO.src='logo-mark.png';
 const CAMQ={low:{w:854,h:480,bps:1200000,label:'ประหยัด 480p · ราว 25 MB ต่อรอบ'},mid:{w:1280,h:720,bps:2500000,label:'ปกติ 720p · ราว 55 MB ต่อรอบ'},high:{w:1920,h:1080,bps:5000000,label:'ชัดมาก 1080p · ราว 110 MB ต่อรอบ'}};
 const keep=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k)||'';localStorage.setItem(k,v)}catch(e){return''}};
 // which part of the camera picture is used: z = zoom (1 = as much as fits), x and y = where the window sits (0..1)
+// the camera picture may be mounted any way round above the field: turned in steps of 90°, and mirrored if needed
+let ROT=[0,90,180,270].includes(+keep('ptarena:rot'))?+keep('ptarena:rot'):0,FLIP=keep('ptarena:flip')==='on';
+const setRot=r=>{ROT=((+r%360)+360)%360;keep('ptarena:rot',String(ROT))},setFlip=f=>{FLIP=!!f;keep('ptarena:flip',FLIP?'on':'off')};
 let CROP={z:1,x:.5,y:.5};try{const c=JSON.parse(keep('ptarena:crop')||'null');if(c&&c.z>=1&&c.z<=4)CROP={z:+c.z,x:Math.min(1,Math.max(0,+c.x)),y:Math.min(1,Math.max(0,+c.y))}}catch(e){}
 const saveCrop=()=>keep('ptarena:crop',JSON.stringify(CROP));
 // Graphic layouts the timer laptop can switch between. BAR holds the looks that share the bottom-bar layout of drawBar.
@@ -479,8 +494,12 @@ function stageCanvas(){
 function drawCam(x,rx,ry,rw,rh){
   x.fillStyle='#0A0F1A';x.fillRect(rx,ry,rw,rh);
   if(!(VID&&VID.readyState>=2&&VID.videoWidth))return false;
-  const k=Math.max(rw/VID.videoWidth,rh/VID.videoHeight)*CROP.z,vw=VID.videoWidth*k,vh=VID.videoHeight*k;G.ex=vw-rw;G.ey=vh-rh;
-  x.save();x.beginPath();x.rect(rx,ry,rw,rh);x.clip();x.drawImage(VID,rx-G.ex*CROP.x,ry-G.ey*CROP.y,vw,vh);x.restore();return true;
+  // a quarter turn swaps the picture's width and height; the crop window is worked out on the turned picture
+  const side=ROT===90||ROT===270,W0=side?VID.videoHeight:VID.videoWidth,H0=side?VID.videoWidth:VID.videoHeight;
+  const k=Math.max(rw/W0,rh/H0)*CROP.z;G.ex=W0*k-rw;G.ey=H0*k-rh;
+  x.save();x.beginPath();x.rect(rx,ry,rw,rh);x.clip();
+  x.translate(rx+rw/2+G.ex*(0.5-CROP.x),ry+rh/2+G.ey*(0.5-CROP.y));if(FLIP)x.scale(-1,1);x.rotate(ROT*Math.PI/180);   // mirror on screen, after the turn
+  x.drawImage(VID,-VID.videoWidth*k/2,-VID.videoHeight*k/2,VID.videoWidth*k,VID.videoHeight*k);x.restore();return true;
 }
 // bottom-bar layout drawn from a look in BAR: separate blocks for team, missions, retries and score
 function drawBar(x,c,t,tm,cp,lim,now,T){
@@ -918,12 +937,12 @@ function vCam(){
     ${CAMP.devs.length>1?`<label class="tset" style="color:var(--muted)"><span>เลนส์ (มุมกว้าง / ปกติ / ซูม)</span><select id="camlens">${CAMP.devs.map((d,n)=>`<option value="${esc(d.deviceId)}" ${d.deviceId===CAMP.dev?'selected':''}>${esc(lensName(d.label,n))}</option>`).join('')}</select></label>`:''}
     ${CAMP.zoom?`<label class="tset" style="color:var(--muted)"><span>ซูม <b id="camzv">${CAMP.zoom.val.toFixed(1)}×</b></span><input type="range" id="camzoom" min="${CAMP.zoom.min}" max="${CAMP.zoom.max}" step="${CAMP.zoom.step}" value="${CAMP.zoom.val}"></label>`:CAMP.stream?'<div class="small muted">มือถือรุ่นนี้ซูมจากเว็บไม่ได้ · เลือกเลนส์แทน หรือครอปที่จุดจับเวลา</div>':''}
     <div class="row camctl"><label class="tset"><span>ทิศภาพ</span><select id="camshape">${Object.entries(CAM_SHAPE).map(([k,v])=>`<option value="${k}" ${k===CAMP.shape?'selected':''}>${k==='auto'?v:v+' '+(()=>{const [a,b]=CAM_RES[CAMP.res];return k==='port'?b+'×'+a:a+'×'+b})()}</option>`).join('')}</select></label><label class="tset"><span>ความชัด</span><select id="camres">${Object.keys(CAM_RES).map(r=>`<option value="${r}" ${+r===CAMP.res?'selected':''}>${r}p</option>`).join('')}</select></label><label class="tset"><span>เน้น</span><select id="cammode"><option value="smooth" ${CAMP.mode==='smooth'?'selected':''}>ลื่น</option><option value="sharp" ${CAMP.mode==='sharp'?'selected':''}>คม</option></select></label><label class="tset"><span>ความลื่น</span><select id="camfps">${[30,60].map(f=>`<option value="${f}" ${f===CAMP.fps?'selected':''}>${f} fps</option>`).join('')}</select></label>
-      <button class="btn" data-act="camflip">สลับกล้องหน้า/หลัง</button><button class="btn" data-act="camfull">⛶ เต็มจอ</button></div>
+      <button class="btn" data-act="camflip">สลับกล้องหน้า/หลัง</button><button class="btn" data-act="camrot" data-d="l" title="หมุนภาพซ้าย 90°">⟲</button><button class="btn" data-act="camrot" data-d="r" title="หมุนภาพขวา 90°">⟳</button><button class="btn" data-act="camflipimg" title="กลับด้านภาพ">⇋</button><button class="btn" data-act="camfull">⛶ เต็มจอ</button></div>
     <button class="btn ${CAMP.stream?'':'pri'} big" data-act="camgo">${CAMP.stream?'■ หยุดส่งภาพ':'▶ เริ่มส่งภาพ'}</button>
     ${CAMP.stream?`<button class="btn big" data-act="camlock">🔒 ล็อกกล้อง</button>`:''}`}
     <p class="small muted camtip" style="margin:0">ต่อ Wi‑Fi เดียวกับจุดจับเวลา · วางมือถือให้นิ่ง · เสียบชาร์จ · เปิดหน้านี้ค้างไว้</p></div>`;
 }
-function camAfter(){const v=$('#campv');if(v&&CAMP.stream&&v.srcObject!==CAMP.stream){v.srcObject=CAMP.stream;v.play().catch(()=>{})}}
+function camAfter(){const pv=$('#campv');if(pv){const r=+(CTRL[LOCK]?.turn?.rot??CAMP.rotSeen??0),fl=(CTRL[LOCK]?.turn?.flip??CAMP.flipSeen)==='on';pv.style.transform=`rotate(${r}deg)${fl?' scaleX(-1)':''}`}const v=$('#campv');if(v&&CAMP.stream&&v.srcObject!==CAMP.stream){v.srcObject=CAMP.stream;v.play().catch(()=>{})}}
 function camStatus(){const el=$('#camst');if(!el||CAMP.full)return render();const st={idle:['','ยังไม่ได้ส่งภาพ'],wait:['warn','รอจุดจับเวลาสนาม '+LOCK],on:['ok','● ส่งภาพอยู่'],lost:['bad','หลุด กำลังต่อใหม่…']}[CAMP.state];el.className='pill '+st[0];el.textContent=st[1]}
 // lens names as phones report them, in plain words; unknown names are shown as they are
 function lensName(label,n){
@@ -978,7 +997,7 @@ function camNet(pc){
       // sending at the ceiling we set is reported by the browser as a bandwidth limit: say what it really is
       // enough for this picture: about 4 Mbps for 720p and 8 for 1080p at 30 fps, half as much again at 60
       const atCap=mbps>=camCap()/1e6*0.85,enough=mbps>=(r.frameHeight>=1000||r.frameWidth>=1900?8:r.frameHeight>=700||r.frameWidth>=1200?4:2)*((r.framesPerSecond||30)>40?1.5:1);
-      const why=atCap?'ถึงเพดานที่ตั้งไว้ '+(camCap()/1e6).toFixed(0)+' Mbps (ปกติ)':enough&&r.qualityLimitationReason==='bandwidth'?'ส่งได้เต็มที่แล้ว (พอสำหรับภาพขนาดนี้)':{bandwidth:'เน็ตช้า',cpu:'เครื่องไม่ไหว (ร้อนหรือช้า)',other:'อื่นๆ',none:'ไม่ติดอะไร'}[r.qualityLimitationReason]||'';
+      const why=atCap?'ถึงค่าสูงสุดที่ตั้งไว้ '+(camCap()/1e6).toFixed(0)+' Mbps (ปกติ)':enough&&r.qualityLimitationReason==='bandwidth'?'ส่งได้เต็มที่แล้ว (พอสำหรับภาพขนาดนี้)':{bandwidth:'เน็ตช้า',cpu:'เครื่องไม่ไหว (ร้อนหรือช้า)',other:'อื่นๆ',none:'ไม่ติดอะไร'}[r.qualityLimitationReason]||'';
       CAMP.net=r.frameWidth?`กำลังส่ง ${r.frameWidth} × ${r.frameHeight} · ${Math.round(r.framesPerSecond||0)} fps · ${mbps.toFixed(1)} Mbps${why?' · ติดที่: '+why:''}${r.encoderImplementation?' · '+r.encoderImplementation:''}`:'';
       last=r;
     })}catch(e){}
@@ -1038,7 +1057,7 @@ function camRead(){
   const tr=CAMP.stream.getVideoTracks()[0],s=tr.getSettings(),cap=tr.getCapabilities?.()||{};
   CAMP.dev=s.deviceId||CAMP.dev;
   CAMP.zoom=cap.zoom&&cap.zoom.max>cap.zoom.min?{min:cap.zoom.min,max:cap.zoom.max,step:cap.zoom.step||0.1,val:s.zoom||cap.zoom.min}:null;
-  CAMP.real=`${s.width||'?'} × ${s.height||'?'}${s.frameRate?' · '+Math.round(s.frameRate)+' fps':''}${cap.frameRate?.max?` (กล้องนี้บอกว่าทำได้สูงสุด ${Math.round(cap.frameRate.max)} fps${cap.width?.max?' · '+cap.width.max+' × '+cap.height.max:''})`:''}`;
+  CAMP.real=`${s.width||'?'} × ${s.height||'?'}${s.frameRate?' · '+Math.round(s.frameRate)+' fps':''}${cap.frameRate?.max?` (กล้องรองรับสูงสุด ${Math.round(cap.frameRate.max)} fps${cap.width?.max?' · '+cap.width.max+' × '+cap.height.max:''})`:''}`;
 }
 async function camStart(){
   CAMP.err='';
@@ -1165,21 +1184,24 @@ function vBoard(){
   const head=Array.from({length:S.rounds},(_,i)=>`<th class="num">รอบ ${i+1}</th>`).join('');
   // phone: one card per team instead of a wide table
   const mine=ROLE==='staff'?null:myTeam();
-  const cards=rows.map(r=>`<div class="brow ${mine&&mine.id===r.t.id?'me':''}">${r.rank?`<span class="rk ${r.rank<=3?'r'+r.rank:''}">${r.rank}</span>`:'<span class="rk">–</span>'}
-    <div class="who"><b>${esc(r.t.name)}${mine&&mine.id===r.t.id?' <span class="metag">ทีมฉัน</span>':''}</b><small><span class="tid">${r.t.id}</span> ${esc(r.t.school)}</small>
-      <small class="mono">${Array.from({length:S.rounds},(_,i)=>{const x=runOf(r.t.id,i+1);return`รอบ ${i+1} <b>${x?score(x):'–'}</b>`}).join(' · ')}${r.b?` · ${fmtMs(r.b.run.ms)} · Retry ${r.b.run.pen||0}`:''}</small></div>
+  const isMe=r=>mine&&mine.id===r.t.id;
+  const rounds=r=>Array.from({length:S.rounds},(_,i)=>{const x=runOf(r.t.id,i+1);return`<i class="${x?'on':''}">${x?score(x):'–'}</i>`}).join('');
+  const top=rows.filter(r=>r.rank&&r.rank<=3);
+  const podium=top.length?`<div class="podium">${[top[1],top[0],top[2]].map(r=>r?`<div class="pd p${r.rank} ${isMe(r)?'me':''}"><span class="rk r${r.rank}">${r.rank}</span><b>${esc(r.t.name)}</b><small>${esc(r.t.school)}</small><em class="mono">${r.b.score}</em><span class="pt mono">${icon('wait')} ${fmtMs(r.b.run.ms)}</span></div>`:'<div class="pd empty"></div>').join('')}</div>`:'';
+  const cards=rows.filter(r=>!top.includes(r)).map(r=>`<div class="brow ${isMe(r)?'me':''}"><span class="rk">${r.rank||'–'}</span>
+    <div class="who"><b>${esc(r.t.name)}${isMe(r)?' <span class="metag">ทีมฉัน</span>':''}</b><small>${esc(r.t.school)}</small>${r.b?`<span class="rds">${rounds(r)}<span class="mono">${icon('wait')} ${fmtMs(r.b.run.ms)}</span></span>`:''}</div>
     <b class="bs mono">${r.b?r.b.score:'–'}</b></div>`).join('');
   const body=rows.map(r=>{const rd=Array.from({length:S.rounds},(_,i)=>{const x=runOf(r.t.id,i+1);return`<td class="num">${x?score(x):'<span class="muted">–</span>'}</td>`}).join('');
     return`<tr><td>${r.rank?`<span class="rk ${r.rank<=3?'r'+r.rank:''}">${r.rank}</span>`:'<span class="muted small">รอแข่ง</span>'}</td>
       <td><span class="tid">${r.t.id}</span> <b>${esc(r.t.name)}</b><div class="small muted">${esc(r.t.school)}</div></td>${rd}
       <td class="num best">${r.b?r.b.score:'–'}</td><td class="num">${r.b?fmtMs(r.b.run.ms):'–'}</td><td class="num">${r.b?r.b.run.pen||0:'–'}</td></tr>`}).join('');
   return`<div class="panel">
-    <div class="row between"><div><h2>${esc(cp.name)} · ${esc(c.level)}</h2><div class="small muted">สนาม ${c.field} · อัปเดตทันทีที่กรรมการส่งคะแนน</div></div>${ROLE==='staff'?'<button class="btn sm" data-act="copycsv">คัดลอกผลเป็น CSV</button>':''}</div>
+    <div class="row between"><div><h2>${esc(cp.name)} · ${esc(c.level)}</h2><div class="small muted"><span class="livedot"></span>สนาม ${c.field} · อัปเดตสด</div></div>${ROLE==='staff'?'<button class="btn sm" data-act="copycsv">คัดลอกผลเป็น CSV</button>':''}</div>
     <div class="chips fchips">${chips}</div><select id="bsel" class="fsel" aria-label="เลือกรุ่น">${fieldsSorted().map(x=>`<option value="${x.id}" ${x.id===c.id?'selected':''}>${esc(S.comps[x.comp].tag)} ${esc(x.level)}</option>`).join('')}</select>
     ${mine&&mine.cls===c.id?`<button class="btn sm narrow tome" data-act="tome">↓ ไปที่ทีมฉัน</button>`:''}
-    <div class="blist narrow">${cards}</div>
+    <div class="narrow bwrap">${podium}<div class="blist">${cards}</div></div>
     <div class="tbl-wrap wide"><table><thead><tr><th>อันดับ</th><th>ทีม</th>${head}<th class="num">คะแนนดีสุด</th><th class="num">เวลา</th><th class="num">Retry</th></tr></thead><tbody>${body}</tbody></table></div>
-    <p class="small muted" style="margin:0">นับรอบที่ได้คะแนนสูงสุด · คะแนนเท่ากันดูเวลาน้อยกว่า แล้วดู Retry น้อยกว่า</p></div>`;
+    <p class="small muted" style="margin:0">ใช้รอบที่ดีที่สุด · คะแนนเท่ากัน ดูเวลาน้อยกว่า แล้วดู Retry น้อยกว่า</p></div>`;
 }
 
 /* ---------- field pictures: files the owner drops into the fields folder, named after the field letter ---------- */
@@ -1287,7 +1309,7 @@ function beatData(){
     bat:BATT?Math.round(BATT.level*100):null,charging:BATT?BATT.charging:null};
   if(ROLE==='timer'){const t=timerOf(LOCK);Object.assign(d,{clock:t.state,cam:CAMID==='phone'?'มือถือ':'เว็บแคม',camOk:!!(VID&&VID.readyState>=2),camReal:CAMREAL||'',camErr:CAMERR||'',
     rec:!!REC,recErr:RECERR||'',upQ:UPQ.length,upFail:UPFAIL.length,upErr:UPERR||'',drive:!!S.drive?.url,sound:audioWhere(),
-    set:{gfx:GFX,qual:QUAL,fps:String(FPS),audio:AUDIO?'on':'off',src:CAMID==='phone'?'phone':'webcam'}})}
+    set:{gfx:GFX,qual:QUAL,fps:String(FPS),audio:AUDIO?'on':'off',src:CAMID==='phone'?'phone':'webcam',rot:String(ROT),flip:FLIP?'on':'off'}})}
   if(ROLE==='cam')Object.assign(d,{camState:CAMP.state,camReal:CAMP.real||'',net:CAMP.net||'',locked:CAMP.locked,
     set:{shape:CAMP.shape,res:String(CAMP.res),fps:String(CAMP.fps),mode:CAMP.mode,locked:CAMP.locked?'on':'off'}});
   if(ROLE==='judge')Object.assign(d,{team:S.ui.form?.teamId||''});
@@ -1335,6 +1357,8 @@ function ctrlSend(field,part,patch){
   CTRL={...CTRL,[field]:{...cur,[part]:next}};
   if(CLOUD)window.PT_BACKEND?.ctrlSend?.(field,part,next);else ctrlBus?.postMessage({kind:'ctrl',d:CTRL});
 }
+// how the picture is turned is kept apart from the other settings, so turning it from anywhere never replays older orders
+const ctrlSelf=patch=>ctrlSend(LOCK,'turn',patch);
 const ctrlCmd=(field,target,op)=>ctrlSend(field,'cmd_'+target,{op,id:Date.now().toString(36)+Math.random().toString(36).slice(2,6)});
 const ctrlDone=k=>{try{return JSON.parse(localStorage.getItem('ptarena:ctrldone')||'{}')[k]}catch(e){return null}};
 const ctrlMark=(k,v)=>{try{const m=JSON.parse(localStorage.getItem('ptarena:ctrldone')||'{}');m[k]=v;localStorage.setItem('ptarena:ctrldone',JSON.stringify(m))}catch(e){}};
@@ -1343,6 +1367,13 @@ async function ctrlApply(){
   if(CTRLBUSY||!['timer','cam'].includes(ROLE)||!LOCK||needGate()||!READY)return;CTRLBUSY=true;
   try{
     const c=CTRL[LOCK]||{},mine=c[ROLE];
+    const turn=c.turn;
+    if(ROLE==='timer'&&turn){
+      let turned=false;
+      if(turn.rot!=null&&+turn.rot!==ROT){setRot(turn.rot);turned=true}
+      if(turn.flip&&(turn.flip==='on')!==FLIP){setFlip(turn.flip==='on');turned=true}
+      if(turned){render();beat(true)}
+    }
     if(ROLE==='timer'&&mine&&mine.n!==ctrlDone('timer'+LOCK)&&timerOf(LOCK).state!=='run'){
       ctrlMark('timer'+LOCK,mine.n);let reopen=false;
       if(mine.gfx&&GFX_LIST[mine.gfx]&&mine.gfx!==GFX){GFX=mine.gfx;keep('ptarena:gfx',GFX)}
@@ -1420,11 +1451,11 @@ function vDevices(){
   const gone=all.filter(d=>d.age>3600);
   // one setting: what the control room asked for, else what the device reports, and whether the device has caught up
   const pick=(f,part,key,opts,label)=>{
-    const want=CTRL[f]?.[part]?.[key],dev=all.filter(d=>d.field===f&&d.role===part&&live(d)).map(d=>d.set?.[key])[0],cur=want??dev??'';
+    const want=CTRL[f]?.[part]?.[key],dev=all.filter(d=>d.field===f&&d.role===(part==='turn'?'timer':part)&&live(d)).map(d=>d.set?.[key])[0],cur=want??dev??'';
     return`<label class="cc"><span>${label}${want!=null&&dev!=null&&want!==dev?' <em>กำลังเปลี่ยน</em>':''}</span><select data-ctrl="${f}|${part}|${key}"><option value="" ${cur===''?'selected':''}>—</option>${opts.map(([v,t])=>`<option value="${v}" ${String(v)===String(cur)?'selected':''}>${esc(t)}</option>`).join('')}</select></label>`};
   const O={gfx:Object.entries(GFX_LIST).map(([k,v])=>[k,v.split(' · ')[0]]),qual:Object.entries(CAMQ).map(([k,q])=>[k,q.label.split(' · ')[1]||k]),fps:Object.keys(FPS_LIST).map(k=>[k,k+' fps']),
-    audio:[['on','เปิด'],['off','ปิด']],src:[['webcam','เว็บแคม'],['phone','มือถือ']],shape:Object.entries(CAM_SHAPE),res:Object.keys(CAM_RES).map(k=>[k,k+'p']),cfps:[['30','30 fps'],['60','60 fps']],mode:[['smooth','ลื่น'],['sharp','คม']],locked:[['on','ล็อก'],['off','ปลด']]};
-  const timerCtl=f=>[pick(f,'timer','gfx',O.gfx,'กราฟิก'),pick(f,'timer','src',O.src,'กล้อง'),pick(f,'timer','qual',O.qual,'ความชัด'),pick(f,'timer','fps',O.fps,'ความลื่น'),pick(f,'timer','audio',O.audio,'เสียง')].join('');
+    audio:[['on','เปิด'],['off','ปิด']],src:[['webcam','เว็บแคม'],['phone','มือถือ']],shape:Object.entries(CAM_SHAPE),res:Object.keys(CAM_RES).map(k=>[k,k+'p']),cfps:[['30','30 fps'],['60','60 fps']],mode:[['smooth','ลื่น'],['sharp','คม']],locked:[['on','ล็อก'],['off','ปลด']],rot:[['0','0°'],['90','90° ขวา'],['180','180°'],['270','90° ซ้าย']],flip:[['off','ปกติ'],['on','กลับด้าน']]};
+  const timerCtl=f=>[pick(f,'timer','gfx',O.gfx,'กราฟิก'),pick(f,'timer','src',O.src,'กล้อง'),pick(f,'timer','qual',O.qual,'ความชัด'),pick(f,'timer','fps',O.fps,'ความลื่น'),pick(f,'timer','audio',O.audio,'เสียง'),pick(f,'turn','rot',O.rot,'หมุนภาพ'),pick(f,'turn','flip',O.flip,'กลับด้าน')].join('');
   const camCtl=f=>[pick(f,'cam','shape',O.shape,'ทิศภาพ'),pick(f,'cam','res',O.res,'ความชัด'),pick(f,'cam','fps',O.cfps,'fps'),pick(f,'cam','mode',O.mode,'เน้น'),pick(f,'cam','locked',O.locked,'ล็อก')].join('');
   const led=(d,label)=>`<span class="led ${!d?'none':live(d)?(devProblems(d).length?'warn':'ok'):seen(d)?'warn':'off'}" title="${d?(live(d)?'ออนไลน์':'ออฟไลน์ '+ago(d.age)):'ยังไม่เปิด'}">${label}</span>`;
   const tile=c=>{
@@ -1489,22 +1520,25 @@ function vTeam(){
   const t=q&&S.teams.find(x=>x.id.toLowerCase()===q)||(q&&S.teams.find(x=>(x.id+' '+x.name).toLowerCase().includes(q)));
   let card='';
   if(t){const c=cls(t.cls),qq=queue(c.id),idx=qq.findIndex(x=>x.id===t.id),r=curRound(c.id);
-    let co;
-    if(!t.checkin)co=`<div class="callout warn"><div class="big">ยังไม่ได้เช็กอิน</div>ไปที่จุดลงทะเบียน พร้อมหุ่นและสมาชิกทีม</div>`;
-    else if(!t.inspect)co=`<div class="callout warn"><div class="big">รอตรวจหุ่น</div>นำหุ่นไปที่จุดตรวจ</div>`;
-    else if(t.inspect.result==='fail')co=`<div class="callout bad"><div class="big">ตรวจหุ่นไม่ผ่าน</div>${esc(t.inspect.note||'')} · แก้แล้วกลับไปตรวจซ้ำที่จุดตรวจ</div>`;
-    else if(idx===0)co=`<div class="callout ok"><div class="big">ถึงคิวแล้ว</div>ไปที่สนาม ${c.field} ทันที · รอบ ${r}</div>`;
-    else if(idx>0)co=`<div class="callout"><div class="big">อีก ${idx} ทีมถึงคิว</div>สนาม ${c.field} · รอบ ${r} · เตรียมหุ่นให้พร้อม</div>`;
-    else{const all=Array.from({length:S.rounds},(_,i)=>runOf(t.id,i+1)).every(Boolean);co=`<div class="callout ok"><div class="big">${all?'แข่งครบทุกรอบแล้ว':'แข่งรอบนี้แล้ว'}</div>${all?'รอประกาศผล':'รอเรียกรอบถัดไป'}</div>`}
+    // where the team stands right now: one line, one big sign
+    let tq;
+    if(!t.checkin)tq=['warn',icon('alert'),'ยังไม่ได้เช็กอิน','ไปจุดลงทะเบียน พร้อมหุ่นและสมาชิกทีม'];
+    else if(!t.inspect)tq=['warn',icon('wait'),'รอตรวจหุ่น','นำหุ่นไปที่จุดตรวจ'];
+    else if(t.inspect.result==='fail')tq=['bad',icon('alert'),'ตรวจหุ่นไม่ผ่าน',(t.inspect.note?esc(t.inspect.note)+' · ':'')+'แก้แล้วกลับไปตรวจซ้ำ'];
+    else if(idx===0)tq=['now',icon('flag'),'ถึงคิวแล้ว!',`ไปสนาม ${c.field} ทันที · รอบ ${r}`];
+    else if(idx>0)tq=['next',`<b class="mono">${idx}</b>`,`อีก ${idx} คิว`,`สนาม ${c.field} · รอบ ${r} · เตรียมหุ่นให้พร้อม`,Math.max(12,100-idx*18)];
+    else{const all=Array.from({length:S.rounds},(_,i)=>runOf(t.id,i+1)).every(Boolean);tq=['done',icon('check'),all?'แข่งครบแล้ว':'แข่งรอบนี้แล้ว',all?'รอประกาศผล':'รอเรียกรอบถัดไป']}
     const st=standings(c.id),me=st.find(x=>x.t.id===t.id);
     const steps=[['เช็กอิน',!!t.checkin],['ตรวจหุ่น',t.inspect?.result==='pass'],...Array.from({length:S.rounds},(_,i)=>['รอบ '+(i+1),!!runOf(t.id,i+1)])];
-    card=`<div class="panel thero"><div class="row between"><span class="tid">${t.id}</span>${ROLE==='staff'?'':`<button class="tchg" data-act="teamclear">เปลี่ยนทีม</button>`}</div><h2>${esc(t.name)}</h2><div class="small muted">${esc(t.school)}<br>${esc(clsName(c))} · สนาม ${c.field}</div>
+    const top=st.filter(x=>x.rank&&x.rank<=3),lb=me&&!top.includes(me)?[...top,me]:top;
+    card=`<div class="panel thero"><div class="th-top"><div class="tav">${t.id}</div><div class="th-who"><h2>${esc(t.name)}</h2><div class="small muted">${esc(t.school)}</div></div>${ROLE==='staff'?'':`<button class="tchg" data-act="teamclear">เปลี่ยนทีม</button>`}</div>
+      <span class="tchip">${icon('flag')}${esc(clsName(c))} · สนาม ${c.field}</span>
       <div class="steps">${steps.map(s=>`<div class="${s[1]?'on':''}"><i></i>${s[0]}</div>`).join('')}</div></div>
-      ${co}
-      ${ROLE==='staff'?'':noteOn()?`<div class="panel notep"><div class="row between"><b>🔔 แจ้งเตือนเปิดอยู่</b><button class="btn sm" data-act="noteoff">ปิด</button></div><div class="small muted">จะเตือนตอนอีก 1 คิว และตอนถึงคิว · ${esc(noteHint())}</div></div>`:`<button class="btn pri big notebtn" data-act="noteon">🔔 แจ้งเตือนเมื่อใกล้ถึงคิว</button>`}
-      <div class="panel" style="padding:14px"><div class="row between"><h3>คะแนนของทีม</h3>${me?.rank?`<span class="pill ac">อันดับ ${me.rank} จาก ${st.length}</span>`:''}</div>
-      <div class="rtiles">${Array.from({length:S.rounds},(_,i)=>{const x=runOf(t.id,i+1);return`<div class="rt ${x?'on':''}"><small>รอบ ${i+1}</small><b class="mono">${x?score(x):'–'}</b><small class="mono">${x?fmtMs(x.ms):'ยังไม่แข่ง'}</small>${x&&S.clips?.[x.id]?`<a class="clip" href="${clipLink(S.clips[x.id])}" target="_blank" rel="noopener">▶ ดูคลิป</a>`:''}</div>`}).join('')}</div>
-      <button class="btn" data-act="viewboard" data-v="${c.id}">ดูกระดานผลรุ่นนี้</button></div>`}
+      <div class="panel tq ${tq[0]}"><div class="tqi" ${tq[4]?`style="--p:${tq[4]}%"`:''}>${tq[1]}</div><div class="tqt"><b>${tq[2]}</b><span>${tq[3]}</span></div></div>
+      ${ROLE==='staff'?'':noteOn()?`<div class="panel notep"><div class="row between"><b>${icon('bell')} แจ้งเตือนเปิดอยู่</b><button class="btn sm" data-act="noteoff">ปิด</button></div><div class="small muted">เตือนตอนอีก 1 คิว และตอนถึงคิว · ${esc(noteHint())}</div></div>`:`<button class="btn pri big notebtn" data-act="noteon">${icon('bell')} เตือนเมื่อใกล้ถึงคิว</button>`}
+      <div class="rtiles">${Array.from({length:S.rounds},(_,i)=>{const x=runOf(t.id,i+1);return`<div class="rt ${x?'on':''}"><small>รอบ ${i+1}</small><b class="mono">${x?score(x):'–'}</b><small class="mono">${x?fmtMs(x.ms):'ยังไม่แข่ง'}</small>${x&&S.clips?.[x.id]?`<a class="clip" href="${clipLink(S.clips[x.id])}" target="_blank" rel="noopener">${icon('play')} ดูคลิป</a>`:''}</div>`}).join('')}</div>
+      <div class="panel tlb"><div class="row between"><h3>${icon('board')} อันดับ${me?.rank?` <span class="muted">· ที่ ${me.rank} จาก ${st.length}</span>`:''}</h3><button class="lnk" data-act="viewboard" data-v="${c.id}">ทั้งหมด ›</button></div>
+        ${lb.length?lb.map(x=>`<div class="lbr ${x===me?'me':''}"><i class="rk ${x.rank&&x.rank<=3?'r'+x.rank:''}">${x.rank||'–'}</i><span>${esc(x.t.name)}${x===me?' (เรา)':''}</span><b class="mono">${x.b?x.b.score:'–'}</b></div>`).join(''):'<p class="small muted" style="margin:0">ยังไม่มีคะแนน</p>'}</div>`}
   else if(q)card=`<p class="muted">ไม่พบทีม ลองพิมพ์ Team ID เช่น C004</p>`;
   if(ROLE!=='staff')return`<div class="grid tview">${card}</div>`;
   return`<div class="phone-wrap">
@@ -1516,7 +1550,7 @@ function vTeam(){
       <h2>ใช้แทนจอใหญ่ได้</h2>
       <ol>
         <li>ติดป้าย QR ที่จุดลงทะเบียน ข้างสนาม และโซนพักทีม</li>
-        <li>ครูหรือนักเรียนสแกนแล้วใส่ Team ID ไม่ต้องโหลดแอป ไม่ต้องล็อกอิน</li>
+        <li>ครูหรือนักเรียนสแกน แล้วเลือกทีมจากรายชื่อ ไม่ต้องโหลดแอป ไม่ต้องล็อกอิน</li>
         <li>เห็นว่าอีกกี่ทีมถึงคิว ต้องไปสนามไหน และคะแนนกับอันดับของทีมตัวเอง</li>
         <li>ส่งลิงก์เดียวกันเข้ากลุ่ม LINE ครูผู้ควบคุมก่อนวันแข่งได้เลย</li>
       </ol>
@@ -1588,7 +1622,7 @@ function vAdmin(){
   const links=[['คนดู · ทีมและครู',''],['จอในงาน','#screen'],['พิธีกร','#mc'],['เจ้าหน้าที่','#staff'],['กรรมการ · เลือกสนามเอง','#judge'],...fieldsSorted().map(c=>['กรรมการสนาม '+c.field+' · '+S.comps[c.comp].tag+' '+c.level,'#judge-'+c.field]),...fieldsSorted().map(c=>['จับเวลา สนาม '+c.field,'#timer-'+c.field]),...fieldsSorted().map(c=>['กล้อง สนาม '+c.field,'#cam-'+c.field])];
   const linkRows=links.map(l=>`<div class="qitem"><span style="flex:1;min-width:0">${esc(l[0])}<br><small class="mono muted" style="word-break:break-all">${esc(base+l[1])}</small></span><button class="btn sm" data-act="copylink" data-u="${esc(base+l[1])}">คัดลอก</button></div>`).join('');
   return`<div class="adm">
-    <div class="panel"><h2>สนามและรอบ</h2><p class="small muted" style="margin:0">จับคู่รุ่นกับสนาม แต่ละสนามใช้แท็บเล็ต 1 เครื่อง</p>${fieldRows}
+    <div class="panel"><h2>สนามและรอบ</h2><p class="small muted" style="margin:0">จับคู่รุ่นกับสนาม</p>${fieldRows}
       <div class="row between" style="border-top:1px solid var(--line);padding-top:10px"><span>จำนวนรอบต่อทีม (นับรอบที่ดีที่สุด)</span><select data-bind="rounds" aria-label="จำนวนรอบ">${[1,2,3].map(n=>`<option ${n===S.rounds?'selected':''}>${n}</option>`).join('')}</select></div>
       <div class="row between"><span>PIN หัวหน้ากรรมการ</span><input type="text" value="${esc(S.pin)}" data-bind="pin" style="width:100px" aria-label="PIN"></div>
       <div class="row between"><span>รหัสเจ้าหน้าที่ (เข้าหน้ากรรมการ)</span><input type="text" value="${esc(S.staffPin)}" data-bind="staff" style="width:100px" aria-label="รหัสเจ้าหน้าที่"></div></div>
@@ -1697,12 +1731,17 @@ document.addEventListener('click',e=>{
     case'gfx':{if(!GFX_LIST[b.dataset.v])return;GFX=b.dataset.v;keep('ptarena:gfx',GFX);const top=$('#glist')?.scrollTop||0,box=$('.tbox')?.scrollTop||0;render();if($('#glist'))$('#glist').scrollTop=top;if($('.tbox'))$('.tbox').scrollTop=box;return}
     case'tfull':{const cv=stageCanvas();if(cv.requestFullscreen)cv.requestFullscreen().catch(()=>toast('เบราว์เซอร์นี้เปิดเต็มจอไม่ได้'));else toast('เบราว์เซอร์นี้เปิดเต็มจอไม่ได้');return}
     case'cropreset':CROP={z:1,x:.5,y:.5};saveCrop();render();return;
+    case'rotl':setRot(ROT-90);ctrlSelf({rot:String(ROT)});beat(true);render();return;
+    case'rotr':setRot(ROT+90);ctrlSelf({rot:String(ROT)});beat(true);render();return;
+    case'flip':setFlip(!FLIP);ctrlSelf({flip:FLIP?'on':'off'});beat(true);render();return;
+    case'camrot':{const cur=+(CTRL[LOCK]?.turn?.rot??CAMP.rotSeen??0);const next=((cur+(b.dataset.d==='l'?-90:90))%360+360)%360;CAMP.rotSeen=next;ctrlSend(LOCK,'turn',{rot:String(next)});toast('หมุนภาพเป็น '+next+'°');render();return}
+    case'camflipimg':{const cur=(CTRL[LOCK]?.turn?.flip??CAMP.flipSeen??'off')==='on';CAMP.flipSeen=cur?'off':'on';ctrlSend(LOCK,'turn',{flip:CAMP.flipSeen});toast(cur?'ภาพกลับเป็นปกติ':'กลับด้านภาพแล้ว');render();return}
     case'dirpick':dirPick(false);return;
     case'dirnew':dirPick(true);return;
     case'omove':{const t=team(b.dataset.id),o=S.order[t.cls],n=o.indexOf(t.id),k=n+ +b.dataset.d;if(k<0||k>=o.length)return;[o[n],o[k]]=[o[k],o[n]];break}
     case'teampick':{const t=team(b.dataset.v);if(!t)return;ui.teamQuery=t.id;ui.teamFind='';ui.boardCls=t.cls;rememberTeam(t.id);window.scrollTo(0,0);break}
     case'teamclear':ui.teamQuery='';rememberTeam('');break;
-    case'tome':document.querySelector('.brow.me')?.scrollIntoView({block:'center',behavior:'smooth'});return;
+    case'tome':document.querySelector('.bwrap .me')?.scrollIntoView({block:'center',behavior:'smooth'});return;
     case'teamgo':ui.teamQuery=$('#tq').value;rememberTeam(ui.teamQuery.trim());break;
     case'eye':{const i=$('#sc'),shown=i.type==='password';i.type=shown?'text':'password';b.setAttribute('aria-pressed',shown);b.innerHTML=eyeIcon(shown);i.focus();return}
     case'gate':{const v=$('#sc').value.trim();if(!v)return;
@@ -1728,7 +1767,7 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('change',e=>{
   const el=e.target;
-  if(el.id==='venue'){S.venue=el.value;toast('เปลี่ยนเป็น'+VENUES.find(v=>v[0]===el.value)[1]+(CLOUD?'':' (ต้นแบบใช้ข้อมูลตัวอย่างชุดเดียวกัน)'));save();render();return}
+  if(el.id==='venue'){S.venue=el.value;toast('เปลี่ยนเป็น'+VENUES.find(v=>v[0]===el.value)[1]+(CLOUD?'':' (โหมดตัวอย่างใช้ข้อมูลชุดเดียวกัน)'));save();render();return}
   if(el.dataset?.ctrl){const [f,part,key]=el.dataset.ctrl.split('|'),v=el.value;if(!v)return;
     (f==='*'?fieldsSorted().map(c=>c.field):[f]).forEach(x=>ctrlSend(x,part,{[key]:v}));toast(f==='*'?'ใช้กับทุกสนามแล้ว':'ส่งคำสั่งแล้ว');render();return}
   if(el.id==='gsel'){GFX=GFX_LIST[el.value]?el.value:'strip';keep('ptarena:gfx',GFX);return}
