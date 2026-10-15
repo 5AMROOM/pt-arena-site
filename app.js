@@ -1,5 +1,5 @@
 const VENUES=[['C','ภาคกลาง · นนทบุรี','14–15 พ.ย. 2569'],['S','ภาคใต้ · สุราษฎร์ธานี','21–22 พ.ย. 2569'],['E','ภาคตะวันออก · ชลบุรี','28–29 พ.ย. 2569'],['N','ภาคเหนือ · แพร่','19–20 ธ.ค. 2569'],['NE','ภาคตะวันออกเฉียงเหนือ · ร้อยเอ็ด','26–27 ธ.ค. 2569']];
-const TABS=[['overview','ภาพรวมสนาม','หัวหน้ากรรมการ'],['checkin','เช็กอิน & ตรวจหุ่น','จุดลงทะเบียน'],['judge','กรรมการให้คะแนน','แท็บเล็ตประจำสนาม'],['board','กระดานผล','ทุกคน'],['live','สด','ดูการแข่งสด'],['team','หน้าทีม','มือถือครู/นักเรียน'],['field','สนาม','ภาพสนามแข่ง'],['screen','โหมดจอ','ถ้ามีจอในงาน'],['mc','เรียกคิว','พิธีกร'],['admin','ตั้งค่า','แอดมิน']];
+const TABS=[['overview','ภาพรวมสนาม','หัวหน้ากรรมการ'],['devices','ห้องควบคุม','หัวหน้างาน'],['checkin','เช็กอิน & ตรวจหุ่น','จุดลงทะเบียน'],['judge','กรรมการให้คะแนน','แท็บเล็ตประจำสนาม'],['board','กระดานผล','ทุกคน'],['live','สด','ดูการแข่งสด'],['team','หน้าทีม','มือถือครู/นักเรียน'],['field','สนาม','ภาพสนามแข่ง'],['screen','โหมดจอ','ถ้ามีจอในงาน'],['mc','เรียกคิว','พิธีกร'],['admin','ตั้งค่า','แอดมิน']];
 // Scoring and the inspection list follow the rule PDFs linked from the registration site; nothing here is our own rule. A mission with "needs" only counts once the missions
 // it names are complete ('all' = every mission without "needs"). Retries cost no points; they only break ties.
 // "closes": once this mission is scored the listed ones can no longer go up (KidsBiT: yellow is the last box collected).
@@ -154,9 +154,10 @@ function render(){
   const fs=document.fullscreenElement;
   if(S.ui.view==='screen'&&fs&&fs.id==='stage'){const tmp=document.createElement('div');tmp.innerHTML=vScreen();fs.innerHTML=tmp.querySelector('#stage').innerHTML;clock();return}
   if(v==='live'&&$('#livebody')&&$('#ytbox')?.dataset.k===liveKey()){$('#livebody').innerHTML=liveBody();$('.chbar').innerHTML=chBar();return}
-  const map={overview:vOverview,checkin:vCheckin,judge:vJudge,timer:vTimer,board:vBoard,team:vTeam,field:vField,live:vLive,cam:vCam,screen:vScreen,mc:vMc,admin:vAdmin};
+  const map={overview:vOverview,checkin:vCheckin,judge:vJudge,timer:vTimer,board:vBoard,team:vTeam,field:vField,live:vLive,cam:vCam,devices:vDevices,screen:vScreen,mc:vMc,admin:vAdmin};
   const typing=document.activeElement?.id==='tfind';
   $('#view').innerHTML=map[v]();if(typing){const i=$('#tfind');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}
+  if(ROLE==='view')noteCheck();
   if(v==='checkin')renderCkList();if(v==='judge'){tickSW();sigAfter()}if(v==='timer')timerAfter();if(v==='cam')camAfter();if(v==='screen')clock();}
 
 /* ---------- overview ---------- */
@@ -347,7 +348,7 @@ function saveSign(id,d){
 const getSign=id=>{const k=S.venue+'_'+id,mine=localSigns()[k]||null;return CLOUD?window.PT_BACKEND.getSign(k).then(d=>d||mine,()=>mine):Promise.resolve(mine)};
 function tickSW(){const f=S.ui.form,el=$('#sw');if(!f||!el)return;const ms=elapsed(f);el.textContent=fmtMs(ms);const lim=compOf(team(f.teamId).cls).timeLimit*1000;el.classList.toggle('over',ms>lim);
   const su=$('#su');if(su&&f.setupEnd){const left=f.setupEnd-Date.now();su.textContent=left>0?'ตั้งหุ่น '+fmtMs(left):'หมดเวลาตั้งหุ่น';su.classList.toggle('over',left<=0)}}
-setInterval(()=>{autoStop();if(S.ui.view==='judge'&&S.ui.form)tickSW();if(S.ui.view==='timer')tickTimer();if(S.ui.view==='screen'||S.ui.view==='live')document.querySelectorAll('[data-tm]').forEach(el=>el.textContent=fmtMs(tElapsed(timerOf(el.dataset.tm))))},40);
+setInterval(()=>{autoStop();if(S.ui.view==='judge'&&S.ui.form)tickSW();if(S.ui.view==='timer')tickTimer();if(S.ui.view==='screen'||S.ui.view==='live'||S.ui.view==='devices')document.querySelectorAll('[data-tm]').forEach(el=>el.textContent=fmtMs(tElapsed(timerOf(el.dataset.tm))))},40);
 
 /* ---------- timer laptop: Space bar or a USB clicker starts and stops the clock, the webcam records the run ---------- */
 const CLICKER=[' ','Enter','PageDown','PageUp','ArrowRight','ArrowLeft','ArrowUp','ArrowDown','b','B','.','F5'];
@@ -398,9 +399,9 @@ const keep=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k)||'';local
 let CROP={z:1,x:.5,y:.5};try{const c=JSON.parse(keep('ptarena:crop')||'null');if(c&&c.z>=1&&c.z<=4)CROP={z:+c.z,x:Math.min(1,Math.max(0,+c.x)),y:Math.min(1,Math.max(0,+c.y))}}catch(e){}
 const saveCrop=()=>keep('ptarena:crop',JSON.stringify(CROP));
 // Graphic layouts the timer laptop can switch between. BAR holds the looks that share the bottom-bar layout of drawBar.
-const GFX_LIST={strip:'Midnight · แถบล่าง น้ำเงินม่วง',tower:'Pit Lane · แถบข้างซ้าย แดงดำ',clean:'Arctic · แถบล่าง สีขาว',neon:'Neon · แถบล่าง ฟ้าม่วง',gold:'Champion · แถบล่าง ดำทอง',cast:'Broadcast · แถบเดียวเต็มขอบล่าง',head:'Headline · แถบเดียวเต็มขอบบน',bug:'Scorebug · กล่องเล็กมุมซ้ายบน',carbon:'Carbon · แถบล่าง เทาแดง',mono:'Mono · แถบล่าง ขาวดำ',sunset:'Sunset · แถบล่าง ส้มชมพู',emerald:'Emerald · แถบล่าง เขียว',royal:'Royal · แถบข้างซ้าย น้ำเงินทอง',day:'Daylight · กล่องเล็กมุมซ้ายบน สีขาว',studio:'Studio · แถบเดียวขอบล่าง สีขาว',crimson:'Crimson · แถบล่าง แดงดำ',ocean:'Ocean · แถบล่าง น้ำเงินเขียวทะเล',amber:'Amber · แถบเดียวขอบล่าง เหลืองอำพัน',rally:'Rally · กล่องเล็กมุมซ้ายบน ส้ม',matrix:'Matrix · แถบข้างซ้าย เขียวดำ'};
+const GFX_LIST={none:'ภาพล้วน · ไม่มีกราฟิก',logo:'โลโก้อย่างเดียว · มุมขวาบน',strip:'Midnight · แถบล่าง น้ำเงินม่วง',tower:'Pit Lane · แถบข้างซ้าย แดงดำ',clean:'Arctic · แถบล่าง สีขาว',neon:'Neon · แถบล่าง ฟ้าม่วง',gold:'Champion · แถบล่าง ดำทอง',cast:'Broadcast · แถบเดียวเต็มขอบล่าง',head:'Headline · แถบเดียวเต็มขอบบน',bug:'Scorebug · กล่องเล็กมุมซ้ายบน',carbon:'Carbon · แถบล่าง เทาแดง',mono:'Mono · แถบล่าง ขาวดำ',sunset:'Sunset · แถบล่าง ส้มชมพู',emerald:'Emerald · แถบล่าง เขียว',royal:'Royal · แถบข้างซ้าย น้ำเงินทอง',day:'Daylight · กล่องเล็กมุมซ้ายบน สีขาว',studio:'Studio · แถบเดียวขอบล่าง สีขาว',crimson:'Crimson · แถบล่าง แดงดำ',ocean:'Ocean · แถบล่าง น้ำเงินเขียวทะเล',amber:'Amber · แถบเดียวขอบล่าง เหลืองอำพัน',rally:'Rally · กล่องเล็กมุมซ้ายบน ส้ม',matrix:'Matrix · แถบข้างซ้าย เขียวดำ'};
 // two colours that stand for each look in the picker
-const GFX_SW={strip:['#3B6FE8','#7A4FE0'],tower:['#E10600','#0C0C10'],clean:['#FFFFFF','#1F5BD6'],neon:['#00E0FF','#7A4FE0'],gold:['#F5D06B','#0C0C0E'],cast:['#0E1218','#2F6BFF'],head:['#0E1218','#12B886'],bug:['#2F6BFF','#FFFFFF'],carbon:['#1B1E22','#E5383B'],mono:['#000000','#FFFFFF'],sunset:['#FF8A00','#E52E71'],emerald:['#19C37D','#06181A'],royal:['#1B2A6B','#F5D06B'],day:['#FFFFFF','#10151F'],studio:['#FFFFFF','#1F5BD6'],crimson:['#FF3B3B','#0A0A0C'],ocean:['#00C2A8','#0077FF'],amber:['#0E1218','#FFB020'],rally:['#FF5A1F','#0D1118'],matrix:['#0E9F6E','#06140F']};
+const GFX_SW={none:['#20262f','#20262f'],logo:['#20262f','#7A4FE0'],strip:['#3B6FE8','#7A4FE0'],tower:['#E10600','#0C0C10'],clean:['#FFFFFF','#1F5BD6'],neon:['#00E0FF','#7A4FE0'],gold:['#F5D06B','#0C0C0E'],cast:['#0E1218','#2F6BFF'],head:['#0E1218','#12B886'],bug:['#2F6BFF','#FFFFFF'],carbon:['#1B1E22','#E5383B'],mono:['#000000','#FFFFFF'],sunset:['#FF8A00','#E52E71'],emerald:['#19C37D','#06181A'],royal:['#1B2A6B','#F5D06B'],day:['#FFFFFF','#10151F'],studio:['#FFFFFF','#1F5BD6'],crimson:['#FF3B3B','#0A0A0C'],ocean:['#00C2A8','#0077FF'],amber:['#0E1218','#FFB020'],rally:['#FF5A1F','#0D1118'],matrix:['#0E9F6E','#06140F']};
 const BAR={
   clean:{panel:'#FFFFFF',ink:'#10151F',dim:'#5B6677',a:'#1F5BD6',b:'#1F5BD6',on:'#FFFFFF',ok:'#1C8A57',warn:'#B86E05',r:10,skew:0,pips:false,shade:.3,glow:null},
   neon:{panel:'rgba(8,10,26,.9)',ink:'#FFFFFF',dim:'#A9B4D0',a:'#00E0FF',b:'#7A4FE0',on:'#FFFFFF',ok:'#00E0FF',warn:'#FFC857',r:0,skew:16,pips:true,shade:.75,glow:'#00E0FF'},
@@ -691,6 +692,12 @@ function drawStage(){
     G.evn=t.ev.n;
   }else if(!t.ev)G.evn=0;
   if(G.pop&&now-G.pop.at>2600)G.pop=null;
+  // clean picture for a broadcast that adds its own graphics: nothing on top, or only the logo in a corner
+  if(GFX==='none'||GFX==='logo'){
+    if(!drawCam(x,0,0,W,H))text(CAMERR?'ไม่มีภาพจากกล้อง':'กำลังเปิดกล้อง…',W/2,H/2,'500 26px '+FONT.ui,'#4D5B74','center');
+    if(GFX==='logo'&&LOGO.complete&&LOGO.naturalWidth){const lh=64,lw=lh*LOGO.naturalWidth/LOGO.naturalHeight;x.save();x.globalAlpha=.9;x.shadowColor='rgba(0,0,0,.55)';x.shadowBlur=12;x.drawImage(LOGO,W-M-lw,M,lw,lh);x.restore()}
+    return;
+  }
   if(GFX==='tower'){drawTower(x,c,t,tm,cp,lim,now,{});return}
   if(GFX==='royal'){drawTower(x,c,t,tm,cp,lim,now,{head:'#1B2A6B',bg:'#0A1030',sbg:'#F5D06B',sink:'#0A1030',slab:'#5B4A12',ok:'#F5D06B'});return}
   if(BAR[GFX]){drawBar(x,c,t,tm,cp,lim,now,BAR[GFX]);return}
@@ -1228,6 +1235,233 @@ function vLive(){
   return`<div class="live"><div class="chbar">${chBar()}</div><div id="ytbox" data-k="${esc(liveKey())}">${video}</div><div id="livebody" class="grid">${liveBody()}</div></div>`;
 }
 
+/* ---------- "your turn" alerts on a team's phone: one when a single team is ahead, one when it is their turn.
+   They show while the page is open, even tucked in the background. On iPhone the page must be added to the home screen first. */
+const NOTE_KEY='ptarena:notify',NOTE_SEEN='ptarena:notified';
+const noteOn=()=>keep(NOTE_KEY)==='on';
+const iosNotApp=()=>/iphone|ipad/i.test(navigator.userAgent)&&!(matchMedia('(display-mode: standalone)').matches||navigator.standalone);
+let NOTEAC=null;
+const noteSoundReady=()=>{try{NOTEAC=NOTEAC||new (window.AudioContext||window.webkitAudioContext)();NOTEAC.resume()}catch(e){}};
+function noteSound(n){
+  if(!NOTEAC)return;
+  for(let i=0;i<n;i++)try{const o=NOTEAC.createOscillator(),g=NOTEAC.createGain(),t=NOTEAC.currentTime+i*0.35;o.frequency.value=880;o.connect(g);g.connect(NOTEAC.destination);
+    g.gain.setValueAtTime(0.001,t);g.gain.exponentialRampToValueAtTime(0.3,t+0.02);g.gain.exponentialRampToValueAtTime(0.001,t+0.28);o.start(t);o.stop(t+0.3)}catch(e){}
+}
+async function noteEnable(){
+  noteSoundReady();keep(NOTE_KEY,'on');
+  if('Notification' in window&&Notification.permission==='default')try{await Notification.requestPermission()}catch(e){}
+  try{localStorage.removeItem(NOTE_SEEN)}catch(e){}
+  toast('เปิดแจ้งเตือนแล้ว');render();   // render last: an alert that is already due shows over this message
+}
+function noteHint(){
+  if(!('Notification' in window))return iosNotApp()?'iPhone: กดปุ่มแชร์ → "เพิ่มลงหน้าจอโฮม" แล้วเปิดจากไอคอนนั้น จึงจะเด้งได้ ตอนนี้มีแค่เสียงและข้อความบนหน้านี้':'เครื่องนี้แจ้งเตือนจากเว็บไม่ได้ มีแค่เสียงและข้อความบนหน้านี้';
+  if(Notification.permission==='denied')return'เบราว์เซอร์ปิดการแจ้งเตือนของเว็บนี้ไว้ เปิดได้ที่การตั้งค่าเว็บไซต์ ตอนนี้มีแค่เสียงและข้อความบนหน้านี้';
+  return'เปิดหน้านี้ค้างไว้ พับไว้เบื้องหลังได้ ถ้าปิดเบราว์เซอร์ไปจะไม่เด้ง';
+}
+function noteCheck(){
+  if(ROLE!=='view'||!noteOn()||!READY)return;
+  const t=myTeam();if(!t)return;const c=cls(t.cls),r=curRound(c.id);if(!r)return;
+  const idx=queue(c.id).findIndex(x=>x.id===t.id),stage=idx===0?'now':idx===1?'next':null;if(!stage)return;
+  const key=t.id+'_'+r+'_'+stage;let seen=[];try{seen=JSON.parse(localStorage.getItem(NOTE_SEEN)||'[]')}catch(e){}
+  if(seen.includes(key))return;
+  seen.push(key);try{localStorage.setItem(NOTE_SEEN,JSON.stringify(seen.slice(-40)))}catch(e){}
+  const title=stage==='now'?`ถึงคิวแล้ว · ${t.name}`:`เตรียมตัว · อีก 1 คิว`,body=stage==='now'?`ไปที่สนาม ${c.field} ทันที · รอบ ${r}`:`${t.name} · สนาม ${c.field} · รอบ ${r} · เตรียมหุ่นให้พร้อม`;
+  try{navigator.vibrate?.(stage==='now'?[400,150,400,150,400]:[250,120,250])}catch(e){}
+  noteSound(stage==='now'?3:2);toast(title+' · '+body);
+  if('Notification' in window&&Notification.permission==='granted'){
+    const opt={body,tag:'ptarena-queue',renotify:true,icon:'logo-mark.png',vibrate:[300,100,300]};
+    (navigator.serviceWorker?navigator.serviceWorker.getRegistration():Promise.resolve(null)).then(reg=>reg?reg.showNotification(title,opt):new Notification(title,opt)).catch(()=>{try{new Notification(title,opt)}catch(e){}});
+  }
+}
+setInterval(noteCheck,15000);
+
+/* ---------- device status: every staff device reports what it is doing; the head of the event sees them all on one page ----------
+   A device writes when something that matters changes, and at least once a minute so the page can tell it is still there. */
+const BEAT_MS=60000;
+let BEATKEY='',BEATT=0,STATUS={},BATT=null;
+navigator.getBattery?.().then(b=>{BATT=b;['levelchange','chargingchange'].forEach(e=>b.addEventListener(e,()=>beat()))}).catch(()=>{});
+const statusBus=(()=>{try{const bc=new BroadcastChannel('ptarena-status');bc.onmessage=e=>{STATUS[e.data.key]=e.data.d;if(S?.ui?.view==='devices')render()};return bc}catch(e){return null}})();
+function beatData(){
+  const ua=navigator.userAgent,d={role:ROLE,field:LOCK||S.ui.field||'',online:navigator.onLine,dev:/iphone|ipad/i.test(ua)?'iPhone':/android/i.test(ua)?'Android':'คอม',
+    bat:BATT?Math.round(BATT.level*100):null,charging:BATT?BATT.charging:null};
+  if(ROLE==='timer'){const t=timerOf(LOCK);Object.assign(d,{clock:t.state,cam:CAMID==='phone'?'มือถือ':'เว็บแคม',camOk:!!(VID&&VID.readyState>=2),camReal:CAMREAL||'',camErr:CAMERR||'',
+    rec:!!REC,recErr:RECERR||'',upQ:UPQ.length,upFail:UPFAIL.length,upErr:UPERR||'',drive:!!S.drive?.url,sound:audioWhere(),
+    set:{gfx:GFX,qual:QUAL,fps:String(FPS),audio:AUDIO?'on':'off',src:CAMID==='phone'?'phone':'webcam'}})}
+  if(ROLE==='cam')Object.assign(d,{camState:CAMP.state,camReal:CAMP.real||'',net:CAMP.net||'',locked:CAMP.locked,
+    set:{shape:CAMP.shape,res:String(CAMP.res),fps:String(CAMP.fps),mode:CAMP.mode,locked:CAMP.locked?'on':'off'}});
+  if(ROLE==='judge')Object.assign(d,{team:S.ui.form?.teamId||''});
+  return d;
+}
+// only what matters decides whether to write now; numbers that wobble every second (fps, Mbps) ride along without forcing a write
+const beatKey=d=>JSON.stringify([d.field,d.online,d.bat==null?null:Math.round(d.bat/10),d.charging,d.clock,d.cam,d.camOk,d.camErr,d.rec,d.recErr,d.upQ,d.upFail,!!d.upErr,d.drive,d.camState,d.locked,d.team,d.set]);
+function beat(force){
+  if(!['timer','cam','judge'].includes(ROLE)||needGate()||!READY)return;
+  const d=beatData(),k=beatKey(d),now=Date.now();
+  if(!force&&k===BEATKEY&&now-BEATT<BEAT_MS)return;
+  BEATKEY=k;BEATT=now;
+  const key=ROLE+'_'+(d.field||'-')+'_'+String(DEVICE).slice(-4);
+  if(CLOUD)window.PT_BACKEND?.beat?.(key,d);else{STATUS[key]={...d,t:Date.now()};statusBus?.postMessage({key,d:STATUS[key]})}
+}
+setInterval(()=>beat(),5000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')beat(true)});
+setInterval(()=>{if(S?.ui?.view==='devices'&&!/^(SELECT|INPUT)$/.test(document.activeElement?.tagName||''))render()},5000);
+
+const ROLE_NAME={timer:'โน้ตบุ๊กจับเวลา',cam:'มือถือกล้อง',judge:'กรรมการ'};
+function devProblems(d){
+  const p=[];
+  if(d.online===false)p.push('เครื่องนี้เน็ตหลุด');
+  if(d.bat!=null&&d.bat<20&&!d.charging)p.push('แบตเหลือ '+d.bat+'%');
+  if(d.role==='timer'){
+    if(!d.camOk)p.push(d.camErr?'เปิดกล้องไม่ได้ ('+d.camErr+')':'กล้องไม่มีภาพ');
+    if(d.recErr)p.push('อัดวิดีโอไม่ได้');
+    if(d.upFail)p.push('ส่งไดรฟ์ไม่ได้ '+d.upFail+' คลิป');
+    if(d.upQ>=3)p.push('คลิปค้างส่ง '+d.upQ);
+    else if(d.upErr)p.push('ส่งไดรฟ์ติดขัด กำลังลองใหม่');
+  }
+  if(d.role==='cam'&&d.camState!=='on')p.push(d.camState==='idle'?'ยังไม่ได้กดส่งภาพ':d.camState==='wait'?'รอโน้ตบุ๊ก':'ภาพหลุด กำลังต่อใหม่');
+  return p;
+}
+/* ---------- control room: the head of the event sees every field and changes their settings from one machine ----------
+   Orders go through the database (or between tabs in sample mode). They only touch the picture, sound and clip upload:
+   the clock and the scores are never changed from here. A timer laptop in the middle of a run waits until the run is over.
+   Each device notes the last order it carried out, so an order runs once, even across a reload, and a failing order
+   only fails itself: everything here is fenced off from the rest of the page. */
+let CTRL={},SNAPS={},CTRLLOG=[],CTRLSEEN=null,CTRLSOUND=false,CTRLAUTO=false;
+const ctrlBus=(()=>{try{const bc=new BroadcastChannel('ptarena-ctrl');bc.onmessage=e=>{const m=e.data;
+  if(m.kind==='ctrl'){CTRL=m.d;ctrlApply()}else if(m.kind==='snap'){SNAPS[m.key]=m.d;if(S?.ui?.view==='devices')render()}};return bc}catch(e){return null}})();
+function ctrlSend(field,part,patch){
+  const cur=CTRL[field]||{},next={...(cur[part]||{}),...patch,n:Date.now()};
+  CTRL={...CTRL,[field]:{...cur,[part]:next}};
+  if(CLOUD)window.PT_BACKEND?.ctrlSend?.(field,part,next);else ctrlBus?.postMessage({kind:'ctrl',d:CTRL});
+}
+const ctrlCmd=(field,target,op)=>ctrlSend(field,'cmd_'+target,{op,id:Date.now().toString(36)+Math.random().toString(36).slice(2,6)});
+const ctrlDone=k=>{try{return JSON.parse(localStorage.getItem('ptarena:ctrldone')||'{}')[k]}catch(e){return null}};
+const ctrlMark=(k,v)=>{try{const m=JSON.parse(localStorage.getItem('ptarena:ctrldone')||'{}');m[k]=v;localStorage.setItem('ptarena:ctrldone',JSON.stringify(m))}catch(e){}};
+let CTRLBUSY=false;
+async function ctrlApply(){
+  if(CTRLBUSY||!['timer','cam'].includes(ROLE)||!LOCK||needGate()||!READY)return;CTRLBUSY=true;
+  try{
+    const c=CTRL[LOCK]||{},mine=c[ROLE];
+    if(ROLE==='timer'&&mine&&mine.n!==ctrlDone('timer'+LOCK)&&timerOf(LOCK).state!=='run'){
+      ctrlMark('timer'+LOCK,mine.n);let reopen=false;
+      if(mine.gfx&&GFX_LIST[mine.gfx]&&mine.gfx!==GFX){GFX=mine.gfx;keep('ptarena:gfx',GFX)}
+      if(mine.qual&&CAMQ[mine.qual]&&mine.qual!==QUAL){QUAL=mine.qual;keep('ptarena:camq',QUAL);reopen=true}
+      if(mine.fps&&FPS_LIST[mine.fps]&&+mine.fps!==FPS){FPS=+mine.fps;keep('ptarena:fps',String(FPS));reopen=true}
+      if(mine.audio&&(mine.audio==='on')!==AUDIO){AUDIO=mine.audio==='on';keep('ptarena:audio',AUDIO?'on':'off');if(AUDIO)micOn();else{LAPMIC?.getTracks().forEach(k=>k.stop());LAPMIC=null}}
+      if(mine.src==='phone'&&CAMID!=='phone'){CAMID='phone';reopen=true}
+      if(mine.src==='webcam'&&CAMID==='phone'){const w=keep('ptarena:cam');CAMID=w&&w!=='phone'?w:'';reopen=true}
+      if(reopen)await camOn();else render();
+      toast('ห้องควบคุมปรับค่าเครื่องนี้แล้ว');beat(true);
+    }
+    if(ROLE==='cam'&&mine&&mine.n!==ctrlDone('cam'+LOCK)){
+      ctrlMark('cam'+LOCK,mine.n);let swap=false;
+      if(mine.shape&&CAM_SHAPE[mine.shape]&&mine.shape!==CAMP.shape){CAMP.shape=mine.shape;keep('ptarena:camshape',CAMP.shape);swap=true}
+      if(mine.res&&CAM_RES[mine.res]&&+mine.res!==CAMP.res){CAMP.res=+mine.res;keep('ptarena:camres',String(CAMP.res));swap=true}
+      if(mine.fps&&+mine.fps!==CAMP.fps){CAMP.fps=+mine.fps===60?60:30;swap=true}
+      if(mine.mode&&mine.mode!==CAMP.mode){CAMP.mode=mine.mode==='sharp'?'sharp':'smooth';keep('ptarena:cammode',CAMP.mode);swap=true}
+      if(swap&&CAMP.stream)await camSwap();
+      if(mine.locked&&(mine.locked==='on')!==CAMP.locked&&CAMP.stream){if(mine.locked==='on')await camLock();else await camUnlock()}
+      render();toast('ห้องควบคุมปรับค่ามือถือนี้แล้ว');beat(true);
+    }
+    const cmd=c['cmd_'+ROLE];
+    if(cmd&&cmd.id!==ctrlDone('cmd'+ROLE+LOCK)){
+      ctrlMark('cmd'+ROLE+LOCK,cmd.id);
+      // an old order found when the page opens is not carried out (a reload order would otherwise reload forever)
+      if(Date.now()-(cmd.n||0)<120000){
+        if(cmd.op==='snap')snapSend();
+        if(cmd.op==='upnow'&&ROLE==='timer'){UPWAIT=5000;UPERR='';upRun();toast('ห้องควบคุมสั่งส่งคลิปที่ค้างตอนนี้')}
+        if(cmd.op==='reload'){toast('ห้องควบคุมสั่งรีโหลดหน้า');setTimeout(()=>location.reload(),800)}
+      }
+    }
+  }catch(e){}
+  CTRLBUSY=false;
+}
+setInterval(ctrlApply,5000);
+// a small picture of what this device shows now, for the control room
+function snapSend(){
+  try{
+    let src=null,w=384,h=216;
+    if(ROLE==='timer'&&CV)src=CV;
+    if(ROLE==='cam'){const v=$('#campv');if(v&&v.videoWidth){src=v;h=Math.round(w*v.videoHeight/v.videoWidth)}}
+    if(!src)return;
+    const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(src,0,0,w,h);
+    const img=c.toDataURL('image/jpeg',0.6),key=LOCK+'_'+ROLE;
+    if(CLOUD)window.PT_BACKEND?.snapSend?.(key,img);else ctrlBus?.postMessage({kind:'snap',key,d:{img,t:Date.now()}});
+  }catch(e){}
+}
+// problems that appear and clear, kept as a running log, with a sound when a new one appears
+function ctrlScan(){
+  if(ROLE!=='staff')return;
+  try{
+    const now=CLOUD?nowS():Date.now(),cur={};
+    Object.entries(STATUS).forEach(([k,d])=>{const age=d.t?(now-d.t)/1000:1e9,who=`สนาม ${d.field||'-'} · ${ROLE_NAME[d.role]||d.role}`;
+      if(age>1800)return;
+      if(age>150)cur[k+'|off']=who+': เงียบไป (ปิดหน้าหรือเน็ตหลุด)';else devProblems(d).forEach(p=>cur[k+'|'+p]=who+': '+p)});
+    if(CTRLSEEN){
+      const at=new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});let fresh=0;
+      Object.keys(cur).forEach(k=>{if(!(k in CTRLSEEN)){CTRLLOG.unshift({at,txt:cur[k],bad:true});fresh++}});
+      Object.keys(CTRLSEEN).forEach(k=>{if(!(k in cur))CTRLLOG.unshift({at,txt:CTRLSEEN[k]+' · แก้แล้ว',bad:false})});
+      CTRLLOG=CTRLLOG.slice(0,40);
+      if(fresh&&CTRLSOUND){noteSoundReady();noteSound(2)}
+    }
+    CTRLSEEN=cur;
+  }catch(e){}
+}
+setInterval(ctrlScan,5000);
+setInterval(()=>{if(CTRLAUTO&&ROLE==='staff')fieldsSorted().forEach(c=>ctrlCmd(c.field,'timer','snap'))},30000);
+
+function vDevices(){
+  const now=CLOUD?nowS():Date.now();
+  const all=Object.entries(STATUS).map(([k,d])=>({k,...d,age:d.t?Math.max(0,(now-d.t)/1000):1e9}));
+  const live=d=>d.age<=150,seen=d=>d.age<=600;
+  const ago=a=>a<60?Math.round(a)+' วิ':a<3600?Math.round(a/60)+' นาที':a<86400?Math.round(a/3600)+' ชม.':'นานแล้ว';
+  const issues=all.filter(live).flatMap(d=>devProblems(d).map(x=>({f:d.field,txt:`${ROLE_NAME[d.role]||d.role}: ${x}`})));
+  const gone=all.filter(d=>d.age>3600);
+  // one setting: what the control room asked for, else what the device reports, and whether the device has caught up
+  const pick=(f,part,key,opts,label)=>{
+    const want=CTRL[f]?.[part]?.[key],dev=all.filter(d=>d.field===f&&d.role===part&&live(d)).map(d=>d.set?.[key])[0],cur=want??dev??'';
+    return`<label class="cc"><span>${label}${want!=null&&dev!=null&&want!==dev?' <em>รอเครื่องปรับ</em>':''}</span><select data-ctrl="${f}|${part}|${key}"><option value="" ${cur===''?'selected':''}>—</option>${opts.map(([v,t])=>`<option value="${v}" ${String(v)===String(cur)?'selected':''}>${esc(t)}</option>`).join('')}</select></label>`};
+  const O={gfx:Object.entries(GFX_LIST).map(([k,v])=>[k,v.split(' · ')[0]]),qual:Object.entries(CAMQ).map(([k,q])=>[k,q.label.split(' · ')[1]||k]),fps:Object.keys(FPS_LIST).map(k=>[k,k+' fps']),
+    audio:[['on','เปิด'],['off','ปิด']],src:[['webcam','เว็บแคม'],['phone','มือถือ']],shape:Object.entries(CAM_SHAPE),res:Object.keys(CAM_RES).map(k=>[k,k+'p']),cfps:[['30','30 fps'],['60','60 fps']],mode:[['smooth','ลื่น'],['sharp','คม']],locked:[['on','ล็อก'],['off','ปลด']]};
+  const timerCtl=f=>[pick(f,'timer','gfx',O.gfx,'กราฟิก'),pick(f,'timer','src',O.src,'กล้อง'),pick(f,'timer','qual',O.qual,'ความชัด'),pick(f,'timer','fps',O.fps,'ความลื่น'),pick(f,'timer','audio',O.audio,'เสียง')].join('');
+  const camCtl=f=>[pick(f,'cam','shape',O.shape,'ทิศภาพ'),pick(f,'cam','res',O.res,'ความชัด'),pick(f,'cam','fps',O.cfps,'fps'),pick(f,'cam','mode',O.mode,'เน้น'),pick(f,'cam','locked',O.locked,'ล็อก')].join('');
+  const led=(d,label)=>`<span class="led ${!d?'none':live(d)?(devProblems(d).length?'warn':'ok'):seen(d)?'warn':'off'}" title="${d?(live(d)?'ออนไลน์':'เงียบไป '+ago(d.age)):'ยังไม่เปิด'}">${label}</span>`;
+  const tile=c=>{
+    const f=c.field,ds=all.filter(d=>d.field===f&&d.age<86400),one=r=>ds.filter(d=>d.role===r).sort((a,b)=>a.age-b.age)[0];
+    const tl=one('timer'),cm=one('cam'),jg=one('judge'),t=timerOf(f),tm=t.state!=='idle'&&team(t.team)||queue(c.id)[0];
+    const snap=SNAPS[f+'_timer']||SNAPS[f+'_cam'],probs=issues.filter(x=>x.f===f);
+    const sc=t.state!=='idle'?liveScore(f):null;
+    return`<div class="cr-tile ${probs.length?'bad':''}">
+      <div class="cr-head"><b>สนาม ${f}</b><span>${esc(S.comps[c.comp].tag)} ${esc(c.level)}</span><span class="cr-leds">${led(tl,'โน้ตบุ๊ก')}${led(cm,'มือถือ')}${led(jg,'กรรมการ')}</span></div>
+      <div class="cr-pic">${snap?`<img src="${snap.img}" alt="ภาพสนาม ${f}"><span class="cr-age">${ago(Math.max(0,(now-snap.t)/1000))}ที่แล้ว</span>`:'<span class="cr-nopic">ยังไม่มีภาพ</span>'}
+        ${tl?.rec?'<span class="cr-rec">● REC</span>':''}<button class="btn sm cr-snap" data-act="ctrlcmd" data-f="${f}" data-t="${tl&&live(tl)?'timer':'cam'}" data-op="snap">ดูภาพตอนนี้</button></div>
+      <div class="cr-live"><div><b>${tm?esc(tm.name):'ไม่มีทีม'}</b><small>${tm?tm.id:''}${t.state==='run'?' · กำลังแข่ง':t.state==='stop'?' · หยุดแล้ว รอส่งคะแนน':' · รอเริ่ม'}</small></div>
+        <span class="cr-clock mono" ${t.state!=='idle'?`data-tm="${f}"`:''}>${fmtMs(tElapsed(t))}</span><span class="cr-score mono">${sc??'–'}</span></div>
+      ${probs.length?`<div class="devp">${probs.map(p=>`<span>${esc(p.txt)}</span>`).join('')}</div>`:''}
+      <div class="small muted">${tl?`ไดรฟ์ ${tl.drive?(tl.upQ?'ค้าง '+tl.upQ:'ส่งครบ'):'ยังไม่ตั้ง'} · เสียง ${esc(tl.sound||'-')}${tl.camReal?' · '+esc(tl.camReal.split(' (')[0]):''}`:'โน้ตบุ๊กยังไม่เปิดหน้าจับเวลา'}${cm?` · มือถือ ${esc(cm.net||cm.camState||'')}`:''}</div>
+      <details class="cr-set"><summary>ตั้งค่าเครื่องในสนามนี้</summary>
+        <div class="cr-grp"><b>โน้ตบุ๊กจับเวลา</b><div class="cr-ctl">${timerCtl(f)}</div>
+          <div class="row"><button class="btn sm" data-act="ctrlcmd" data-f="${f}" data-t="timer" data-op="upnow">ส่งคลิปค้างตอนนี้</button><button class="btn sm" data-act="ctrlcmd" data-f="${f}" data-t="timer" data-op="reload">รีโหลดหน้า</button></div></div>
+        <div class="cr-grp"><b>มือถือกล้อง</b><div class="cr-ctl">${camCtl(f)}</div>
+          <div class="row"><button class="btn sm" data-act="ctrlcmd" data-f="${f}" data-t="cam" data-op="snap">ดูภาพจากมือถือ</button><button class="btn sm" data-act="ctrlcmd" data-f="${f}" data-t="cam" data-op="reload">รีโหลดหน้า</button></div></div>
+      </details></div>`};
+  const allPick=(part,key,opts,label)=>`<label class="cc"><span>${label}</span><select data-ctrl="*|${part}|${key}"><option value="">—</option>${opts.map(([v,t])=>`<option value="${v}">${esc(t)}</option>`).join('')}</select></label>`;
+  return`<div class="cr">
+    <div class="cr-top">
+      <div><h2>ห้องควบคุม</h2><div class="small muted">ออนไลน์ ${all.filter(live).length} เครื่อง · อัปเดตเองทุก 5 วินาที</div></div>
+      <div class="cr-sum ${issues.length?'bad':'ok'}">${issues.length?`ต้องดู ${issues.length} เรื่อง`:all.some(live)?'ทุกเครื่องปกติ':'ยังไม่มีเครื่องรายงาน'}</div>
+      <div class="row"><button class="btn sm" data-act="ctrlsnapall">ดูภาพทุกสนาม</button>
+        <button class="btn sm" data-act="ctrlauto" aria-pressed="${CTRLAUTO}">${CTRLAUTO?'■ หยุดภาพอัตโนมัติ':'ภาพอัตโนมัติทุก 30 วิ'}</button>
+        <button class="btn sm" data-act="ctrlsound" aria-pressed="${CTRLSOUND}">${CTRLSOUND?'🔔 เสียงเตือนเปิด':'🔕 เปิดเสียงเตือน'}</button>
+        ${gone.length?`<button class="btn sm" data-act="devclean">ล้างเครื่องที่หายไป (${gone.length})</button>`:''}</div>
+    </div>
+    <details class="panel cr-all"><summary><b>ใช้กับทุกสนาม</b> <span class="small muted">เลือกแล้วส่งไปทุกสนามทันที</span></summary>
+      <div class="cr-ctl">${allPick('timer','gfx',O.gfx,'กราฟิก')}${allPick('timer','qual',O.qual,'ความชัด')}${allPick('timer','fps',O.fps,'ความลื่น')}${allPick('timer','audio',O.audio,'เสียง')}${allPick('cam','res',O.res,'มือถือ ความชัด')}${allPick('cam','fps',O.cfps,'มือถือ fps')}${allPick('cam','mode',O.mode,'มือถือ เน้น')}</div></details>
+    <div class="cr-body"><div class="cr-grid">${fieldsSorted().map(tile).join('')}</div>
+      <div class="panel cr-log"><h3>เหตุการณ์</h3>${CTRLLOG.length?CTRLLOG.map(l=>`<div class="${l.bad?'bad':'ok'}"><span class="mono">${l.at}</span> ${esc(l.txt)}</div>`).join(''):'<p class="small muted" style="margin:0">ยังไม่มีอะไรเกิดขึ้น</p>'}</div></div>
+  </div>`;
+}
+
 /* ---------- team phone ---------- */
 // the team this phone picked; viewers pick once and the phone remembers
 const myTeam=()=>{const q=S.ui.teamQuery.trim().toLowerCase();return q&&S.teams.find(x=>x.id.toLowerCase()===q)||null};
@@ -1255,6 +1489,7 @@ function vTeam(){
     card=`<div class="panel thero"><div class="row between"><span class="tid">${t.id}</span>${ROLE==='staff'?'':`<button class="tchg" data-act="teamclear">เปลี่ยนทีม</button>`}</div><h2>${esc(t.name)}</h2><div class="small muted">${esc(t.school)}<br>${esc(clsName(c))} · สนาม ${c.field}</div>
       <div class="steps">${steps.map(s=>`<div class="${s[1]?'on':''}"><i></i>${s[0]}</div>`).join('')}</div></div>
       ${co}
+      ${ROLE==='staff'?'':noteOn()?`<div class="panel notep"><div class="row between"><b>🔔 แจ้งเตือนเปิดอยู่</b><button class="btn sm" data-act="noteoff">ปิด</button></div><div class="small muted">จะเด้งตอนอีก 1 คิว และตอนถึงคิว · ${esc(noteHint())}</div></div>`:`<button class="btn pri big notebtn" data-act="noteon">🔔 แจ้งเตือนเมื่อใกล้ถึงคิว</button>`}
       <div class="panel" style="padding:14px"><div class="row between"><h3>คะแนนของทีม</h3>${me?.rank?`<span class="pill ac">อันดับ ${me.rank} จาก ${st.length}</span>`:''}</div>
       <div class="rtiles">${Array.from({length:S.rounds},(_,i)=>{const x=runOf(t.id,i+1);return`<div class="rt ${x?'on':''}"><small>รอบ ${i+1}</small><b class="mono">${x?score(x):'–'}</b><small class="mono">${x?fmtMs(x.ms):'ยังไม่แข่ง'}</small>${x&&S.clips?.[x.id]?`<a class="clip" href="${clipLink(S.clips[x.id])}" target="_blank" rel="noopener">▶ ดูคลิป</a>`:''}</div>`}).join('')}</div>
       <button class="btn" data-act="viewboard" data-v="${c.id}">ดูกระดานผลรุ่นนี้</button></div>`}
@@ -1373,6 +1608,13 @@ document.addEventListener('click',e=>{
   switch(a){
     case'tab':{const was=ui.view;ui.view=b.dataset.v;ui.pinFor=null;if((was==='live')!==(ui.view==='live'))window.PT_BACKEND?.role?.();break}
     case'ch':ui.liveCh=b.dataset.v;break;
+    case'ctrlcmd':ctrlCmd(b.dataset.f,b.dataset.t,b.dataset.op);toast(b.dataset.op==='reload'?'สั่งรีโหลดแล้ว':b.dataset.op==='upnow'?'สั่งส่งคลิปแล้ว':'ขอภาพแล้ว รอสักครู่');return;
+    case'ctrlsnapall':fieldsSorted().forEach(c=>ctrlCmd(c.field,'timer','snap'));toast('ขอภาพทุกสนามแล้ว');return;
+    case'ctrlauto':CTRLAUTO=!CTRLAUTO;if(CTRLAUTO)fieldsSorted().forEach(c=>ctrlCmd(c.field,'timer','snap'));break;
+    case'ctrlsound':CTRLSOUND=!CTRLSOUND;if(CTRLSOUND){noteSoundReady();noteSound(1)}break;
+    case'devclean':{const now=CLOUD?nowS():Date.now(),old=Object.keys(STATUS).filter(k=>!STATUS[k].t||now-STATUS[k].t>3600000);old.forEach(k=>delete STATUS[k]);if(CLOUD)window.PT_BACKEND?.dropStatus?.(old);break}
+    case'noteon':noteEnable();return;
+    case'noteoff':keep(NOTE_KEY,'off');render();return;
     case'lensreset':if(LENS){Object.keys(LENS.caps).forEach(k=>LENS.val[k]=k==='zoom'?LENS.caps[k].min:k==='focusDistance'?LENS.val[k]:(LENS.caps[k].min+LENS.caps[k].max)/2);LENS.focusAuto=true;lensApply().then(render)}return;
     case'camland':camLand();return;
     case'camfull':camFull(!CAMP.full);return;
@@ -1472,6 +1714,8 @@ document.addEventListener('click',e=>{
 document.addEventListener('change',e=>{
   const el=e.target;
   if(el.id==='venue'){S.venue=el.value;toast('เปลี่ยนเป็น'+VENUES.find(v=>v[0]===el.value)[1]+(CLOUD?'':' (ต้นแบบใช้ข้อมูลตัวอย่างชุดเดียวกัน)'));save();render();return}
+  if(el.dataset?.ctrl){const [f,part,key]=el.dataset.ctrl.split('|'),v=el.value;if(!v)return;
+    (f==='*'?fieldsSorted().map(c=>c.field):[f]).forEach(x=>ctrlSend(x,part,{[key]:v}));toast(f==='*'?'ส่งไปทุกสนามแล้ว':'ส่งคำสั่งแล้ว');render();return}
   if(el.id==='gsel'){GFX=GFX_LIST[el.value]?el.value:'strip';keep('ptarena:gfx',GFX);return}
   if(el.id==='camsel'){CAMID=el.value;keep('ptarena:cam',CAMID);camOn();return}
   if(el.id==='qsel'){QUAL=el.value;keep('ptarena:camq',QUAL);camOn();return}

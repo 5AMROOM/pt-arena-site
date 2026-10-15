@@ -85,6 +85,7 @@ function watchTimers(){
   if(unsubT){unsubT();unsubT=null}
   last.timers=null;exists.timers=false;S.timers={};synced.timers={};
   if(venue&&(['judge','timer','staff','screen'].includes(ROLE)||S.ui.view==='live'))unsubT=onSnapshot(timersRef(venue),{includeMetadataChanges:true},applyTimers,fail);
+  watchStatus();
 }
 function watchVenue(v){
   unsub.forEach(f=>f());
@@ -175,7 +176,7 @@ async function checkStaff(){
   if(!uid){CLOUD_STAFF=false;return}
   // cached answer first so a tablet with weak signal opens straight away, then confirm with the server
   try{if(takeCodes(await getDocFromCache(codesRef)))CLOUD_STAFF=true}catch(e){}
-  const confirm=getDoc(codesRef).then(s=>{CLOUD_STAFF=takeCodes(s)},e=>{if(e.code==='permission-denied')CLOUD_STAFF=false}).then(()=>{syncClock();watchCodes();if(READY)render()});
+  const confirm=getDoc(codesRef).then(s=>{CLOUD_STAFF=takeCodes(s)},e=>{if(e.code==='permission-denied')CLOUD_STAFF=false}).then(()=>{syncClock();watchCodes();watchStatus();if(READY)render()});
   if(!CLOUD_STAFF)await timeout(confirm,6000).catch(()=>{});
 }
 onAuthStateChanged(auth,async u=>{uid=u?u.uid:null;await checkStaff();got.auth=true;READY?render():ready()});
@@ -197,7 +198,23 @@ async function enter(code){
 // signatures: one staff-only document per run
 const signRef=k=>doc(db,'signs',k);
 const sign=(k,d)=>setDoc(signRef(k),{...d,t:serverTimestamp()}),getSign=k=>getDoc(signRef(k)).then(s=>s.exists()?s.data():null);
+// device status: one staff-only document per venue, one entry per device; the status page listens to it
+const statusRef=v=>doc(db,'status',v);
+const beat=(k,d)=>{if(venue)setDoc(statusRef(venue),{[k]:{...d,t:serverTimestamp()}},{merge:true}).catch(()=>{})};
+const dropStatus=keys=>{if(venue&&keys.length)updateDoc(statusRef(venue),...keys.flatMap(k=>[new FieldPath(k),deleteField()])).catch(()=>{})};
+// control room: orders per field (timer laptops, phone cameras and the control room listen) and small pictures (control room)
+const controlRef=v=>doc(db,'control',v),snapsRef=v=>doc(db,'snaps',v);
+const ctrlSend=(f,part,obj)=>{if(venue)setDoc(controlRef(venue),{[f]:{[part]:obj}},{merge:true}).catch(()=>{})};
+const snapSend=(k,img)=>{if(venue)setDoc(snapsRef(venue),{[k]:{img,t:serverTimestamp()}},{merge:true}).catch(()=>{})};
+let unsubS=null,unsubC2=null,unsubP=null;
+function watchStatus(){
+  if(unsubS){unsubS();unsubS=null}if(unsubC2){unsubC2();unsubC2=null}if(unsubP){unsubP();unsubP=null}
+  if(venue&&CLOUD_STAFF&&['staff','timer','cam'].includes(ROLE))unsubC2=onSnapshot(controlRef(venue),snap=>{CTRL=snap.data()||{};ctrlApply();if(S.ui.view==='devices')render()},()=>{});
+  if(!venue||ROLE!=='staff'||!CLOUD_STAFF)return;
+  unsubP=onSnapshot(snapsRef(venue),snap=>{const d=snap.data()||{};SNAPS={};Object.entries(d).forEach(([k,v])=>{SNAPS[k]={img:v.img,t:v.t?.toMillis?.()||0}});if(S.ui.view==='devices')render()},()=>{});
+  unsubS=onSnapshot(statusRef(venue),snap=>{const d=snap.data()||{};STATUS={};Object.entries(d).forEach(([k,v])=>{STATUS[k]={...v,t:v.t?.toMillis?.()||0}});if(S.ui.view==='devices')render()},()=>{});
+}
 // phone camera handshake: one staff-only note per field
 const rtcRef=f=>doc(db,'rtc',venue+'_'+f);
 const rtcSend=(f,d)=>setDoc(rtcRef(f),d,{merge:true}).catch(()=>{}),rtcWatch=(f,cb)=>onSnapshot(rtcRef(f),s=>{if(!s.metadata.hasPendingWrites)cb(s.data()||null)},()=>{});
-window.PT_BACKEND={push,enter,sign,getSign,rtcSend,rtcWatch,role:()=>{if(venue)watchTimers()}};
+window.PT_BACKEND={push,enter,sign,getSign,rtcSend,rtcWatch,beat,dropStatus,ctrlSend,snapSend,role:()=>{if(venue)watchTimers()}};

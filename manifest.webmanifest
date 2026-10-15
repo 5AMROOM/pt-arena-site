@@ -1,0 +1,10 @@
+{
+  "name": "PT Arena",
+  "short_name": "PT Arena",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0B0F17",
+  "theme_color": "#0B0F17",
+  "icons": [{ "src": "logo-mark.png", "sizes": "244x240", "type": "image/png" }]
+}

@@ -7,6 +7,12 @@
 const CACHE = 'pt-arena-v1';
 const WAIT = 4000;
 
+// a tap on a "your turn" alert brings the page to the front
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(cs => cs.length ? cs[0].focus() : self.clients.openWindow('./')));
+});
+
 self.addEventListener('install', e => { self.skipWaiting(); e.waitUntil(warm()); });
 self.addEventListener('activate', e => e.waitUntil((async () => {
   for (const k of await caches.keys()) if (k !== CACHE) await caches.delete(k);
