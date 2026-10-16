@@ -1541,7 +1541,7 @@ function vDevices(){
 // computer through a Google Drive folder kept on disk. OBS plays the clip itself (Media Source "PT คลิป"); the clip already
 // carries RoboArena's match graphics, so ours (Browser Source "PT กราฟิก" = overlay.html) show only between clips, drawn in
 // RoboArena's look. This page is the desk: it reads the folder, keeps the queue, and drives OBS through obs-websocket.
-const OA_SCENE='PT รีเพลย์',OA_CAM='PT กล้องเดิน',OA_BREAK='PT พักเบรก',OA_CLIP='PT คลิป',OA_GFX='PT กราฟิก',OA_ADS='PT โฆษณา',OA_MUSIC='PT เพลง',OA_STING='PT เสียงคั่น';
+const OA_SCENE='PT รีเพลย์',OA_CAM='PT กล้องเดิน',OA_BREAK='PT พักเบรก',OA_CLIP='PT คลิป',OA_GFX='PT กราฟิก',OA_ADS='PT โฆษณา',OA_MUSIC='PT เพลง',OA_STING='PT เสียงคั่น',OA_ADVID='PT วิดีโอโฆษณา';
 // the ads sit in this window of the 1920×1080 break screen; overlay.html leaves the same window see-through
 const OA_ADBOX={x:800,y:200,w:1040,h:585};
 // the sound folder holds three files with fixed names: the break bed (loops), the card sting, the show opener
@@ -1557,11 +1557,11 @@ const OA_OSMO='PT Osmo',OA_OSMO_URL='rtsp://127.0.0.1:8554/live/osmo';
 // the phone as the walking camera: our own camera page, no app (see #cam-ROAM / #rx-ROAM)
 const OA_PHONE='PT มือถือ',oaSite=()=>location.origin+location.pathname+location.search;
 const OA={dir:null,perm:'none',list:[],order:[],played:new Set(),bad:new Map(),sizes:new Map(),auto:true,delay:0,prog:'all',skipSetup:true,cur:null,nextM:null,phase:'idle',err:'',
-  ws:'ws://127.0.0.1:4455',pw:'',base:'',ads:'',snd:'',credit:'',brk:null,cache:{},helperOk:false,hlGroup:'',hlRound:1,hl:null,brkMode:'break',brkMin:5,brkAuto:true,bgm:'pt_loop.wav',obsWant:false,obsState:'off',obsErr:'',scene:'',stat:null,hold:false,offAir:false,shown:0,cursor:0,dur:0,paused:false,gen:0,waitAt:0,waitFn:null};
+  ws:'ws://127.0.0.1:4455',pw:'',base:'',ads:'',advid:'',snd:'',credit:'',brk:null,cache:{},helperOk:false,hlGroup:'',hlRound:1,hl:null,brkMode:'break',brkMin:5,brkAuto:true,bgm:'pt_loop.wav',obsWant:false,obsState:'off',obsErr:'',scene:'',stat:null,hold:false,offAir:false,shown:0,cursor:0,dur:0,paused:false,gen:0,waitAt:0,waitFn:null};
 try{const k=JSON.parse(localStorage.getItem('ptarena:oa')||'{}');OA.order=k.order||[];OA.played=new Set(k.played||[]);OA.auto=k.auto!==false;OA.delay=k.delay||0;OA.prog=k.prog||'all';OA.skipSetup=k.skipSetup!==false;
   OA.ws=k.ws||OA.ws;OA.pw=k.pw||'';OA.base=k.base||'';OA.obsWant=!!k.obsWant;
-  OA.ads=k.ads||'';OA.snd=k.snd||'';OA.credit=k.credit||'';OA.brkMode=k.brkMode||'break';OA.brkMin=k.brkMin||5;OA.brkAuto=k.brkAuto!==false;OA.bgm=OA_BGM[k.bgm]?k.bgm:'pt_loop.wav'}catch(e){}
-const oaKeep=()=>{try{localStorage.setItem('ptarena:oa',JSON.stringify({order:OA.order,played:[...OA.played],auto:OA.auto,delay:OA.delay,prog:OA.prog,skipSetup:OA.skipSetup,ws:OA.ws,pw:OA.pw,base:OA.base,obsWant:OA.obsWant,ads:OA.ads,snd:OA.snd,credit:OA.credit,brkMode:OA.brkMode,brkMin:OA.brkMin,brkAuto:OA.brkAuto,bgm:OA.bgm}))}catch(e){}};
+  OA.ads=k.ads||'';OA.advid=k.advid||'';OA.snd=k.snd||'';OA.credit=k.credit||'';OA.brkMode=k.brkMode||'break';OA.brkMin=k.brkMin||5;OA.brkAuto=k.brkAuto!==false;OA.bgm=OA_BGM[k.bgm]?k.bgm:'pt_loop.wav'}catch(e){}
+const oaKeep=()=>{try{localStorage.setItem('ptarena:oa',JSON.stringify({order:OA.order,played:[...OA.played],auto:OA.auto,delay:OA.delay,prog:OA.prog,skipSetup:OA.skipSetup,ws:OA.ws,pw:OA.pw,base:OA.base,obsWant:OA.obsWant,ads:OA.ads,advid:OA.advid,snd:OA.snd,credit:OA.credit,brkMode:OA.brkMode,brkMin:OA.brkMin,brkAuto:OA.brkAuto,bgm:OA.bgm}))}catch(e){}};
 const oaGroup=m=>`${m.prog} · สนาม ${m.field}`;
 const oaTime=v=>{const t=typeof v==='number'?v:new Date(v||0).getTime();return isFinite(t)?t:0};
 
@@ -1713,7 +1713,10 @@ async function obsSetup(){
     await place(OA_BREAK,OA_ADS,'slideshow_v2',{files:OA.ads?[{value:OA.ads,hidden:false,selected:false}]:[],slide_time:6000,transition:'fade',transition_speed:700,playback_behavior:'always_play',playback_mode:'loop',slide_mode:'mode_auto',use_custom_size:'1600x900'});
     await place(OA_BREAK,OA_MUSIC,'ffmpeg_source',{is_local_file:true,local_file:snd(OA.bgm),looping:true,restart_on_activate:true,close_when_inactive:true});
     await place(OA_BREAK,OA_GFX,'browser_source',{url:url.href,width:1920,height:1080,css:'',shutdown:false,restart_when_active:false});
-    await fit(OA_BREAK,OA_ADS,OA_ADBOX);await fit(OA_BREAK,OA_GFX,full,true);
+    // a video ad, when one is set, plays in the same window over the slideshow (the slideshow cannot play video)
+    await place(OA_BREAK,OA_ADVID,'ffmpeg_source',{is_local_file:true,local_file:OA.advid,looping:true,restart_on_activate:true,close_when_inactive:true,hw_decode:true});
+    await fit(OA_BREAK,OA_ADS,OA_ADBOX);await fit(OA_BREAK,OA_ADVID,OA_ADBOX,true);await fit(OA_BREAK,OA_GFX,full,true);
+    {const{sceneItemId}=await OBS.req('GetSceneItemId',{sceneName:OA_BREAK,sourceName:OA_ADVID});await OBS.req('SetSceneItemEnabled',{sceneName:OA_BREAK,sceneItemId,sceneItemEnabled:!!OA.advid})}
     // walking camera: picks the picture up again by itself when the camera reconnects
     await place(OA_CAM,OA_OSMO,'ffmpeg_source',{is_local_file:false,input:OA_OSMO_URL,input_format:'',reconnect_delay_sec:2,buffering_mb:1,restart_on_activate:false,close_when_inactive:false,hw_decode:true,rtsp_transport:'tcp'});
     await fit(OA_CAM,OA_OSMO,full);
@@ -1913,6 +1916,7 @@ function vOnair(){
         <label class="cc"><span>รหัส WebSocket</span><span class="pwbox"><input type="password" id="oapw" value="${esc(OA.pw)}" autocomplete="off"><button type="button" class="eye" data-act="oaeye" aria-label="ดูรหัส">👁</button></span></label>
         <label class="cc wide2"><span>ที่อยู่โฟลเดอร์แมตช์ในเครื่อง (โฟลเดอร์เดียวกับที่เลือกด้านบน)</span><input type="text" id="oabase" value="${esc(OA.base)}" placeholder="เช่น G:\\My Drive\\RoboArena · ก๊อปจากแถบที่อยู่ของ File Explorer" autocomplete="off"></label>
         <label class="cc wide2"><span>โฟลเดอร์รูปและ GIF โฆษณา (เล่นวนในฉากพักเบรก)</span><input type="text" id="oaads" value="${esc(OA.ads)}" placeholder="เช่น C:\\stream\\ads" autocomplete="off"></label>
+        <label class="cc wide2"><span>ไฟล์วิดีโอโฆษณา (MP4 เล่นวนในกรอบโฆษณาแทนสไลด์ เว้นว่าง = ใช้สไลด์รูป)</span><input type="text" id="oaadvid" value="${esc(OA.advid)}" placeholder="เช่น C:\stream\ads\โฆษณา.mp4" autocomplete="off"></label>
         <label class="cc wide2"><span>โฟลเดอร์เสียง (ไฟล์ชื่อ ${Object.keys(OA_BGM).join(' · ')} · ${OA_SND.sting} · ${OA_SND.open})</span><input type="text" id="oasnd" value="${esc(OA.snd)}" placeholder="เช่น C:\\stream\\music" autocomplete="off"></label>
         <label class="cc wide2"><span>เครดิตเพลง (ขึ้นมุมจอตอนพักเบรก เว้นว่างได้)</span><input type="text" id="oacredit" value="${esc(OA.credit)}" autocomplete="off"></label>
       </div>
@@ -2278,7 +2282,7 @@ document.addEventListener('change',e=>{
     (f==='*'?fieldsSorted().map(c=>c.field):[f]).forEach(x=>ctrlSend(x,part,{[key]:v}));toast(f==='*'?'ใช้กับทุกสนามแล้ว':'ส่งคำสั่งแล้ว');render();return}
   if(el.id==='oaprogsel'){OA.prog=el.value;oaKeep();render();return}
   // Explorer's "Copy as path" wraps the path in quotes
-  if(['oaws','oapw','oabase','oaads','oasnd','oacredit'].includes(el.id)){OA[el.id.slice(2)]=/^oa(base|ads|snd)$/.test(el.id)?el.value.trim().replace(/^"|"$/g,''):el.value.trim();oaKeep();if(el.id==='oabase')render();return}
+  if(['oaws','oapw','oabase','oaads','oaadvid','oasnd','oacredit'].includes(el.id)){OA[el.id.slice(2)]=/^oa(base|ads|advid|snd)$/.test(el.id)?el.value.trim().replace(/^"|"$/g,''):el.value.trim();oaKeep();if(el.id==='oabase')render();return}
   if(el.id==='oahlg'){OA.hlGroup=el.value;render();return}
   if(el.id==='oahlr'){OA.hlRound=+el.value;render();return}
   if(el.id==='oabrkmode'){OA.brkMode=el.value;oaKeep();render();return}
