@@ -1548,7 +1548,7 @@ const OA_ADBOX={x:800,y:200,w:1040,h:585};
 const OA_SND={loop:'pt_loop.wav',sting:'pt_sting.wav',open:'pt_open.wav'};
 const OA_BRK={break:'พักการแข่งขัน',match:'ก่อนเริ่มแข่ง',live:'ก่อนเริ่มไลฟ์'};
 // break music: the file in the sound folder, picked per break
-const OA_BGM={'pt_loop.wav':'สดใส ปลุกใจ','pt_loop_chill.wav':'ชิลล์ (vaportrap)','pt_loop_house.wav':'แดดเช้า (house)','pt_loop_wave.wav':'ลอยๆ (wave)','pt_loop_hiphop.wav':'ฮิปฮอป (boom-bap)','pt_loop_funk.wav':'ฟังก์ (funk)'};
+const OA_BGM={'pt_loop.wav':'สดใส ปลุกใจ','pt_loop_chill.wav':'ชิลล์ (vaportrap)','pt_loop_house.wav':'แดดเช้า (house)','pt_loop_wave.wav':'ลอยๆ (wave)','pt_loop_hiphop.wav':'ฮิปฮอป (boom-bap)','pt_loop_funk.wav':'ฟังก์ (funk)','pt_loop_ca.wav':'มืดๆ เท่ๆ (alt-R&B)'};
 // tools/studio_helper.py on this computer keeps copies of the clips that OBS can jump inside
 const OA_HELPER='http://127.0.0.1:8788';
 // the walking camera (DJI Osmo Pocket 4P through the Mimo app) sends RTMP to MediaMTX on this computer
@@ -2139,7 +2139,8 @@ document.addEventListener('click',e=>{
     case'crgo':{const f=b.dataset.f;ui.crHi=f;render();document.getElementById('crtile-'+f)?.scrollIntoView({block:'center',behavior:'smooth'});setTimeout(()=>{if(ui.crHi===f){ui.crHi=null;render()}},2500);return}
     case'oapick':oaPick(b.dataset.v==='new'||!OA.dir);return;
     case'oaperm':oaPick(false);return;
-    case'oaconnect':OA.obsWant=true;oaKeep();OBS.connect();break;
+    // the boxes save when they lose focus; a click on connect right after pasting must still use what is typed
+    case'oaconnect':{const w=$('#oaws'),k=$('#oapw');if(w)OA.ws=w.value.trim();if(k)OA.pw=k.value.trim();OA.obsWant=true;oaKeep();OBS.connect();break}
     case'oasetup':obsSetup();return;
     case'oaeye':{const i=$('#oapw');if(i)i.type=i.type==='password'?'text':'password';return}
     case'oascene':OBS.req('SetCurrentProgramScene',{sceneName:b.dataset.v}).catch(e=>toast('สลับฉากไม่ได้: '+e.message));return;
@@ -2277,7 +2278,7 @@ document.addEventListener('change',e=>{
     (f==='*'?fieldsSorted().map(c=>c.field):[f]).forEach(x=>ctrlSend(x,part,{[key]:v}));toast(f==='*'?'ใช้กับทุกสนามแล้ว':'ส่งคำสั่งแล้ว');render();return}
   if(el.id==='oaprogsel'){OA.prog=el.value;oaKeep();render();return}
   // Explorer's "Copy as path" wraps the path in quotes
-  if(['oaws','oapw','oabase','oaads','oasnd','oacredit'].includes(el.id)){OA[el.id.slice(2)]=/^oa(base|ads|snd)$/.test(el.id)?el.value.trim().replace(/^"|"$/g,''):el.value.trim();oaKeep();render();return}
+  if(['oaws','oapw','oabase','oaads','oasnd','oacredit'].includes(el.id)){OA[el.id.slice(2)]=/^oa(base|ads|snd)$/.test(el.id)?el.value.trim().replace(/^"|"$/g,''):el.value.trim();oaKeep();if(el.id==='oabase')render();return}
   if(el.id==='oahlg'){OA.hlGroup=el.value;render();return}
   if(el.id==='oahlr'){OA.hlRound=+el.value;render();return}
   if(el.id==='oabrkmode'){OA.brkMode=el.value;oaKeep();render();return}
