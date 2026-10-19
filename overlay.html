@@ -25,6 +25,7 @@ header{display:flex;align-items:center;justify-content:space-between}
 .brand{display:flex;align-items:center;gap:20px;font-size:36px;font-weight:800;letter-spacing:3px}
 .brand small{display:block;font-size:14px;letter-spacing:4px;color:var(--muted);font-weight:700}
 .bm{display:grid;place-items:center;width:76px;height:76px;background:var(--brand);clip-path:polygon(18% 0,100% 0,100% 82%,82% 100%,0 100%,0 18%);font-size:28px;font-weight:800;letter-spacing:1px}
+.bm img{width:68%;height:auto;display:block}
 .tag{font-size:17px;letter-spacing:2.4px;font-weight:700;border:1px solid #375785;padding:10px 18px;border-radius:7px;color:#abc8f5;white-space:nowrap}
 .tag.good{color:#89e2c0;border-color:#2d655e}
 .hero{position:relative;overflow:hidden;padding:46px 56px 52px;background:linear-gradient(115deg,#183b77,#142843 65%,#172452);border:1px solid #375a91;border-radius:22px}
@@ -51,21 +52,107 @@ header{display:flex;align-items:center;justify-content:space-between}
 .mi strong{font-size:46px}
 .mi strong span{font-size:24px;color:var(--muted)}
 .idle-mid{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;text-align:center}
-.idle-mid .bm{width:150px;height:150px;font-size:56px}
-.idle-mid h1{font-size:120px;line-height:1.1}
+.idle-mid .evlogo{height:500px;width:auto;display:block;margin-bottom:-6px}
+.idle-mid h1{font-size:104px;line-height:1.1}
 .idle-mid p{font-size:34px;color:#a5bfdf;letter-spacing:2px}
-/* the result fills the screen: the block sits in the middle, numbers sized to read from across a hall */
-#cres .grid{margin-top:auto;grid-template-columns:1.2fr 1fr 1fr}
-#cres .ms{margin-bottom:auto}
-#cres .grid>*{padding:40px 44px}
-#rteam{font-size:78px!important}
-#cres .score{font-size:180px;line-height:1}
-#cres .score small{font-size:56px}
-#cres .clock{font-size:118px;line-height:1.35}
-#cres .mi{padding:30px 34px}
-#cres .mi b{font-size:28px}
-#cres .mi strong{font-size:64px}
-#cres .mi strong span{font-size:30px}
+/* the result: the clip's last picture squeezes into a window on the left (the desk sends it), the result lands on
+   the right in three leaning plates, the foot shows where the round stands among the runs already shown on air.
+   Tried out in design/preview/result2.html. RoboArena's own bars stay inside the window, so nothing is laid over them. */
+#cres{padding:0;gap:0;background:#06123a;--navy:#06123a;--sky:#8fd0ff;--red:#e3262f;--gold:#ffc21a;--ink:#f5f8ff;--mute2:#a9bbe2;
+  --num:"Bahnschrift","Leelawadee UI",sans-serif;--out:cubic-bezier(.16,1,.3,1);--hex:polygon(18px 0,calc(100% - 18px) 0,100% 50%,calc(100% - 18px) 100%,18px 100%,0 50%)}
+#cres:before{display:none}
+#cres>*{position:absolute}
+#cres em{font-style:normal;letter-spacing:0;font-weight:700;font-family:"Segoe UI","Leelawadee UI",Tahoma,sans-serif}
+#cres .r-bg{inset:-60px;background:center/cover;filter:blur(26px) brightness(.32) saturate(1.3);opacity:0}
+#cres .r-tint{inset:0;background:radial-gradient(120% 90% at 30% 40%,#0b247055 0,#06123ae6 70%);opacity:0}
+#cres .sw{left:-30%;width:160%;height:16px;transform:rotate(-9deg);opacity:0;filter:blur(1px)}
+#cres .sw.r{top:1010px;background:linear-gradient(90deg,transparent,var(--red) 30%,var(--red) 70%,transparent)}
+#cres .sw.w{top:1032px;height:8px;background:linear-gradient(90deg,transparent,var(--ink) 35%,var(--ink) 65%,transparent)}
+#cres .sw.b{top:1046px;height:18px;background:linear-gradient(90deg,transparent,#1d4fd8 30%,#1d4fd8 70%,transparent)}
+#cres .r-top{left:72px;top:46px;height:150px;display:flex;align-items:center;opacity:0;transform:translateY(-24px)}
+#cres .r-top img{height:150px;position:relative;z-index:2;filter:drop-shadow(0 8px 18px #000a)}
+#cres .ban{margin-left:-36px;padding:0 54px 0 64px;height:104px;display:flex;flex-direction:column;justify-content:center;background:linear-gradient(180deg,#1b47c9,#0a2276);clip-path:var(--hex);position:relative}
+#cres .ban:before{content:'';position:absolute;inset:4px;clip-path:var(--hex);background:linear-gradient(180deg,#0e2a86,#06123a)}
+#cres .ban>*{position:relative}
+#cres .ban b{font-size:50px;line-height:1.05;text-shadow:0 2px 0 #00000080}
+#cres .ban span{font:600 21px/1.2 var(--num);letter-spacing:1.5px;color:var(--sky);margin-top:4px;max-width:560px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#cres .chip{display:inline-flex;align-items:center;gap:12px;padding:0 30px;clip-path:var(--hex);font:700 21px/1 var(--num);letter-spacing:2px}
+#cres .r-top .chip{margin-left:18px;height:52px;background:#0b2470;color:var(--sky)}
+#cres .r-org{right:72px;top:70px;display:flex;align-items:center;gap:16px;font:700 21px/1 var(--num);letter-spacing:2px;color:var(--mute2);opacity:0}
+#cres .r-org img{height:50px;opacity:.9}
+#cres .r-win{left:0;top:0;width:1920px;height:1080px;background:center/cover;transform-origin:0 0}
+#cres.noframe .r-win,#cres.noframe .r-frame,#cres.noframe .r-tag{display:none}
+#cres .r-frame{left:66px;top:224px;width:1132px;height:642px;opacity:0;border:2px solid #8fd0ff99;box-shadow:0 24px 48px #000b}
+#cres .r-frame:before,#cres .r-frame:after{content:'';position:absolute;width:44px;height:44px;border:4px solid var(--sky)}
+#cres .r-frame:before{left:-10px;top:-10px;border-right:0;border-bottom:0}#cres .r-frame:after{right:-10px;bottom:-10px;border-left:0;border-top:0}
+#cres .r-tag{left:96px;top:200px;height:56px;background:var(--red);opacity:0;transform:translateY(-12px)}
+#cres .r-tag i{width:12px;height:12px;border-radius:50%;background:var(--ink)}
+#cres .pl{left:1270px;width:578px;transform:skewX(-7deg);clip-path:inset(0 0 0 100%)}
+#cres .pl>.pin{transform:skewX(7deg);height:100%}
+#cres .pa{top:224px;height:226px;background:linear-gradient(160deg,#103090,#06123a 75%)}
+#cres .pa:before{content:'';position:absolute;left:0;top:0;width:90px;height:6px;background:var(--sky)}
+#cres .pa .pin{padding:22px 34px 0 40px}
+#cres .kick{font:600 18px/1 var(--num);letter-spacing:2px;color:var(--sky)}
+#cres .kick em{margin-left:10px}
+#cres .team{font-size:48px;font-weight:700;line-height:1.15;margin-top:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#cres .school{font-size:23px;color:var(--mute2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#cres .rms{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:14px;margin-top:14px}
+#cres .m{border-top:4px solid #ffffff26;padding-top:8px;opacity:0;min-width:0}
+#cres .m.full{border-color:var(--sky)}
+#cres .m small{display:block;font:600 14px/1.1 var(--num);color:var(--mute2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#cres .m b{display:block;font:700 30px/1 var(--num);margin-top:6px}#cres .m b span{font-size:17px;color:var(--mute2)}
+#cres .pb{top:474px;height:226px;background:linear-gradient(120deg,#f0303a,#a10f1c 70%);overflow:hidden}
+#cres .pb:before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,#ffffff14,transparent 45%)}
+#cres .pb .pin{position:relative;display:flex;align-items:center;padding:0 40px}
+#cres .pb .lab{font:600 21px/1.3 var(--num);letter-spacing:2px;opacity:.9}
+#cres .pb .lab em{display:block;font-size:24px;opacity:.85}
+#cres .pb .big{margin-left:auto;display:flex;align-items:flex-end;gap:6px}
+#cres .pb .big b{font:700 236px/.78 var(--num);font-stretch:condensed;letter-spacing:-8px;text-shadow:0 6px 0 #5d0610,0 14px 30px #0006}
+#cres .pb .big span{font:700 44px/1 var(--num);opacity:.8;padding-bottom:6px}
+#cres .shine{position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,#ffffff55 45%,transparent 60%);transform:translateX(-110%)}
+#cres .pc{top:724px;height:142px;background:linear-gradient(160deg,#103090,#06123a 75%)}
+#cres .pc .pin{display:grid;grid-template-columns:1.25fr .8fr 1fr;align-items:center;padding:0 30px 0 40px}
+#cres .pc small{display:block;font:600 15px/1 var(--num);letter-spacing:1.5px;color:var(--mute2)}
+#cres .pc small em{margin-left:8px}
+#cres .pc b{display:block;font:700 42px/1.1 var(--num);margin-top:6px;font-variant-numeric:tabular-nums}
+#cres .pc .rank b{font-size:48px;line-height:1.05}
+#cres .foot{left:72px;right:72px;top:906px;height:88px;display:flex;gap:10px}
+#cres .foot>*{opacity:0;transform:translateY(20px)}
+#cres .t3{display:flex;flex-direction:column;justify-content:center;padding:0 44px 0 30px;background:#0b2470;font:700 22px/1.15 var(--num);letter-spacing:2px;clip-path:polygon(0 0,100% 0,calc(100% - 22px) 100%,0 100%)}
+#cres .t3 em{font-size:17px;color:var(--mute2);font-weight:600}
+#cres .row{flex:1;display:flex;align-items:center;gap:14px;padding:0 20px;background:#06123ad0;border-bottom:3px solid #ffffff14;min-width:0}
+#cres .row .n{font:700 32px/1 var(--num);color:var(--mute2);min-width:26px}
+#cres .row .tm{flex:1;min-width:0;font-weight:600;font-size:23px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#cres .row .tm small{display:block;font:600 16px/1.25 var(--num);color:var(--mute2);letter-spacing:1px}
+#cres .row .p{font:700 34px/1 var(--num)}
+#cres .row.me{background:linear-gradient(90deg,#3a2c00e8,#06123ae0);border-bottom-color:var(--gold)}
+#cres .row.me .n,#cres .row.me .p{color:var(--gold)}
+#cres .nx{display:flex;flex-direction:column;justify-content:center;gap:6px;padding:0 28px;background:#0b2470;width:330px;flex:none}
+#cres .nx small{font:600 18px/1 var(--num);letter-spacing:2px;color:var(--sky)}
+#cres .nx b{font-size:26px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#cres.go .r-win{animation:rsq .95s var(--out) .45s forwards}
+@keyframes rsq{to{transform:translate(69px,227px) scale(.5865)}}
+#cres.go .r-bg,#cres.go .r-tint{animation:rfade .9s ease .5s forwards}
+#cres.go .sw{animation:rsw .6s ease 1s forwards,rdrift 14s linear 1s infinite}
+#cres.go .r-frame{animation:rfade .35s ease 1.25s forwards}
+#cres.go .r-tag{animation:rpop .4s var(--out) 1.4s forwards}
+#cres.go .r-top{animation:rpop .7s var(--out) 1s forwards}
+#cres.go .r-org{animation:rfade .6s ease 1.3s forwards}
+#cres.go .pa{animation:rwipe .6s var(--out) 1.05s forwards}
+#cres.go .pb{animation:rwipe .6s var(--out) 1.2s forwards}
+#cres.go .pc{animation:rwipe .6s var(--out) 1.35s forwards}
+#cres.go .m{animation:rfade .4s ease 1.8s forwards}
+#cres.go .shine{animation:rshine .9s ease 2.3s forwards}
+#cres.go .foot>*{animation:rpop .55s var(--out) forwards}
+#cres.go .foot>:nth-child(1){animation-delay:2.6s}#cres.go .foot>:nth-child(2){animation-delay:2.7s}#cres.go .foot>:nth-child(3){animation-delay:2.8s}#cres.go .foot>:nth-child(4){animation-delay:2.9s}#cres.go .foot>:nth-child(5){animation-delay:3.1s}
+#cres.go .row.me{animation:rpop .55s var(--out) 2.9s forwards,rflash 1.4s ease 3.4s 1}
+@keyframes rfade{to{opacity:1}}
+@keyframes rsw{to{opacity:.55}}
+@keyframes rpop{to{opacity:1;transform:none}}
+@keyframes rwipe{to{clip-path:inset(0 0 0 0)}}
+@keyframes rshine{to{transform:translateX(110%)}}
+@keyframes rdrift{from{translate:0 0}to{translate:-12% 0}}
+@keyframes rflash{50%{background:linear-gradient(90deg,#8a6a00f0,#06123ae0)}}
 /* a blue stripe sweeps across every time a card changes */
 .sweep{position:absolute;inset:0;pointer-events:none;background:linear-gradient(100deg,transparent 40%,#3268f5 40%,#76caff 52%,transparent 52%);transform:translateX(-120%);opacity:0}
 .sweep.go{animation:sweep .7s cubic-bezier(.6,0,.3,1)}
@@ -78,21 +165,23 @@ body.result #cres .in,body.next #cnext .in,body.title #cnext .in,body.intro #cne
 #cbrk{clip-path:polygon(evenodd,0 0,1920px 0,1920px 1080px,0 1080px,0 0,800px 200px,1840px 200px,1840px 785px,800px 785px,800px 200px)}
 #cbrk .bk-frame{position:absolute;left:796px;top:196px;width:1048px;height:593px;border:2px solid #375a91}
 #cbrk .bk-ad{position:absolute;left:798px;top:162px;font-size:15px}
-#cbrk .bk-left{position:absolute;left:96px;top:200px;width:644px;height:585px;display:flex;flex-direction:column;padding:40px 48px 44px}
-#cbrk .hero h1{font-size:62px;line-height:1.2;margin:14px 0 0;letter-spacing:0}
+#cbrk header .brand{visibility:hidden}
+#cbrk .bk-left{position:absolute;left:96px;top:385px;width:644px;height:400px;display:flex;flex-direction:column;padding:32px 44px 36px}
+#cbrk .hero h1{font-size:54px;line-height:1.2;margin:10px 0 0;letter-spacing:0}
 #cbrk .hero p{margin-top:auto}
-#bclock{font-size:150px;line-height:1.1;letter-spacing:-4px;color:#91c3ff;margin-top:6px}
+#bclock{font-size:132px;line-height:1.05;letter-spacing:-4px;color:#91c3ff;margin-top:4px}
 #bclock.long{font-size:112px} /* h:mm:ss is two characters wider; keep it inside the panel */
+#cbrk .bk-logo{position:absolute;left:96px;top:44px;height:310px;width:auto}
 #bsub{position:absolute;left:96px;top:815px;width:644px;font-size:30px;color:#c4d6f0}
 #bcredit{position:absolute;left:96px;bottom:60px;width:644px;font-size:20px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* the walking camera wears our mark in the top-left corner, small and half see-through so the picture stays the point */
-.bug{position:absolute;left:44px;top:40px;display:flex;align-items:center;gap:16px;padding:12px 22px 12px 12px;background:rgba(8,15,30,.62);border:1px solid #375a9188;border-radius:14px;
+.bug{position:absolute;left:40px;top:28px;display:flex;align-items:center;gap:14px;filter:drop-shadow(0 2px 8px rgba(0,0,0,.55));
   transform:translateX(-30px);opacity:0;visibility:hidden;transition:transform .6s cubic-bezier(.2,.8,.2,1),opacity .6s,visibility 0s .6s}
 body.cam .bug{transform:none;opacity:1;visibility:visible;transition:transform .6s cubic-bezier(.2,.8,.2,1),opacity .6s}
-.bug .bm{width:54px;height:54px;font-size:21px}
-.bug b{display:block;font-size:24px;font-weight:800;letter-spacing:3px}
-.bug small{display:block;font-size:17px;color:#a5bfdf}
-.bug .live{display:flex;align-items:center;gap:8px;margin-left:10px;padding:5px 12px;border-radius:7px;background:#e5484d;font-size:16px;font-weight:800;letter-spacing:2px}
+.bug img{height:150px;width:auto;display:block}
+.bug>div{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.bug small{display:block;font-size:19px;font-weight:700;color:#eef4ff}
+.bug .live{display:flex;align-items:center;gap:8px;padding:5px 12px;border-radius:7px;background:#e5484d;font-size:16px;font-weight:800;letter-spacing:2px}
 .bug .live i{width:10px;height:10px;border-radius:50%;background:#fff;animation:blink 1.6s ease-in-out infinite}
 @keyframes blink{50%{opacity:.25}}
 </style>
@@ -100,34 +189,46 @@ body.cam .bug{transform:none;opacity:1;visibility:visible;transition:transform .
 <body class="idle">
 
 <div class="card" id="cnext">
-  <header class="in"><div class="brand"><div class="bm">PT</div><div>ROBOARENA<small>THAILAND YOUTH ROBOTICS CHAMPIONSHIP 2026</small></div></div><span class="tag" id="nk2">NEXT MATCH</span></header>
+  <header class="in"><div class="brand"><div class="bm"><img src="logo-mark.png" alt="PT"></div><div>ROBOARENA<small>THAILAND YOUTH ROBOTICS CHAMPIONSHIP 2026</small></div></div><span class="tag" id="nk2">NEXT MATCH</span></header>
   <div class="hero in" style="margin:auto 0"><div class="eyebrow" id="nk">ทีมถัดไป · NEXT MATCH</div><h1 id="nteam"></h1><p id="nschool"></p>
     <div class="hb"><span>FIELD<b id="nfield"></b></span><span>ROUND<b id="nround"></b></span><span>EVENT<b id="nprog"></b></span></div><div class="hero-line"></div></div>
 </div>
 
 <div class="card" id="cres">
-  <header class="in"><div class="brand"><div class="bm">PT</div><div>ROBOARENA<small>OFFICIAL MATCH RESULT</small></div></div><span class="tag good">RESULT CONFIRMED · ยืนยันผลแล้ว</span></header>
-  <div class="grid in">
-    <div class="hero" style="padding:34px 44px"><div class="eyebrow" id="rprog"></div><h1 id="rteam" style="font-size:66px;margin:12px 0 10px"></h1><p id="rschool" style="font-size:24px"></p><div class="hero-line"></div></div>
-    <div class="panel"><div class="eyebrow">TOTAL SCORE · คะแนน</div><div class="score mono"><span id="rsc"></span><small id="rmax"></small></div><span>ยืนยันผลแล้ว</span></div>
-    <div class="panel"><div class="eyebrow">MATCH TIME · เวลา</div><div class="clock mono" id="rtime"></div><span>RETRY<b id="rretry"></b></span></div>
-  </div>
-  <div class="ms in" id="rms"></div>
+  <div class="r-bg"></div><div class="r-tint"></div>
+  <div class="sw r"></div><div class="sw w"></div><div class="sw b"></div>
+  <div class="r-win"></div><div class="r-frame"></div>
+  <div class="chip r-tag"><i></i>REPLAY</div>
+  <div class="r-top"><img src="event-logo.webp" alt=""><div class="ban"><b>ผลการแข่งขัน</b><span id="rprog"></span></div><span class="chip" id="rwhere"></span></div>
+  <div class="r-org"><span>PT ROBOTICS</span><img src="logo-mark.png" alt=""></div>
+  <div class="pl pa"><div class="pin">
+    <div class="kick">RESULT CONFIRMED<em>ยืนยันผลแล้ว</em></div>
+    <div class="team" id="rteam"></div><div class="school" id="rschool"></div>
+    <div class="rms" id="rms"></div>
+  </div></div>
+  <div class="pl pb"><div class="pin"><div class="lab">SCORE<em>คะแนน</em></div><div class="big"><b id="rsc"></b><span id="rmax"></span></div></div><div class="shine"></div></div>
+  <div class="pl pc"><div class="pin">
+    <div><small>TIME<em>เวลา</em></small><b id="rtime"></b></div>
+    <div><small>RETRY</small><b id="rretry"></b></div>
+    <div class="rank"><small>RANK<em>อันดับตอนนี้</em></small><b id="rrank"></b></div>
+  </div></div>
+  <div class="foot" id="rfoot"></div>
 </div>
 
 <div class="card" id="cidle">
-  <header class="in"><div class="brand"><div class="bm">PT</div><div>ROBOARENA<small>THAILAND YOUTH ROBOTICS CHAMPIONSHIP 2026</small></div></div><span class="tag">STAND BY</span></header>
-  <div class="idle-mid in"><div class="bm">PT</div><h1 id="ititle">โปรดรอสักครู่</h1><p id="isub"></p></div>
+  <header class="in"><div class="brand"><div class="bm"><img src="logo-mark.png" alt="PT"></div><div>ROBOARENA<small>THAILAND YOUTH ROBOTICS CHAMPIONSHIP 2026</small></div></div><span class="tag">STAND BY</span></header>
+  <div class="idle-mid in"><img class="evlogo" src="event-logo.webp" alt=""><h1 id="ititle">โปรดรอสักครู่</h1><p id="isub"></p></div>
 </div>
 
 <div class="card" id="cbrk">
-  <header class="in"><div class="brand"><div class="bm">PT</div><div>ROBOARENA<small>THAILAND YOUTH ROBOTICS CHAMPIONSHIP 2026</small></div></div><span class="tag">STAND BY</span></header>
+  <header class="in"><div class="brand"><div class="bm"><img src="logo-mark.png" alt="PT"></div><div>ROBOARENA<small>THAILAND YOUTH ROBOTICS CHAMPIONSHIP 2026</small></div></div><span class="tag">STAND BY</span></header>
   <div class="eyebrow bk-ad in">SPONSOR · พื้นที่โฆษณา</div><div class="bk-frame in"></div>
   <div class="hero bk-left in"><div class="eyebrow" id="bk"></div><h1 id="btitle"></h1><p id="bline"></p><div class="mono" id="bclock">00:00</div><div class="hero-line"></div></div>
+  <img class="bk-logo in" src="event-logo.webp" alt="">
   <div class="in" id="bsub"></div>
   <div class="in" id="bcredit"></div>
 </div>
-<div class="bug"><div class="bm">PT</div><div><b>ROBOARENA</b><small id="bugsub"></small></div><span class="live"><i></i>LIVE</span></div>
+<div class="bug"><img src="event-logo.webp" alt=""><div><span class="live"><i></i>LIVE</span><small id="bugsub"></small></div></div>
 <div class="sweep" id="sweep"></div>
 <script>
 const $=id=>document.getElementById(id);
@@ -143,11 +244,7 @@ function show(m){
   clearInterval(tick);
   if(m.k==='next'||m.k==='intro'){set('nk',m.k==='intro'?'เตรียมความพร้อม · SETUP':'ทีมถัดไป · NEXT MATCH');set('nk2',m.k==='intro'?'SETUP':'NEXT MATCH');
     set('nteam',m.team);set('nschool',m.school);set('nfield',m.field);set('nround',m.round);set('nprog',m.prog)}
-  if(m.k==='result'){set('rprog',m.prog+' · FIELD '+m.field+' · ROUND '+m.round);set('rteam',m.team);set('rschool',m.school);set('rsc',m.total);set('rmax',m.max?'/'+m.max:'');
-    set('rtime',m.time);set('rretry',m.retry);$('rms').innerHTML='';
-    for(const x of m.missions||[]){const d=document.createElement('div');d.className='mi';
-      d.innerHTML='<div><b></b><small></small></div><strong class="mono"></strong>';d.querySelector('b').textContent=x.label;d.querySelector('small').textContent=x.pts+' PTS EACH';
-      const st=d.querySelector('strong');st.textContent=x.n;const sp=document.createElement('span');sp.textContent='/'+x.max;st.append(sp);$('rms').append(d)}}
+  if(m.k==='result')showResult(m);
   // a free card on the team-card layout: highlight titles and ranks
   if(m.k==='title'){set('nk',m.eyebrow);set('nk2',m.tag);set('nteam',m.title);set('nschool',m.sub)}
   document.querySelector('#cnext .hb').style.display=m.k==='title'?'none':'';
@@ -162,6 +259,28 @@ function show(m){
   const card=k=>k==='play'||k==='cam'?'':k==='intro'||k==='title'?'next':k;
   if(card(m.k)!==card(now)&&card(m.k)){const s=$('sweep');s.classList.remove('go');void s.offsetWidth;s.classList.add('go')}
   now=m.k;document.body.className=m.k;
+}
+// the result card. The standing (rank, top three) counts only runs already shown on air, so it never gives away a
+// score the viewers have not seen yet; the desk works that out and sends it.
+let resCount=0;
+function showResult(m){
+  const c=$('cres'),el=(tag,cls,txt)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e};
+  set('rprog',m.prog);set('rwhere','FIELD '+m.field+' · ROUND '+m.round);set('rteam',m.team);set('rschool',m.school);
+  set('rmax',m.max?'/'+m.max:'');set('rtime',m.time);set('rretry',m.retry);set('rrank',m.rank?'#'+m.rank:'-');
+  c.classList.toggle('noframe',!m.frame);
+  for(const x of c.querySelectorAll('.r-win,.r-bg'))x.style.backgroundImage=m.frame?`url("${m.frame}")`:'';
+  // missions only while they fit on one line of the plate
+  const ms=$('rms');ms.innerHTML='';
+  if((m.missions||[]).length<=5)for(const x of m.missions){const d=el('div','m'+(x.max&&x.n>=x.max?' full':''));d.append(el('small','',x.label));
+    const b=el('b','',x.n);b.append(el('span','','/'+x.max));d.append(b);ms.append(d)}
+  const f=$('rfoot');f.innerHTML='';
+  if((m.top||[]).length){const t=el('div','t3','TOP 3');t.append(el('em','','รอบ '+m.round+' · สนาม '+m.field));f.append(t);
+    for(const r of m.top){const d=el('div','row'+(r.me?' me':''));d.append(el('span','n',r.rank));const tm=el('div','tm',r.team);tm.append(el('small','',r.time));d.append(tm,el('span','p',r.total));f.append(d)}}
+  if(m.next){const d=el('div','nx');d.append(el('small','','NEXT ▸'),el('b','',m.next));f.append(d)}
+  // the score counts up while its plate lands
+  const sc=$('rsc'),my=++resCount,t0=performance.now()+1500,to=Number(m.total)||0;sc.textContent='0';
+  const up=t=>{if(my!==resCount)return;const k=Math.min(1,Math.max(0,(t-t0)/800));sc.textContent=Math.round(to*(1-Math.pow(1-k,3)));if(k<1)requestAnimationFrame(up)};requestAnimationFrame(up);
+  c.classList.remove('go');void c.offsetWidth;c.classList.add('go');
 }
 // obs-websocket 5: hello → identify (with the password when one is set) → listen for the studio's custom events.
 // When the link drops the screen keeps what it shows; a wrong password stops the retries.
