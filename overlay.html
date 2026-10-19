@@ -271,7 +271,7 @@ const p2=n=>String(n).padStart(2,'0');
 function show(m){
   if(m.k==='score')return;
   clearInterval(tick);
-  if(m.k==='next'||m.k==='intro'){set('nk',m.k==='intro'?'เตรียมความพร้อม · SETUP':'ทีมถัดไป · NEXT MATCH');set('nk2',m.k==='intro'?'SETUP':'NEXT MATCH');
+  if(m.k==='next'||m.k==='intro'){set('nk',m.k==='intro'?'เตรียมความพร้อม · SETUP':'ทีมถัดไป · NEXT MATCH');set('nk2',(m.matchNo?'MATCH '+m.matchNo+' · ':'')+(m.k==='intro'?'SETUP':'NEXT MATCH'));
     set('nteam',m.teams?m.teams.map(t=>t.name).join('  VS  '):m.team);set('nschool',m.teams?m.teams.map(t=>t.school).filter(Boolean).join(' · '):m.school);
     set('nfield',m.field);set('nround',m.round);set('nprog',m.prog)}
   if(m.k==='result')showResult(m);
@@ -295,13 +295,13 @@ function show(m){
 let resCount=0;
 function showResult(m){
   const c=$('cres'),el=(tag,cls,txt)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e};
-  set('rprog',m.prog);set('rwhere',(m.field&&m.field!=='-'?'FIELD '+m.field+' · ':'')+'ROUND '+m.round);set('rteam',m.team);set('rschool',m.school);
+  set('rprog',m.prog);set('rwhere',(m.matchNo?'MATCH '+m.matchNo+' · ':'')+(m.field&&m.field!=='-'?'FIELD '+m.field+' · ':'')+'ROUND '+m.round);set('rteam',m.team);set('rschool',m.school);
   c.classList.toggle('h2h',!!m.h2h);
   if(m.h2h){
     const w=(m.teams||[]).find(t=>t.winner);
     (m.teams||[]).slice(0,2).forEach((t,i)=>{const n=i+1,pl=c.querySelector('.pt'+n);set('ht'+n,t.name);set('hs'+n,t.school);
       set('hp'+n,t.score==null?'':t.score);set('hm'+n,t.time||'');pl.classList.toggle('won',!!t.winner);pl.classList.toggle('lost',!!w&&!t.winner)});
-    // no team marked as winner: say the match ended level, never pick one
+    // the desk sends this card only when a winner is named (there are no draws)
     $('hwl').innerHTML='';$('hwl').append(w?'WINNER':'RESULT',Object.assign(document.createElement('em'),{textContent:w?'ผู้ชนะ':'ผลการแข่งขัน'}));
     set('hw',w?w.name:'เสมอ');
   }

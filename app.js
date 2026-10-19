@@ -1561,16 +1561,17 @@ const OA_OSMO='PT Osmo',OA_OSMO_URL='rtsp://127.0.0.1:8554/live/osmo';
 const OA_PHONE='PT มือถือ',oaSite=()=>location.origin+location.pathname+location.search;
 const OA={H:null,hsig:'',files:[],webm:[],stable:new Set(),ipSeen:'',list:[],order:[],played:new Set(),bad:new Map(),auto:true,delay:0,prog:'all',skipSetup:true,cur:null,nextM:null,phase:'idle',err:'',
   ws:'ws://127.0.0.1:4455',pw:'',ads:'',advid:'',snd:'',credit:'',brk:null,cache:{},helperOk:false,hlGroup:'',hlRound:1,hl:null,brkMode:'break',brkMin:5,brkAuto:true,bgm:'pt_loop.wav',obsWant:false,obsState:'off',obsErr:'',scene:'',stat:null,hold:false,offAir:false,shown:0,cursor:0,dur:0,paused:false,gen:0,waitAt:0,waitFn:null};
-try{const k=JSON.parse(localStorage.getItem('ptarena:oa')||'{}');OA.order=k.order||[];OA.played=new Set(k.played||[]);OA.auto=k.auto!==false;OA.delay=k.delay||0;OA.prog=k.prog||'all';OA.skipSetup=k.skipSetup!==false;
+try{const k=JSON.parse(localStorage.getItem('ptarena:oa')||'{}');OA.order=k.order||[];OA.played=new Set(k.played||[]);OA.auto=k.auto!==false;OA.delay=k.delay||0;OA.prog=k.prog||'all';OA.skipSetup=k.skipSetup!==false;OA.tests=!!k.tests;
   OA.ws=k.ws||OA.ws;OA.pw=k.pw||'';OA.ipSeen=k.ipSeen||'';OA.obsWant=!!k.obsWant;
   OA.ads=k.ads||'';OA.advid=k.advid||'';OA.snd=k.snd||'';OA.credit=k.credit||'';OA.brkMode=k.brkMode||'break';OA.brkMin=k.brkMin||5;OA.brkAuto=k.brkAuto!==false;OA.bgm=OA_BGM[k.bgm]?k.bgm:'pt_loop.wav'}catch(e){}
-const oaKeep=()=>{try{localStorage.setItem('ptarena:oa',JSON.stringify({order:OA.order,played:[...OA.played],auto:OA.auto,delay:OA.delay,prog:OA.prog,skipSetup:OA.skipSetup,ws:OA.ws,pw:OA.pw,ipSeen:OA.ipSeen,obsWant:OA.obsWant,ads:OA.ads,advid:OA.advid,snd:OA.snd,credit:OA.credit,brkMode:OA.brkMode,brkMin:OA.brkMin,brkAuto:OA.brkAuto,bgm:OA.bgm}))}catch(e){}};
+const oaKeep=()=>{try{localStorage.setItem('ptarena:oa',JSON.stringify({order:OA.order,played:[...OA.played],auto:OA.auto,delay:OA.delay,prog:OA.prog,skipSetup:OA.skipSetup,tests:OA.tests,ws:OA.ws,pw:OA.pw,ipSeen:OA.ipSeen,obsWant:OA.obsWant,ads:OA.ads,advid:OA.advid,snd:OA.snd,credit:OA.credit,brkMode:OA.brkMode,brkMin:OA.brkMin,brkAuto:OA.brkAuto,bgm:OA.bgm}))}catch(e){}};
 const oaGroup=m=>`${m.prog} · สนาม ${m.field}`;
 const oaTime=v=>{const t=typeof v==='number'?v:new Date(v||0).getTime();return isFinite(t)?t:0};
 
 // the only place that knows RoboArena's file layout: if their files change, only this changes.
 // Everything is turned into plain strings and numbers here, so nothing from a file reaches the page as markup.
 function oaParse(d,rel){
+  if(d&&d.schemaVersion===1&&d.recordingId&&Array.isArray(d.participants))return oaParseRec(d,rel);
   if(d&&d.format==='pt-arena-result/1')return oaParseH2H(d,rel);
   const m=d.match||{},r=d.result||d.latestScore||{},ev=Array.isArray(d.timeline)?d.timeline:[],at=t=>ev.find(e=>e.type===t);
   const sub=ev.filter(e=>e.type==='result-submitted').pop(),num=(v,f=0)=>isFinite(+v)&&v!==null&&v!==''?+v:f,str=v=>v==null?'':String(v);
@@ -1591,10 +1592,35 @@ function oaParseH2H(d,rel){
   const teams=(Array.isArray(d.teams)?d.teams:[]).slice(0,2).map(t=>({teamId:str(t.teamId),name:str(t.name||t.teamId),school:str(t.school),
     score:t.score==null||t.score===''?null:num(t.score),timeMs:t.timeMs==null?null:num(t.timeMs),winner:t.winner===true}));
   const clip=str(d.clip),w=teams.find(t=>t.winner),named=oaClipName(clip);
+  // there are no draws: no winner named = no result card
   return{id:oaKey(clip),h2h:true,teams,team:teams.map(t=>t.name).join(' vs '),teamId:teams.map(t=>t.teamId).join(' vs '),school:'',
     field:str(d.field||'-'),round:num(d.round,named?.round||1),prog:str(d.competition||named?.comp||''),comp:'',missions:[],items:{},retry:0,
     total:w&&w.score!=null?w.score:'',ms:w?.timeMs||0,ok:d.confirmed===true,at:oaTime(d.confirmedAt)||named?.at||0,
-    start:num(d.startMs,0),end:d.endMs==null?null:num(d.endMs),steps:[],file:clip,vok:true,rel}}
+    start:num(d.startMs,0),end:d.endMs==null?null:num(d.endMs),steps:[],file:clip,vok:true,noResult:!w,rel}}
+// RoboArena's own file beside each clip, <recordingId>.recording.json (schemaVersion 1): who raced, the programme, field and
+// round, when the run started and stopped, and whether the result is confirmed. The clip is the .webm whose name ends
+// in __<recordingId>.webm. A recording another attempt replaced is skipped. Who won is read from participants[].winner
+// when the file carries it; without it there is no result card, only the clip.
+function oaParseRec(d,rel){
+  const num=(v,f=0)=>isFinite(+v)&&v!==null&&v!==''?+v:f,str=v=>v==null?'':String(v),t=v=>{const x=Date.parse(v);return isFinite(x)?x:null};
+  const id=str(d.recordingId),tail=('__'+id+'.webm').toLowerCase(),dir=rel.join('/');
+  const clip=OA.webm.find(x=>x.toLowerCase().endsWith(tail)&&x.slice(0,x.lastIndexOf('/')+1)===(dir?dir+'/':''))||'';
+  const replaced=!!d.supersededByAttemptId||!!(d.currentAttemptId&&d.attemptId&&d.currentAttemptId!==d.attemptId);
+  const teams=d.participants.map(p=>({teamId:str(p.teamId),name:str(p.team||p.teamId),school:str(p.school),side:str(p.side),
+    score:p.score==null||p.score===''?null:num(p.score),timeMs:p.timeMs==null?null:num(p.timeMs),winner:p.winner===true}));
+  // left of the picture first, so the names sit on the side each robot runs
+  const at=x=>/^(left|a)$/i.test(x.side)?0:/^(right|b)$/i.test(x.side)?1:0.5;teams.sort((a,b)=>at(a)-at(b));
+  // there are no draws: a file that names no winner has no result yet
+  const rec=t(d.recordingCreatedAt),go=t(d.matchStartedAt),stop=t(d.matchStoppedAt);
+  const w=teams.find(x=>x.winner);
+  return{id:'rec:'+id,h2h:true,rec:true,replaced,noResult:!w,teams,team:teams.map(x=>x.name).join(' vs '),teamId:teams.map(x=>x.teamId).join(' vs '),
+    school:'',field:str(d.fieldName||d.fieldId||'-'),round:num(d.round,1),prog:str(d.competitionName||String(d.competition||'').toUpperCase()),comp:str(d.competition),
+    matchNo:d.matchNo==null||d.matchNo===''?'':str(d.matchNo),missions:[],items:{},retry:0,
+    total:w&&w.score!=null?w.score:'',ms:go!=null&&stop!=null?stop-go:0,
+    ok:d.resultStatus==='confirmed'&&d.verified!==false&&!replaced,at:t(d.confirmedAt)||rec||0,
+    // where the run sits in the clip: the recording started a moment before the match did
+    start:rec!=null&&go!=null?Math.max(0,go-rec):0,end:rec!=null&&stop!=null?Math.max(0,stop-rec):null,steps:[],
+    file:clip.split('/').pop(),vok:!!clip,rel}}
 // what a clip's own name tells: <programme>_<match>_<team A>_vs_<team B>_<round>_<time>_... (team codes only, no names or result)
 function oaClipName(f){
   const x=/^([a-z0-9]+)_([0-9a-f-]{36})_(.+?)_vs_(.+?)_(\d+)_(\d{4}-\d\d-\d\d)T(\d\d)_(\d\d)_(\d\d)_(\d+)Z_/i.exec(String(f));
@@ -1610,11 +1636,15 @@ function oaBare(path){
 // file, as it is, and which files have stopped growing. The match folder is set only there.
 function oaScan(){
   const out=new Map();
-  for(const f of OA.files){try{const m=oaParse(JSON.parse(f.text),f.rel);if(m.id&&m.file&&!out.has(m.id))out.set(m.id,m)}catch(e){}}
+  // RoboArena uploads its trial recordings into folders named for tests ("RoboArena LAB - isolated test recordings",
+  // "Integration Tests"); the real ones sit at the top. Those stay off the queue unless the desk asks for them, for a rehearsal.
+  const test=r=>/test|lab/i.test(r[0]||'');
+  for(const f of OA.files){if(test(f.rel)&&!OA.tests)continue;try{const m=oaParse(JSON.parse(f.text),f.rel);if(m.id&&(m.file||m.rec)&&!m.replaced&&!out.has(m.id))out.set(m.id,m)}catch(e){}}
   // a result file whose clip has not arrived yet waits; a clip whose result file has not arrived plays on its own
   const clips=new Set(OA.webm);
-  for(const m of out.values())if(m.h2h)m.vok=clips.has(oaRel(m));
-  for(const p of OA.webm){const b=oaBare(p);if(b&&!out.has(b.id))out.set(b.id,b)}
+  for(const m of out.values())if(m.h2h)m.vok=!!m.file&&clips.has(oaRel(m));
+  const mine=new Set([...out.values()].filter(m=>m.file).map(oaRel));
+  for(const p of OA.webm){if(test(p.split('/').slice(0,-1))&&!OA.tests)continue;const b=oaBare(p);if(b&&!mine.has(p)&&!out.has(b.id))out.set(b.id,b)}
   // Drive brings the small result file long before the clip: a clip counts only once it is on disk and has stopped growing
   for(const m of out.values())m.synced=OA.stable.has(oaRel(m))||!!oaCopy(m);
   OA.list=[...out.values()].sort((a,b)=>a.at-b.at);
@@ -1676,7 +1706,7 @@ function oaOffAir(){if(OA.phase==='play'&&!OA.paused&&!OA.offAir){OA.offAir=true
 function oaBackOnAir(){
   if(OA.offAir){OA.offAir=false;if(OA.phase==='play')oaMedia('PLAY')}
   if(OA.hold){OA.hold=false;if(OA.wantRun&&OA.phase==='idle')oaNext()}}
-const oaInfo=m=>({team:m.team,teamId:m.teamId,school:m.school,field:m.field,round:m.round,prog:m.prog,...(m.h2h?{teams:m.teams.map(t=>({name:t.name,school:t.school||''}))}:{})});
+const oaInfo=m=>({team:m.team,teamId:m.teamId,school:m.school,field:m.field,round:m.round,prog:m.prog,matchNo:m.matchNo||'',...(m.h2h?{teams:m.teams.map(t=>({name:t.name,school:t.school||''}))}:{})});
 function oaRes(m){
   // two teams: who won, each team's score and time when the result file gives them
   if(m.h2h)return{...oaInfo(m),h2h:true,teams:m.teams.map(t=>({name:t.name,school:t.school||'',score:t.score,time:t.timeMs==null?'':fmtMs(t.timeMs),winner:t.winner})),next:oaNextName(m),frame:OA.frame||''};
@@ -1701,7 +1731,7 @@ function oaSay(){const m=OA.cur;
   if(OA.brk)OBS.say('break',oaBrkMsg());
   else if(OA.scene===OA_CAM)OBS.say('cam',oaIdleMsg());
   else if(OA.phase==='play'&&m)OBS.say(OA.cover?'intro':'play',oaInfo(m));
-  else if(OA.phase==='result'&&m&&!m.bare)OBS.say('result',oaRes(m));
+  else if(OA.phase==='result'&&m&&!m.bare&&!m.noResult)OBS.say('result',oaRes(m));
   else if(OA.phase==='next'&&OA.nextM)OBS.say('next',oaInfo(OA.nextM));
   else OBS.say('idle',oaIdleMsg())}
 
@@ -1873,10 +1903,11 @@ function oaDone(){
   oaMedia('PAUSE');OA.played.add(m.id);oaKeep();OA.phase='result';OA.frame='';
   // the clip's last picture goes along, for the result card to shrink into its window
   const shown=OA.gen;
-  if(!m.bare)OBS.req('GetSourceScreenshot',{sourceName:OA_CLIP,imageFormat:'jpg',imageWidth:1920,imageHeight:1080,imageCompressionQuality:82})
+  const quiet=m.bare||m.noResult;
+  if(!quiet)OBS.req('GetSourceScreenshot',{sourceName:OA_CLIP,imageFormat:'jpg',imageWidth:1920,imageHeight:1080,imageCompressionQuality:82})
     .then(r=>{OA.frame=r.imageData||''},()=>{}).then(()=>{if(OA.gen===shown&&OA.phase==='result'&&OA.cur===m)OBS.say('result',oaRes(m))});
-  if(!OA.brk&&!m.bare)oaSound(OA_SND.sting);oaDraw();
-  oaWait(m.bare?1500:10000,()=>{
+  if(!OA.brk&&!quiet)oaSound(OA_SND.sting);oaDraw();
+  oaWait(quiet?1500:10000,()=>{
     const n=OA.auto&&oaQueue().find(oaReady);
     if(!n)return oaToIdle();
     if(OA.scene&&OA.scene!==OA_SCENE){OA.hold=true;return oaToIdle()}
@@ -1932,10 +1963,10 @@ function vOnair(){
   if(ROLE==='staff'&&!OA.loaded){OA.loaded=true;oaClock();oaHelper();if(OA.obsWant&&!OBS.ws)OBS.connect()}
   const on=OBS.ok,q=oaQueue(),ready=q.filter(oaReady),wait=q.filter(m=>!oaReady(m)),done=OA.order.map(id=>OA.list.find(m=>m.id===id)).filter(m=>m&&OA.played.has(m.id));
   const groups=[...new Set(OA.list.map(oaGroup))],cur=OA.cur,H=OA.H||{},ip=(H.ips||[])[0]||'';
-  const why=m=>OA.bad.has(m.id)?'⚠ '+OA.bad.get(m.id):!m.ok?'รอยืนยันผล':!m.vok?'คลิปยังไม่บันทึก':!m.synced?'กำลังซิงก์คลิปจากไดรฟ์':'ปล่อยได้อีก '+Math.max(1,Math.ceil((OA.delay*60000-(Date.now()-m.at))/60000))+' นาที';
+  const why=m=>OA.bad.has(m.id)?'⚠ '+OA.bad.get(m.id):!m.ok?'รอยืนยันผล':!m.vok?(m.rec?'รอคลิปจากไดรฟ์':'คลิปยังไม่บันทึก'):!m.synced?'กำลังซิงก์คลิปจากไดรฟ์':'ปล่อยได้อีก '+Math.max(1,Math.ceil((OA.delay*60000-(Date.now()-m.at))/60000))+' นาที';
   const row=(m,i,kind)=>`<div class="oaq ${cur?.id===m.id?'now':''}"><span class="oan mono">${kind==='ready'?String(i+1).padStart(2,'0'):''}</span>
     <div class="who"><b>${esc(m.team)}</b><small>${esc(oaGroup(m))} · ROUND ${esc(m.round)}${kind==='wait'?' · '+esc(why(m)):''}</small></div>
-    <b class="mono oasc">${m.h2h?(m.bare?'<small class="muted">ไม่มีไฟล์ผล</small>':esc((m.teams.find(t=>t.winner)||{}).name?'🏆 '+m.teams.find(t=>t.winner).name:'')):esc(m.total)}</b>
+    <b class="mono oasc">${m.h2h?(m.bare||m.noResult?'<small class="muted">ไม่มีผลแพ้ชนะ</small>':esc((m.teams.find(t=>t.winner)||{}).name?'🏆 '+m.teams.find(t=>t.winner).name:'')):esc(m.total)}</b>
     <span class="oabtn">${kind==='done'?`<button class="btn sm" data-act="oaagain" data-v="${esc(m.id)}" title="เล่นซ้ำ">↺</button>`
       :`<button class="btn sm" data-act="oaup" data-v="${esc(m.id)}" title="เลื่อนขึ้น">▲</button><button class="btn sm" data-act="oadown" data-v="${esc(m.id)}" title="เลื่อนลง">▼</button>${kind==='ready'?`<button class="btn sm" data-act="oaplay" data-v="${esc(m.id)}" title="เล่นอันนี้เลย" ${on?'':'disabled'}>▶</button>`:''}${OA.bad.has(m.id)?`<button class="btn sm" data-act="oaretry" data-v="${esc(m.id)}" title="ลองใหม่">↻</button>`:''}<button class="btn sm" data-act="oadrop" data-v="${esc(m.id)}" title="ไม่เล่น">✕</button>`}</span></div>`;
   const live=OA.stat?.s?.outputActive,rec=OA.stat?.r?.outputActive;
@@ -2003,6 +2034,7 @@ function vOnair(){
           <label class="cc"><span>หน่วงก่อนปล่อย</span><select id="oadelay">${[0,5,10,15,30,60].map(n=>`<option value="${n}" ${OA.delay===n?'selected':''}>${n?n+' นาทีหลังยืนยันผล':'ไม่หน่วง'}</option>`).join('')}</select></label>
           <button class="btn sm" data-act="oaauto" aria-pressed="${OA.auto}">${OA.auto?'✓':'✕'} เล่นต่ออัตโนมัติ</button>
           <button class="btn sm" data-act="oaskipset" aria-pressed="${OA.skipSetup}">${OA.skipSetup?'✓':'✕'} บังช่วงเตรียมหุ่น</button>
+          <button class="btn sm" data-act="oatests" aria-pressed="${OA.tests}">${OA.tests?'✓':'✕'} รวมคลิปทดสอบ (ซ้อม)</button>
         </div>
         <div class="panel oasrc"><div class="oah"><i></i>SOURCE · แมตช์จาก RoboArena</div>
           <div class="row"><span class="tagx ${OA.helperOk?'good':'bad'}">${OA.helperOk?'HELPER ONLINE':'HELPER OFFLINE'}</span><span class="tagx">📂 ${esc(oaSrc().split(/[\\/]/).pop()||'-')} · ${OA.list.length} MATCHES · พร้อมกรอ ${Object.keys(OA.cache).length}</span></div>
@@ -2203,6 +2235,7 @@ document.addEventListener('click',e=>{
     case'oabrkauto':OA.brkAuto=!OA.brkAuto;oaKeep();break;
     case'oaauto':OA.auto=!OA.auto;oaKeep();break;
     case'oaskipset':OA.skipSetup=!OA.skipSetup;oaKeep();break;
+    case'oatests':OA.tests=!OA.tests;oaKeep();oaScan();break;
     case'ctrlsnapall':fieldsSorted().forEach(c=>ctrlCmd(c.field,'timer','snap'));toast('ขอภาพทุกสนามแล้ว');return;
     case'ctrlauto':CTRLAUTO=!CTRLAUTO;if(CTRLAUTO)fieldsSorted().forEach(c=>ctrlCmd(c.field,'timer','snap'));break;
     case'ctrlsound':CTRLSOUND=!CTRLSOUND;if(CTRLSOUND){noteSoundReady();noteSound(1)}break;
