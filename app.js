@@ -1559,7 +1559,7 @@ const OA_HELPER='http://127.0.0.1:8788';
 const OA_OSMO='PT Osmo',OA_OSMO_URL='rtsp://127.0.0.1:8554/live/osmo';
 // the phone as the walking camera: our own camera page, no app (see #cam-ROAM / #rx-ROAM)
 const OA_PHONE='PT มือถือ',oaSite=()=>location.origin+location.pathname+location.search;
-const OA={H:null,hsig:'',files:[],stable:new Set(),ipSeen:'',list:[],order:[],played:new Set(),bad:new Map(),auto:true,delay:0,prog:'all',skipSetup:true,cur:null,nextM:null,phase:'idle',err:'',
+const OA={H:null,hsig:'',files:[],webm:[],stable:new Set(),ipSeen:'',list:[],order:[],played:new Set(),bad:new Map(),auto:true,delay:0,prog:'all',skipSetup:true,cur:null,nextM:null,phase:'idle',err:'',
   ws:'ws://127.0.0.1:4455',pw:'',ads:'',advid:'',snd:'',credit:'',brk:null,cache:{},helperOk:false,hlGroup:'',hlRound:1,hl:null,brkMode:'break',brkMin:5,brkAuto:true,bgm:'pt_loop.wav',obsWant:false,obsState:'off',obsErr:'',scene:'',stat:null,hold:false,offAir:false,shown:0,cursor:0,dur:0,paused:false,gen:0,waitAt:0,waitFn:null};
 try{const k=JSON.parse(localStorage.getItem('ptarena:oa')||'{}');OA.order=k.order||[];OA.played=new Set(k.played||[]);OA.auto=k.auto!==false;OA.delay=k.delay||0;OA.prog=k.prog||'all';OA.skipSetup=k.skipSetup!==false;
   OA.ws=k.ws||OA.ws;OA.pw=k.pw||'';OA.ipSeen=k.ipSeen||'';OA.obsWant=!!k.obsWant;
@@ -1571,6 +1571,7 @@ const oaTime=v=>{const t=typeof v==='number'?v:new Date(v||0).getTime();return i
 // the only place that knows RoboArena's file layout: if their files change, only this changes.
 // Everything is turned into plain strings and numbers here, so nothing from a file reaches the page as markup.
 function oaParse(d,rel){
+  if(d&&d.format==='pt-arena-result/1')return oaParseH2H(d,rel);
   const m=d.match||{},r=d.result||d.latestScore||{},ev=Array.isArray(d.timeline)?d.timeline:[],at=t=>ev.find(e=>e.type===t);
   const sub=ev.filter(e=>e.type==='result-submitted').pop(),num=(v,f=0)=>isFinite(+v)&&v!==null&&v!==''?+v:f,str=v=>v==null?'':String(v);
   return{id:str(d.matchId||m.id),team:str(m.team||r.team),teamId:str(m.teamId||r.teamId),school:str(m.school||r.school),field:str(m.field||r.field||'-'),round:num(m.round||r.round,1),
@@ -1581,11 +1582,39 @@ function oaParse(d,rel){
     start:num(at('match-started')?.videoMs,0),end:(v=>v==null?null:num(v))(ev.find(e=>e.type==='phase-changed'&&e.phase==='finished')?.videoMs??at('session-ended')?.videoMs),
     steps:ev.filter(e=>e.type==='score-adjusted'&&e.videoMs!=null&&!e.afterVideo).map(e=>({v:num(e.videoMs),total:num(e.total)})).sort((a,b)=>a.v-b.v),
     file:str(d.video?.file),vok:d.video?.status==='saved',rel}}
+// RoboArena's matches are two teams in one clip, decided by win or lose. The result file it uploads beside each clip
+// follows the format we handed over (handoff/roboarena-result): one file per clip, named like the clip.
+// A match is keyed by its clip's file name, so a clip that shows up before its result file keeps its place in the queue.
+const oaKey=f=>'clip:'+String(f).replace(/\.[^.]*$/,'');
+function oaParseH2H(d,rel){
+  const num=(v,f=0)=>isFinite(+v)&&v!==null&&v!==''?+v:f,str=v=>v==null?'':String(v);
+  const teams=(Array.isArray(d.teams)?d.teams:[]).slice(0,2).map(t=>({teamId:str(t.teamId),name:str(t.name||t.teamId),school:str(t.school),
+    score:t.score==null||t.score===''?null:num(t.score),timeMs:t.timeMs==null?null:num(t.timeMs),winner:t.winner===true}));
+  const clip=str(d.clip),w=teams.find(t=>t.winner),named=oaClipName(clip);
+  return{id:oaKey(clip),h2h:true,teams,team:teams.map(t=>t.name).join(' vs '),teamId:teams.map(t=>t.teamId).join(' vs '),school:'',
+    field:str(d.field||'-'),round:num(d.round,named?.round||1),prog:str(d.competition||named?.comp||''),comp:'',missions:[],items:{},retry:0,
+    total:w&&w.score!=null?w.score:'',ms:w?.timeMs||0,ok:d.confirmed===true,at:oaTime(d.confirmedAt)||named?.at||0,
+    start:num(d.startMs,0),end:d.endMs==null?null:num(d.endMs),steps:[],file:clip,vok:true,rel}}
+// what a clip's own name tells: <programme>_<match>_<team A>_vs_<team B>_<round>_<time>_... (team codes only, no names or result)
+function oaClipName(f){
+  const x=/^([a-z0-9]+)_([0-9a-f-]{36})_(.+?)_vs_(.+?)_(\d+)_(\d{4}-\d\d-\d\d)T(\d\d)_(\d\d)_(\d\d)_(\d+)Z_/i.exec(String(f));
+  if(!x)return null;
+  return{comp:x[1].toUpperCase(),a:x[3],b:x[4],round:+x[5],at:Date.parse(`${x[6]}T${x[7]}:${x[8]}:${x[9]}.${x[10]}Z`)||0};
+}
+// a clip without a result file: it can still go on air, named by the team codes in its file name, with no result card
+function oaBare(path){
+  const parts=path.split('/'),file=parts.pop(),n=oaClipName(file);if(!n)return null;
+  return{id:oaKey(file),h2h:true,bare:true,teams:[{teamId:n.a,name:n.a,winner:false},{teamId:n.b,name:n.b,winner:false}],team:n.a+' vs '+n.b,teamId:n.a+' vs '+n.b,
+    school:'',field:'-',round:n.round,prog:n.comp,comp:'',missions:[],items:{},retry:0,total:'',ms:0,ok:true,at:n.at,start:0,end:null,steps:[],file,vok:true,rel:parts}}
 // tools/studio_helper.py (started by เปิดห้องส่ง.cmd) reads the match folder for the desk and hands over every result
 // file, as it is, and which files have stopped growing. The match folder is set only there.
 function oaScan(){
   const out=new Map();
   for(const f of OA.files){try{const m=oaParse(JSON.parse(f.text),f.rel);if(m.id&&m.file&&!out.has(m.id))out.set(m.id,m)}catch(e){}}
+  // a result file whose clip has not arrived yet waits; a clip whose result file has not arrived plays on its own
+  const clips=new Set(OA.webm);
+  for(const m of out.values())if(m.h2h)m.vok=clips.has(oaRel(m));
+  for(const p of OA.webm){const b=oaBare(p);if(b&&!out.has(b.id))out.set(b.id,b)}
   // Drive brings the small result file long before the clip: a clip counts only once it is on disk and has stopped growing
   for(const m of out.values())m.synced=OA.stable.has(oaRel(m))||!!oaCopy(m);
   OA.list=[...out.values()].sort((a,b)=>a.at-b.at);
@@ -1647,8 +1676,10 @@ function oaOffAir(){if(OA.phase==='play'&&!OA.paused&&!OA.offAir){OA.offAir=true
 function oaBackOnAir(){
   if(OA.offAir){OA.offAir=false;if(OA.phase==='play')oaMedia('PLAY')}
   if(OA.hold){OA.hold=false;if(OA.wantRun&&OA.phase==='idle')oaNext()}}
-const oaInfo=m=>({team:m.team,teamId:m.teamId,school:m.school,field:m.field,round:m.round,prog:m.prog});
+const oaInfo=m=>({team:m.team,teamId:m.teamId,school:m.school,field:m.field,round:m.round,prog:m.prog,...(m.h2h?{teams:m.teams.map(t=>({name:t.name,school:t.school||''}))}:{})});
 function oaRes(m){
+  // two teams: who won, each team's score and time when the result file gives them
+  if(m.h2h)return{...oaInfo(m),h2h:true,teams:m.teams.map(t=>({name:t.name,school:t.school||'',score:t.score,time:t.timeMs==null?'':fmtMs(t.timeMs),winner:t.winner})),next:oaNextName(m),frame:OA.frame||''};
   const lab=id=>S.comps[m.comp]?.missions?.find(x=>x.id===id)?.label||m.missions.find(x=>x.id===id)?.label||id;
   return{...oaInfo(m),total:m.total,max:m.missions.reduce((a,x)=>a+x.pts*x.max,0),time:fmtMs(m.ms),retry:m.retry,
     missions:m.missions.map(x=>({label:lab(x.id),n:+m.items[x.id]||0,max:x.max,pts:x.pts})),...oaStand(m),frame:OA.frame||''}}
@@ -1661,16 +1692,16 @@ function oaStand(m){
   const top=runs.slice(0,3).map(row);
   // a run below the top three still sees itself, in place of the third
   if(rank>3)top[2]=row(m,rank-1);
-  const n=OA.auto&&oaQueue().find(x=>oaReady(x)&&x.id!==m.id);
-  return{rank,top,next:n?n.team:''};
+  return{rank,top,next:oaNextName(m)};
 }
+const oaNextName=m=>{const n=OA.auto&&oaQueue().find(x=>oaReady(x)&&x.id!==m.id);return n?n.team:''};
 const oaIdleMsg=()=>({sub:VENUES.find(v=>v[0]===S.venue)[1]});
 // a graphics page that has just loaded asks what is on; this answers with the present state
 function oaSay(){const m=OA.cur;
   if(OA.brk)OBS.say('break',oaBrkMsg());
   else if(OA.scene===OA_CAM)OBS.say('cam',oaIdleMsg());
   else if(OA.phase==='play'&&m)OBS.say(OA.cover?'intro':'play',oaInfo(m));
-  else if(OA.phase==='result'&&m)OBS.say('result',oaRes(m));
+  else if(OA.phase==='result'&&m&&!m.bare)OBS.say('result',oaRes(m));
   else if(OA.phase==='next'&&OA.nextM)OBS.say('next',oaInfo(OA.nextM));
   else OBS.say('idle',oaIdleMsg())}
 
@@ -1772,7 +1803,7 @@ async function oaHelper(){
   const look=()=>[OA.helperOk,Object.keys(OA.cache).length,OA.H?.mediamtx,OA.H?.busy,OA.H?.error,(OA.H?.ips||[]).join()].join('|'),was=look();
   try{const r=await fetch(OA_HELPER+'/state?sig='+encodeURIComponent(OA.hsig),{cache:'no-store'});const d=await r.json();
     OA.H=d;OA.cache=d.clips||{};OA.helperOk=true;
-    if(d.matches){OA.hsig=d.sig;OA.files=d.matches;OA.stable=new Set(d.stable||[])}
+    if(d.matches){OA.hsig=d.sig;OA.files=d.matches;OA.webm=d.webm||[];OA.stable=new Set(d.stable||[])}
     if(!OA.ipSeen&&d.ips?.[0]){OA.ipSeen=d.ips[0];oaKeep()}
     oaScan()}
   // the last answer is kept: the queue and the paths stay while the helper is restarted
@@ -1842,10 +1873,10 @@ function oaDone(){
   oaMedia('PAUSE');OA.played.add(m.id);oaKeep();OA.phase='result';OA.frame='';
   // the clip's last picture goes along, for the result card to shrink into its window
   const shown=OA.gen;
-  OBS.req('GetSourceScreenshot',{sourceName:OA_CLIP,imageFormat:'jpg',imageWidth:1920,imageHeight:1080,imageCompressionQuality:82})
+  if(!m.bare)OBS.req('GetSourceScreenshot',{sourceName:OA_CLIP,imageFormat:'jpg',imageWidth:1920,imageHeight:1080,imageCompressionQuality:82})
     .then(r=>{OA.frame=r.imageData||''},()=>{}).then(()=>{if(OA.gen===shown&&OA.phase==='result'&&OA.cur===m)OBS.say('result',oaRes(m))});
-  if(!OA.brk)oaSound(OA_SND.sting);oaDraw();
-  oaWait(10000,()=>{
+  if(!OA.brk&&!m.bare)oaSound(OA_SND.sting);oaDraw();
+  oaWait(m.bare?1500:10000,()=>{
     const n=OA.auto&&oaQueue().find(oaReady);
     if(!n)return oaToIdle();
     if(OA.scene&&OA.scene!==OA_SCENE){OA.hold=true;return oaToIdle()}
@@ -1857,7 +1888,7 @@ function oaDone(){
 // the finish, at most 15 s each), each after a card with its rank. Needs the helper's copies, since it jumps.
 function oaHlPick(group,round){
   // only runs already shown on air: a highlight never gives away a score the viewers have not seen
-  const pool=OA.list.filter(m=>m.ok&&OA.played.has(m.id)&&oaGroup(m)===group&&m.round===round&&oaCopy(m)&&m.total>0);
+  const pool=OA.list.filter(m=>m.ok&&!m.h2h&&OA.played.has(m.id)&&oaGroup(m)===group&&m.round===round&&oaCopy(m)&&m.total>0);
   const best=[...pool].sort((a,b)=>b.total-a.total||a.ms-b.ms).slice(0,3).map((m,i)=>({m,label:`อันดับ ${i+1}`}));
   const fast=[...pool].sort((a,b)=>a.ms-b.ms)[0];
   if(fast&&!best.some(x=>x.m===fast))best.push({m:fast,label:'ทำเวลาเร็วที่สุด'});
@@ -1904,7 +1935,7 @@ function vOnair(){
   const why=m=>OA.bad.has(m.id)?'⚠ '+OA.bad.get(m.id):!m.ok?'รอยืนยันผล':!m.vok?'คลิปยังไม่บันทึก':!m.synced?'กำลังซิงก์คลิปจากไดรฟ์':'ปล่อยได้อีก '+Math.max(1,Math.ceil((OA.delay*60000-(Date.now()-m.at))/60000))+' นาที';
   const row=(m,i,kind)=>`<div class="oaq ${cur?.id===m.id?'now':''}"><span class="oan mono">${kind==='ready'?String(i+1).padStart(2,'0'):''}</span>
     <div class="who"><b>${esc(m.team)}</b><small>${esc(oaGroup(m))} · ROUND ${esc(m.round)}${kind==='wait'?' · '+esc(why(m)):''}</small></div>
-    <b class="mono oasc">${esc(m.total)}</b>
+    <b class="mono oasc">${m.h2h?(m.bare?'<small class="muted">ไม่มีไฟล์ผล</small>':esc((m.teams.find(t=>t.winner)||{}).name?'🏆 '+m.teams.find(t=>t.winner).name:'')):esc(m.total)}</b>
     <span class="oabtn">${kind==='done'?`<button class="btn sm" data-act="oaagain" data-v="${esc(m.id)}" title="เล่นซ้ำ">↺</button>`
       :`<button class="btn sm" data-act="oaup" data-v="${esc(m.id)}" title="เลื่อนขึ้น">▲</button><button class="btn sm" data-act="oadown" data-v="${esc(m.id)}" title="เลื่อนลง">▼</button>${kind==='ready'?`<button class="btn sm" data-act="oaplay" data-v="${esc(m.id)}" title="เล่นอันนี้เลย" ${on?'':'disabled'}>▶</button>`:''}${OA.bad.has(m.id)?`<button class="btn sm" data-act="oaretry" data-v="${esc(m.id)}" title="ลองใหม่">↻</button>`:''}<button class="btn sm" data-act="oadrop" data-v="${esc(m.id)}" title="ไม่เล่น">✕</button>`}</span></div>`;
   const live=OA.stat?.s?.outputActive,rec=OA.stat?.r?.outputActive;

@@ -146,6 +146,32 @@ header{display:flex;align-items:center;justify-content:space-between}
 #cres.go .foot>*{animation:rpop .55s var(--out) forwards}
 #cres.go .foot>:nth-child(1){animation-delay:2.6s}#cres.go .foot>:nth-child(2){animation-delay:2.7s}#cres.go .foot>:nth-child(3){animation-delay:2.8s}#cres.go .foot>:nth-child(4){animation-delay:2.9s}#cres.go .foot>:nth-child(5){animation-delay:3.1s}
 #cres.go .row.me{animation:rpop .55s var(--out) 2.9s forwards,rflash 1.4s ease 3.4s 1}
+/* two teams in one match: a plate per team, the winner's lit and marked WIN, the red slab names the winner */
+#cres.h2h .pa,#cres.h2h .pb,#cres.h2h .pc,#cres:not(.h2h) .pt,#cres:not(.h2h) .pw{display:none}
+#cres .pt{height:200px;background:linear-gradient(160deg,#103090,#06123a 75%)}
+#cres .pt1{top:224px}#cres .pt2{top:438px}
+#cres .pt .pin{display:flex;align-items:center;gap:20px;padding:0 34px 0 40px}
+#cres .pt .who{flex:1;min-width:0}
+#cres .pt .team{font-size:44px;margin-top:8px}
+#cres .pt .kick{display:flex;align-items:center;gap:10px;height:20px}
+#cres .pt .kick span{font:600 21px/1 "Segoe UI","Leelawadee UI",sans-serif;letter-spacing:0;color:var(--mute2)}
+#cres .pt .kick b{display:none;padding:4px 12px;background:var(--gold);color:#121a3a;font:700 16px/1 var(--num);letter-spacing:2px}
+#cres .pt.won .kick b{display:inline-block}
+#cres .pt.won:before{content:'';position:absolute;left:0;top:0;width:90px;height:6px;background:var(--gold)}
+#cres .pt.lost{opacity:.62;filter:saturate(.6)}
+#cres .pt .hsc{text-align:right;flex:none}
+#cres .pt .hsc b{display:block;font:700 96px/.9 var(--num);font-stretch:condensed;letter-spacing:-3px}
+#cres .pt .hsc small{display:block;font:600 22px/1.2 var(--num);color:var(--mute2);margin-top:6px}
+#cres .pw{top:652px;height:214px;background:linear-gradient(120deg,#f0303a,#a10f1c 70%);overflow:hidden}
+#cres .pw:before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,#ffffff14,transparent 45%)}
+#cres .pw .pin{position:relative;display:flex;flex-direction:column;justify-content:center;padding:0 40px}
+#cres .pw .lab{font:600 21px/1.3 var(--num);letter-spacing:2px;opacity:.9}
+#cres .pw .lab em{margin-left:10px;font-size:22px}
+#cres .pw .wn{font-size:66px;font-weight:700;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 4px 0 #5d0610}
+#cres .foot .nx:only-child{width:auto;min-width:560px}
+#cres.go .pt1{animation:rwipe .6s var(--out) 1.05s forwards}
+#cres.go .pt2{animation:rwipe .6s var(--out) 1.2s forwards}
+#cres.go .pw{animation:rwipe .6s var(--out) 1.5s forwards}
 @keyframes rfade{to{opacity:1}}
 @keyframes rsw{to{opacity:.55}}
 @keyframes rpop{to{opacity:1;transform:none}}
@@ -212,6 +238,9 @@ body.cam .bug{transform:none;opacity:1;visibility:visible;transition:transform .
     <div><small>RETRY</small><b id="rretry"></b></div>
     <div class="rank"><small>RANK<em>อันดับตอนนี้</em></small><b id="rrank"></b></div>
   </div></div>
+  <div class="pl pt pt1"><div class="pin"><div class="who"><div class="kick"><b>WIN</b><span id="hs1"></span></div><div class="team" id="ht1"></div></div><div class="hsc"><b id="hp1"></b><small id="hm1"></small></div></div></div>
+  <div class="pl pt pt2"><div class="pin"><div class="who"><div class="kick"><b>WIN</b><span id="hs2"></span></div><div class="team" id="ht2"></div></div><div class="hsc"><b id="hp2"></b><small id="hm2"></small></div></div></div>
+  <div class="pl pw"><div class="pin"><div class="lab" id="hwl"></div><div class="wn" id="hw"></div></div><div class="shine"></div></div>
   <div class="foot" id="rfoot"></div>
 </div>
 
@@ -243,7 +272,8 @@ function show(m){
   if(m.k==='score')return;
   clearInterval(tick);
   if(m.k==='next'||m.k==='intro'){set('nk',m.k==='intro'?'เตรียมความพร้อม · SETUP':'ทีมถัดไป · NEXT MATCH');set('nk2',m.k==='intro'?'SETUP':'NEXT MATCH');
-    set('nteam',m.team);set('nschool',m.school);set('nfield',m.field);set('nround',m.round);set('nprog',m.prog)}
+    set('nteam',m.teams?m.teams.map(t=>t.name).join('  VS  '):m.team);set('nschool',m.teams?m.teams.map(t=>t.school).filter(Boolean).join(' · '):m.school);
+    set('nfield',m.field);set('nround',m.round);set('nprog',m.prog)}
   if(m.k==='result')showResult(m);
   // a free card on the team-card layout: highlight titles and ranks
   if(m.k==='title'){set('nk',m.eyebrow);set('nk2',m.tag);set('nteam',m.title);set('nschool',m.sub)}
@@ -265,16 +295,25 @@ function show(m){
 let resCount=0;
 function showResult(m){
   const c=$('cres'),el=(tag,cls,txt)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e};
-  set('rprog',m.prog);set('rwhere','FIELD '+m.field+' · ROUND '+m.round);set('rteam',m.team);set('rschool',m.school);
+  set('rprog',m.prog);set('rwhere',(m.field&&m.field!=='-'?'FIELD '+m.field+' · ':'')+'ROUND '+m.round);set('rteam',m.team);set('rschool',m.school);
+  c.classList.toggle('h2h',!!m.h2h);
+  if(m.h2h){
+    const w=(m.teams||[]).find(t=>t.winner);
+    (m.teams||[]).slice(0,2).forEach((t,i)=>{const n=i+1,pl=c.querySelector('.pt'+n);set('ht'+n,t.name);set('hs'+n,t.school);
+      set('hp'+n,t.score==null?'':t.score);set('hm'+n,t.time||'');pl.classList.toggle('won',!!t.winner);pl.classList.toggle('lost',!!w&&!t.winner)});
+    // no team marked as winner: say the match ended level, never pick one
+    $('hwl').innerHTML='';$('hwl').append(w?'WINNER':'RESULT',Object.assign(document.createElement('em'),{textContent:w?'ผู้ชนะ':'ผลการแข่งขัน'}));
+    set('hw',w?w.name:'เสมอ');
+  }
   set('rmax',m.max?'/'+m.max:'');set('rtime',m.time);set('rretry',m.retry);set('rrank',m.rank?'#'+m.rank:'-');
   c.classList.toggle('noframe',!m.frame);
   for(const x of c.querySelectorAll('.r-win,.r-bg'))x.style.backgroundImage=m.frame?`url("${m.frame}")`:'';
   // missions only while they fit on one line of the plate
   const ms=$('rms');ms.innerHTML='';
-  if((m.missions||[]).length<=5)for(const x of m.missions){const d=el('div','m'+(x.max&&x.n>=x.max?' full':''));d.append(el('small','',x.label));
+  if((m.missions||[]).length<=5)for(const x of m.missions||[]){const d=el('div','m'+(x.max&&x.n>=x.max?' full':''));d.append(el('small','',x.label));
     const b=el('b','',x.n);b.append(el('span','','/'+x.max));d.append(b);ms.append(d)}
   const f=$('rfoot');f.innerHTML='';
-  if((m.top||[]).length){const t=el('div','t3','TOP 3');t.append(el('em','','รอบ '+m.round+' · สนาม '+m.field));f.append(t);
+  if(!m.h2h&&(m.top||[]).length){const t=el('div','t3','TOP 3');t.append(el('em','','รอบ '+m.round+' · สนาม '+m.field));f.append(t);
     for(const r of m.top){const d=el('div','row'+(r.me?' me':''));d.append(el('span','n',r.rank));const tm=el('div','tm',r.team);tm.append(el('small','',r.time));d.append(tm,el('span','p',r.total));f.append(d)}}
   if(m.next){const d=el('div','nx');d.append(el('small','','NEXT ▸'),el('b','',m.next));f.append(d)}
   // the score counts up while its plate lands
