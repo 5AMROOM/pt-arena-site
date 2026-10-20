@@ -54,8 +54,11 @@ svg.ln path.won{stroke:var(--accent)}
 .empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--mute);font-size:18px}
 /* atmosphere: the clip fills the window, a small label in the corner */
 .br{position:fixed;inset:0;background:#000}
-.br video{width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .5s}
-.br video.on{opacity:1}
+.br video,.br img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transform:scale(1);transition:opacity .35s ease-out}
+/* each shot pushes in slowly while it is on (a still shot comes alive) */
+.br video.on,.br img.on{animation:push 4.6s linear both}
+@keyframes push{from{transform:scale(1)}to{transform:scale(1.07)}}
+.br video.on,.br img.on{opacity:1}
 .br .lab{position:absolute;left:20px;bottom:18px;display:flex;align-items:center;gap:8px;padding:6px 14px;border-radius:16px;background:rgba(0,0,0,.55);color:#fff;font-size:15px;font-weight:600}
 .br .lab i{width:8px;height:8px;border-radius:4px;background:var(--accent)}
 /* standings: rank · team and school · round 1 · round 2 · best · time */
@@ -156,17 +159,43 @@ function drawLive(p,list){
 }
 setInterval(()=>{if(!data||data.mode!=='live')return;const gone=Date.now()-(data.t||Date.now());
   document.querySelectorAll('.clk[data-ms]').forEach(c=>{const d=+c.dataset.dur||Infinity;c.textContent=mmss(Math.min(d,+c.dataset.ms+gone))})},250);
-// atmosphere clips: one video element at a time, the next starts when one ends, fails, or has run 20 s
-let brIdx=0,brTimer=null;
+// atmosphere clips: one video element at a time, the next starts when one ends, fails, or has run 20 s;
+// their sound follows the desk's slider (0 = off), changed on the clip playing without restarting it
+const brVol=v=>{const x=Math.max(0,Math.min(100,+(data&&data.vol)||0))/100;v.volume=x;v.muted=x===0};
+let brIdx=0,brTimer=null,brFails=0,brPass=0;
+// a recap in the style of a "เก็บตก" reel: short shots (BR_SHOT), each a different stretch of a clip, a slow push-in on
+// every shot, a quick dissolve between them (picture and sound). A long clip gives several shots over the passes.
+const BR_SHOT=3800,BR_MIX=350;
+const brAud=(v,to)=>{if(v.muted)return;const from=v.volume,t0=Date.now(),step=()=>{const k=Math.min(1,(Date.now()-t0)/BR_MIX);v.volume=Math.max(0,Math.min(1,from+(to-from)*k));if(k<1)setTimeout(step,30)};step()};
 function drawBroll(p){
-  const list=data.broll||[];clearTimeout(brTimer);
+  const list=data.broll||[];clearTimeout(brTimer);brFails=0;
   if(!list.length){head(p,'บรรยากาศ',' ',[]).append(el('div','empty','ยังไม่มีคลิปบรรยากาศ'));return}
   const box=el('div','br'),lab=el('div','lab');lab.append(el('i'),document.createTextNode('บรรยากาศในงาน'));
-  const play=()=>{clearTimeout(brTimer);const v=document.createElement('video');v.muted=true;v.playsInline=true;v.preload='auto';
-    v.src=list[brIdx%list.length];brIdx++;
-    const next=()=>{clearTimeout(brTimer);v.classList.remove('on');setTimeout(()=>{v.remove();if(data&&data.mode==='broll')play()},500)};
-    v.onended=next;v.onerror=next;v.oncanplay=()=>{v.classList.add('on');v.play().catch(next)};
-    brTimer=setTimeout(next,20000);box.prepend(v)};
+  const play=()=>{clearTimeout(brTimer);if(!(data&&data.mode==='broll')||!box.isConnected)return;
+    const L=data.broll||list,prev=[...box.querySelectorAll('video.on:not(.out),img.on:not(.out)')].pop();
+    const src=L[brIdx%Math.max(1,L.length)];
+    if(/\.(jpe?g|png|webp)(\?|$)/i.test(src)){
+      const im=new Image();brIdx++;
+      im.onload=()=>{if(!box.isConnected)return;brFails=0;if(!prev)im.style.transition='none';im.classList.add('on');
+        if(prev){prev.classList.add('out');if(prev.tagName==='VIDEO')brAud(prev,0);setTimeout(()=>prev.remove(),BR_MIX+150)}
+        brTimer=setTimeout(play,BR_SHOT)};
+      im.onerror=()=>{im.remove();if(++brFails>L.length*2)return;brTimer=setTimeout(play,200)};
+      im.src=src;box.insertBefore(im,lab);return}
+    const v=document.createElement('video');
+    const n=brIdx%Math.max(1,L.length);if(n===0&&brIdx)brPass++;
+    v.playsInline=true;v.preload='auto';v.src=L[n];brIdx++;
+    let go=false;
+    const fail=()=>{if(go)return;go=true;v.remove();if(++brFails>L.length*2)return;brTimer=setTimeout(play,200)};
+    // the first shot is simply there; only a shot that follows another dissolves in
+    const start=()=>{brFails=0;brVol(v);const to=v.volume;if(prev){v.volume=0;brAud(v,to)}else v.style.transition='none';v.classList.add('on');
+      if(prev){prev.classList.add('out');if(prev.tagName==='VIDEO')brAud(prev,0);setTimeout(()=>prev.remove(),BR_MIX+150)}
+      brTimer=setTimeout(play,BR_SHOT)};
+    v.onerror=fail;
+    // the stretch: skip the first second (the camera settling), then a different place on each pass through the list
+    v.onloadedmetadata=()=>{const d=v.duration;if(isFinite(d)&&d>BR_SHOT/1000+2){const span=d-1-BR_SHOT/1000,k=((brPass*0.37)+(n*0.61))%1;v.currentTime=1+span*k}};
+    v.oncanplay=()=>{if(go)return;go=true;brVol(v);v.play().then(start,()=>{v.muted=true;v.play().then(start,()=>{go=false;fail()})})};
+    v.onended=()=>{if(v.classList.contains('on')&&!v.classList.contains('out'))play()};
+    box.insertBefore(v,lab)};
   box.append(lab);p.append(box);play();
 }
 function drawNow(p){{
@@ -204,8 +233,11 @@ function drawNow(p){{
 function show(m){
   if(m.k==='theme'&&m.name){theme=m.name;paint(theme);return}
   if(m.k!=='board')return;
+  // the desk says stop (ads chosen, or the break is over): nothing left running, no clip, no sound
+  if(m.mode==='off'){data=null;clearInterval(turn);clearTimeout(brTimer);const p=document.getElementById('p');p.classList.remove('on');p.textContent='';return}
   if(m.theme&&m.theme!==theme){theme=m.theme;paint(theme)}
   const key=x=>x?JSON.stringify([x.mode,x.brackets,x.rank,x.live,x.mode==='broll'?(x.broll||[]).length>0:0]):'',same=key(data)===key(m),changed=!data||data.mode!==m.mode;data=m;
+  document.querySelectorAll('.br video').forEach(brVol);
   if(changed)idx=0;
   // more than one page (ประถม and มัธยม, several programmes, more than four fields): each gets the window in turn
   clearInterval(turn);if(m.mode!=='broll'&&pages().length>1)turn=setInterval(()=>{idx++;draw()},12000);

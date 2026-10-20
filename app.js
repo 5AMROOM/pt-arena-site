@@ -1549,7 +1549,7 @@ const OA_SCENE='PT รีเพลย์',OA_CAM='PT กล้องเดิน
 const OA_ADBOX={x:800,y:200,w:1040,h:585};
 // what the window beside the countdown shows (board.html, source "PT ตาราง"): the ads; the KidsBiT bracket from RoboArena;
 // the standings of the solo programmes from what we have aired; or the fields live right now from RoboArena
-const OA_BOARD='PT ตาราง',OA_SHOW={ads:'โฆษณา',bracket:'สายการแข่ง KidsBiT',rank:'อันดับ (ที่ออกอากาศแล้ว)',live:'สดจากสนาม ⚠️ บอกผลก่อนคลิป',broll:'บรรยากาศในงาน (คลิปในโฟลเดอร์ broll)'};
+const OA_BOARD='PT ตาราง',OA_SHOW={ads:'โฆษณา',bracket:'สายการแข่ง KidsBiT',rank:'อันดับ (ที่ออกอากาศแล้ว)',live:'สดจากสนาม ⚠️ บอกผลก่อนคลิป',broll:'บรรยากาศในงาน (คลิปและภาพในโฟลเดอร์ broll)'};
 const OA_REGION={C:'central',S:'south',E:'east',N:'north',NE:'northeast'};
 // the sound folder holds three files with fixed names: the break bed (loops), the card sting, the show opener
 const OA_SND={loop:'pt_loop.wav',sting:'pt_sting.wav',open:'pt_open.wav'};
@@ -1566,11 +1566,11 @@ const OA_OSMO='PT Osmo',OA_OSMO_URL='rtsp://127.0.0.1:8554/live/osmo';
 // the phone as the walking camera: our own camera page, no app (see #cam-ROAM / #rx-ROAM)
 const OA_PHONE='PT มือถือ',oaSite=()=>location.origin+location.pathname+location.search;
 const OA={H:null,hsig:'',files:[],webm:[],stable:new Set(),ipSeen:'',list:[],order:[],played:new Set(),bad:new Map(),auto:true,delay:0,prog:'all',skipSetup:true,cur:null,nextM:null,phase:'idle',err:'',
-  ws:'ws://127.0.0.1:4455',pw:'',theme:'sports',ads:'',advid:'',snd:'',credit:'',brk:null,cache:{},helperOk:false,hlGroup:'',hlRound:1,hl:null,brkMode:'break',brkMin:5,brkAuto:true,brkHl:false,blocks:true,progOrder:[],block:'',blockShown:'',brkShow:'ads',board:null,boardHas:false,boardErr:'',boardAt:0,boardSig:'',sfx:false,bgm:'pt_loop.wav',obsWant:false,obsState:'off',obsErr:'',scene:'',stat:null,hold:false,offAir:false,shown:0,cursor:0,dur:0,paused:false,gen:0,waitAt:0,waitFn:null};
+  ws:'ws://127.0.0.1:4455',pw:'',theme:'sports',ads:'',advid:'',snd:'',credit:'',brk:null,cache:{},helperOk:false,hlGroup:'',hlRound:1,hl:null,brkMode:'break',brkMin:5,brkAuto:true,brkHl:false,brollVol:0,blocks:true,progOrder:[],block:'',blockShown:'',brkShow:'ads',board:null,boardHas:false,boardErr:'',boardAt:0,boardSig:'',sfx:false,bgm:'pt_loop.wav',obsWant:false,obsState:'off',obsErr:'',scene:'',stat:null,hold:false,offAir:false,shown:0,cursor:0,dur:0,paused:false,gen:0,waitAt:0,waitFn:null};
 try{const k=JSON.parse(localStorage.getItem('ptarena:oa')||'{}');OA.order=k.order||[];OA.played=new Set(k.played||[]);OA.auto=k.auto!==false;OA.delay=k.delay||0;OA.prog=k.prog||'all';OA.skipSetup=k.skipSetup!==false;OA.tests=!!k.tests;
   OA.ws=k.ws||OA.ws;OA.pw=k.pw||'';OA.ipSeen=k.ipSeen||'';OA.obsWant=!!k.obsWant;
-  OA.ads=k.ads||'';OA.advid=k.advid||'';OA.snd=k.snd||'';OA.credit=k.credit||'';OA.brkMode=k.brkMode||'break';OA.brkMin=k.brkMin||5;OA.brkAuto=k.brkAuto!==false;OA.brkHl=k.brkHl===true;OA.blocks=k.blocks!==false;OA.progOrder=Array.isArray(k.progOrder)?k.progOrder.filter(x=>typeof x==='string'):[];OA.brkShow=k.brkShow in OA_SHOW?k.brkShow:'ads';OA.sfx=k.sfx===true;OA.bgm=k.bgm in OA_BGM?k.bgm:'pt_loop.wav';OA.theme=k.theme in OA_THEMES?k.theme:'sports'}catch(e){}
-const oaKeep=()=>{try{localStorage.setItem('ptarena:oa',JSON.stringify({order:OA.order,played:[...OA.played],auto:OA.auto,delay:OA.delay,prog:OA.prog,skipSetup:OA.skipSetup,tests:OA.tests,ws:OA.ws,pw:OA.pw,ipSeen:OA.ipSeen,obsWant:OA.obsWant,ads:OA.ads,advid:OA.advid,snd:OA.snd,credit:OA.credit,brkMode:OA.brkMode,brkMin:OA.brkMin,brkAuto:OA.brkAuto,brkHl:OA.brkHl,blocks:OA.blocks,progOrder:OA.progOrder,brkShow:OA.brkShow,sfx:OA.sfx,bgm:OA.bgm,theme:OA.theme}))}catch(e){}};
+  OA.ads=k.ads||'';OA.advid=k.advid||'';OA.snd=k.snd||'';OA.credit=k.credit||'';OA.brkMode=k.brkMode||'break';OA.brkMin=k.brkMin||5;OA.brkAuto=k.brkAuto!==false;OA.brkHl=k.brkHl===true;OA.brollVol=Math.max(0,Math.min(100,+k.brollVol||0));OA.blocks=k.blocks!==false;OA.progOrder=Array.isArray(k.progOrder)?k.progOrder.filter(x=>typeof x==='string'):[];OA.brkShow=k.brkShow in OA_SHOW?k.brkShow:'ads';OA.sfx=k.sfx===true;OA.bgm=k.bgm in OA_BGM?k.bgm:'pt_loop.wav';OA.theme=k.theme in OA_THEMES?k.theme:'sports'}catch(e){}
+const oaKeep=()=>{try{localStorage.setItem('ptarena:oa',JSON.stringify({order:OA.order,played:[...OA.played],auto:OA.auto,delay:OA.delay,prog:OA.prog,skipSetup:OA.skipSetup,tests:OA.tests,ws:OA.ws,pw:OA.pw,ipSeen:OA.ipSeen,obsWant:OA.obsWant,ads:OA.ads,advid:OA.advid,snd:OA.snd,credit:OA.credit,brkMode:OA.brkMode,brkMin:OA.brkMin,brkAuto:OA.brkAuto,brkHl:OA.brkHl,brollVol:OA.brollVol,blocks:OA.blocks,progOrder:OA.progOrder,brkShow:OA.brkShow,sfx:OA.sfx,bgm:OA.bgm,theme:OA.theme}))}catch(e){}};
 const oaGroup=m=>`${m.prog} · สนาม ${m.field}`;
 const oaTime=v=>{const t=typeof v==='number'?v:new Date(v||0).getTime();return isFinite(t)?t:0};
 
@@ -1778,7 +1778,7 @@ const oaNextName=m=>{const n=OA.auto&&oaQueue().find(x=>oaReady(x)&&x.id!==m.id)
 const oaIdleMsg=()=>({sub:VENUES.find(v=>v[0]===S.venue)[1]});
 // a graphics page that has just loaded asks what is on; this answers with the present state
 function oaSay(){const m=OA.cur;
-  OBS.say('theme',{name:OA.theme});if(OA.brkShow!=='ads')oaBoardSay(true);
+  OBS.say('theme',{name:OA.theme});if(OA.brk&&OA.brkShow!=='ads')oaBoardSay(true);else oaBoardOff();
   if(OA.brk)OBS.say('break',oaBrkMsg());
   else if(OA.scene===OA_CAM)OBS.say('cam',oaIdleMsg());
   else if(OA.phase==='play'&&m)OBS.say(OA.cover?'intro':'play',oaInfo(m));
@@ -1821,7 +1821,7 @@ async function obsSetup(){
     // a video ad, when one is set, plays in the same window over the slideshow (the slideshow cannot play video)
     await place(OA_BREAK,OA_ADVID,'ffmpeg_source',{is_local_file:true,local_file:oaAdvid(),looping:true,restart_on_activate:true,close_when_inactive:true,hw_decode:true});
     const burl=new URL('board.html',location.href);burl.search='?v='+Date.now();burl.hash=new URLSearchParams({ws:OA.ws,pw:OA.pw,v:String(Date.now())}).toString();
-    await place(OA_BREAK,OA_BOARD,'browser_source',{url:burl.href,width:OA_ADBOX.w,height:OA_ADBOX.h,css:'',shutdown:false,restart_when_active:false});
+    await place(OA_BREAK,OA_BOARD,'browser_source',{url:burl.href,width:OA_ADBOX.w,height:OA_ADBOX.h,css:'',shutdown:false,restart_when_active:false,reroute_audio:true});
     await fit(OA_BREAK,OA_ADS,OA_ADBOX);await fit(OA_BREAK,OA_ADVID,OA_ADBOX,true);await fit(OA_BREAK,OA_BOARD,OA_ADBOX,true);await fit(OA_BREAK,OA_GFX,full,true);
     await oaBrkShowApply();
     // walking camera: picks the picture up again by itself when the camera reconnects
@@ -1916,9 +1916,9 @@ function oaBoardSay(force){
   // run no KidsBiT, a draw may change on the day); a programme without a single match is left out
   const mode=OA.brkShow==='ads'?'bracket':OA.brkShow;
   // atmosphere: the newest clips of the broll folder (at most 20), played by the window itself from the helper
-  const list=mode==='rank'?oaRank():mode==='live'?oaLive():mode==='broll'?(OA.H?.broll||[]).slice(0,20).map(f=>OA_HELPER+'/broll/'+encodeURIComponent(f))
+  const list=mode==='rank'?oaRank():mode==='live'?oaLive():mode==='broll'?(OA.H?.broll||[]).slice(0,40).map(f=>OA_HELPER+'/broll/'+encodeURIComponent(f))
     :oaBracket().filter(b=>b.left.length||b.right.length||b.final),has=list.length>0;
-  const m={theme:OA.theme,mode,brackets:mode==='bracket'?list:[],rank:mode==='rank'?list:[],live:mode==='live'?list:[],broll:mode==='broll'?list:[],error:mode==='rank'||mode==='broll'?'':OA.boardErr,sub:VENUES.find(v=>v[0]===S.venue)[1],t:Date.now()},
+  const m={theme:OA.theme,mode,brackets:mode==='bracket'?list:[],rank:mode==='rank'?list:[],live:mode==='live'?list:[],broll:mode==='broll'?list:[],vol:OA.brollVol,error:mode==='rank'||mode==='broll'?'':OA.boardErr,sub:VENUES.find(v=>v[0]===S.venue)[1],t:Date.now()},
     sig=JSON.stringify({...m,t:0});
   if(force||sig!==OA.boardSig){OA.boardSig=sig;OBS.say('board',m)}
   if(has!==OA.boardHas){OA.boardHas=has;oaBrkVis();oaDraw()}
@@ -1927,10 +1927,12 @@ function oaBoardSay(force){
 // with no bracket to show (none at this venue, or RoboArena not reached yet) the ads stay up: the window is never empty
 async function oaBrkVis(){
   if(!OBS.ok)return;const ads=OA.brkShow==='ads'||!OA.boardHas;
-  const en=async(n,on)=>{try{const{sceneItemId}=await OBS.req('GetSceneItemId',{sceneName:OA_BREAK,sourceName:n});await OBS.req('SetSceneItemEnabled',{sceneName:OA_BREAK,sceneItemId,sceneItemEnabled:on})}catch(e){}};
+  const en=async(n,on)=>{try{const{sceneItemId}=await OBS.req('GetSceneItemId',{sceneName:OA_BREAK,sourceName:n});await OBS.req('SetSceneItemEnabled',{sceneName:OA_BREAK,sceneItemId,sceneItemEnabled:on})}
+    catch(e){if(n===OA_BOARD)toast('ซ่อน/โชว์ช่อง "PT ตาราง" ไม่ได้: กด "ตั้งฉากให้ใน OBS" อีกครั้ง')}};
   await en(OA_ADS,ads);await en(OA_ADVID,ads&&!!oaAdvid());await en(OA_BOARD,!ads);
 }
-async function oaBrkShowApply(){OA.boardHas=false;OA.boardSig='';await oaBrkVis();if(OA.brkShow==='rank'||OA.brkShow==='broll')oaBoardSay(true);else if(OA.brkShow!=='ads')oaBoard()}
+async function oaBrkShowApply(){OA.boardHas=false;OA.boardSig='';await oaBrkVis();if(OA.brkShow==='ads'||!OA.brk)oaBoardOff();else if(OA.brkShow==='rank'||OA.brkShow==='broll')oaBoardSay(true);else oaBoard()}
+const oaBoardOff=()=>{OA.boardSig='off';OBS.say('board',{theme:OA.theme,mode:'off',t:Date.now()})};
 async function oaBreak(){
   if(!OBS.ok)return toast('ยังไม่ได้ต่อ OBS');
   OA.brk={mode:OA.brkMode,endsAt:Date.now()+OA.brkMin*60000};
@@ -1945,10 +1947,10 @@ function oaBrkMore(min){if(!OA.brk)return;OA.brk.endsAt=Math.max(Date.now(),Math
 // the button goes straight back to the replay; a countdown that runs out lands on the stand-by card instead,
 // so no clip starts before the host is ready ("▶ เริ่มเล่นคิว" starts it)
 async function oaBrkEnd(timeUp){
-  if(!OA.brk)return;const mode=OA.brk.mode;OA.brk=null;
+  if(!OA.brk)return;const mode=OA.brk.mode;OA.brk=null;oaBoardOff();
   if(timeUp)oaIdle();else oaSay();if(mode!=='break')oaSound(OA_SND.open);
   try{await OBS.req('SetCurrentProgramScene',{sceneName:OA_SCENE})}catch(e){toast('สลับกลับฉากรีเพลย์ไม่ได้: '+e.message)}
-  if(timeUp&&OA.brkHl&&oaHlPick(OA_HL_ALL).length)oaHlStart(OA_HL_ALL);
+  if(timeUp&&OA.brkHl&&oaRecapItems().some(x=>x.m||x.kind==='broll'))oaRecap();
   oaDraw();
 }
 async function obsStat(){
@@ -2003,8 +2005,8 @@ function oaClock(){
     if(OA.brk){const left=OA.brk.endsAt-Date.now(),el=document.getElementById('oabrk');if(el)el.textContent=fmtMs(Math.max(0,left)).split('.')[0];if(left<=0&&OA.brkAuto)oaBrkEnd(true)}
     if(Date.now()-(OA.statAt||0)>2000){OA.statAt=Date.now();obsStat()}
     if(Date.now()-(OA.helpAt||0)>3000){OA.helpAt=Date.now();oaHelper().then(()=>{if(!OBS.ok)oaAlerts()})}
-    if((OA.brkShow==='bracket'&&Date.now()-OA.boardAt>10000)||(OA.brkShow==='live'&&Date.now()-OA.boardAt>3000))oaBoard();
-    if((OA.brkShow==='rank'||OA.brkShow==='broll')&&Date.now()-OA.boardAt>5000){OA.boardAt=Date.now();oaBoardSay()}
+    if(OA.brk&&((OA.brkShow==='bracket'&&Date.now()-OA.boardAt>10000)||(OA.brkShow==='live'&&Date.now()-OA.boardAt>3000)))oaBoard();
+    if(OA.brk&&(OA.brkShow==='rank'||OA.brkShow==='broll')&&Date.now()-OA.boardAt>5000){OA.boardAt=Date.now();oaBoardSay()}
     if(OA.brkShow!=='bracket'&&OA.brkShow!=='live'&&Date.now()-(OA.advAt||0)>30000&&OA.list.some(x=>x.h2h&&x.matchId)){OA.advAt=Date.now();oaBoardFetch()}};
   try{OA_TICKS=new Worker(URL.createObjectURL(new Blob(['setInterval(()=>postMessage(0),250)'],{type:'text/javascript'})));OA_TICKS.onmessage=tick}
   catch(e){OA_TICKS=setInterval(tick,250)}
@@ -2152,6 +2154,26 @@ function oaHlPick(group,round){
   if(fast&&!best.some(x=>x.m===fast))best.push({m:fast,label:'ทำเวลาเร็วที่สุด',...oaHlCard(fast)});
   return[...pairs,...best].map(seg);
 }
+const OA_SHOT=4000,OA_RECAP_MAX=8;
+function oaRecapItems(){
+  const since=OA.recapAt||0,aired=OA.list.filter(m=>m.ok&&!m.noResult&&!m.bare&&OA.played.has(m.id)&&oaCopy(m)&&(m.h2h||m.total>0));
+  let ms=aired.filter(m=>(m.at||0)>since);if(!ms.length)ms=aired;
+  const picks=oaHlPick(OA_HL_ALL).filter(x=>ms.includes(x.m)).slice(-OA_RECAP_MAX);
+  const files=(OA.H?.broll||[]).filter(f=>!/\.(jpe?g|png|webp)$/i.test(f)).slice(0,12),dir=OA.H?.brollDir||'';let b=0;
+  const shot=()=>files.length&&dir?{kind:'broll',file:oaPath(dir,files[b%files.length]),k:(b++*0.61+(OA.recapN||0)*0.37)%1}:null;
+  const h=new Date().getHours(),period=h<12?'ช่วงเช้า':h<17?'ช่วงบ่าย':'วันนี้';
+  const out=[{kind:'card',eyebrow:'เก็บตก · RECAP',tag:'RECAP',title:`เก็บตก${period}`,sub:picks.length?`${picks.length} แมตช์ที่ผ่านมา`:'',ms:3500},shot(),shot()];
+  picks.forEach((x,i)=>{out.push(x);if(i%2===1&&i<picks.length-1)out.push(shot())});
+  out.push(shot(),{kind:'card',eyebrow:'เก็บตก · RECAP',tag:'RECAP',title:'ติดตามการแข่งขันต่อ',sub:VENUES.find(v=>v[0]===S.venue)[1],ms:3000});
+  return out.filter(Boolean);
+}
+function oaRecap(){
+  if(OA.phase==='play'||OA.phase==='load')return toast('รอคลิปนี้จบก่อน หรือกด "จบคลิปนี้"');
+  if(!OBS.ok)return toast('ยังไม่ได้ต่อ OBS');
+  const items=oaRecapItems();if(!items.some(x=>x.m||x.kind==='broll'))return toast('ยังไม่มีแมตช์ที่ออกอากาศแล้ว หรือคลิปบรรยากาศ ให้ทำเก็บตก');
+  oaStopWait();OA.gen++;OA.cur=null;OA.nextM=null;OA.phase='hl';OA.hl={items,i:-1,recap:true};
+  OA.recapAt=Date.now();OA.recapN=(OA.recapN||0)+1;oaSound(OA_SND.sting);oaHlNext();
+}
 function oaHlStart(group=OA.hlGroup,round=OA.hlRound){
   if(OA.phase==='play'||OA.phase==='load')return toast('รอคลิปนี้จบก่อน หรือกด "จบคลิปนี้"');
   if(!OBS.ok)return toast('ยังไม่ได้ต่อ OBS');
@@ -2165,18 +2187,27 @@ function oaHlNext(){
   const h=OA.hl;if(!h||OA.phase!=='hl')return;
   h.i++;const x=h.items[h.i];
   if(!x){OA.hl=null;oaToIdle();if(OA.auto&&OA.wantRun)oaWait(1500,oaNext);return}
-  oaMedia('PAUSE');OBS.say('title',{eyebrow:x.label,tag:'HIGHLIGHT',title:x.title,sub:x.sub});oaDraw();
-  oaWait(3000,async()=>{
+  if(x.kind==='card'){oaMedia('PAUSE');OA.cur=null;OBS.say('title',{eyebrow:x.eyebrow||'',tag:x.tag||'RECAP',title:x.title,sub:x.sub||''});oaDraw();return oaWait(x.ms||3000,oaHlNext)}
+  // an atmosphere shot goes straight in, no card before it; a match gets its card first
+  const load=async()=>{
     if(OA.hl!==h)return;
-    try{await OBS.req('SetInputSettings',{inputName:OA_CLIP,inputSettings:{is_local_file:true,local_file:oaCopy(x.m)}});await oaMedia('RESTART')}catch(e){return oaHlNext()}
-    h.seg=x;h.jumped=false;h.t0=Date.now();OA.cur=x.m;oaDraw()});
+    try{await OBS.req('SetInputSettings',{inputName:OA_CLIP,inputSettings:{is_local_file:true,local_file:x.file||oaCopy(x.m)}});await oaMedia('RESTART')}catch(e){return oaHlNext()}
+    h.seg=x;h.jumped=false;h.t0=Date.now();OA.cur=x.m||null;oaDraw()};
+  if(x.kind==='broll')return load();
+  oaMedia('PAUSE');OBS.say('title',{eyebrow:x.label,tag:'HIGHLIGHT',title:x.title,sub:x.sub});oaDraw();
+  oaWait(3000,load);
 }
 async function oaHlTick(){
   const h=OA.hl,x=h?.seg;if(!x||OA.ticking)return;
   OA.ticking=true;
   try{const r=await OBS.req('GetMediaInputStatus',{inputName:OA_CLIP});if(OA.hl!==h||h.seg!==x)return;
     const st=r.mediaState,t=r.mediaCursor??0;
-    if(!h.jumped){if(st==='OBS_MEDIA_STATE_PLAYING'){h.jumped=true;await OBS.req('SetMediaInputCursor',{inputName:OA_CLIP,mediaCursor:Math.round(x.from)});OBS.say('play',oaInfo(x.m))}
+    if(!h.jumped){if(st==='OBS_MEDIA_STATE_PLAYING'){h.jumped=true;
+        // an atmosphere shot picks its stretch once the file's length is known: past the first second, a different
+        // place each time, OA_SHOT long; only the corner mark is on screen over it
+        if(x.from==null){const d=+r.mediaDuration||0,span=Math.max(0,d-1000-OA_SHOT);x.from=d>OA_SHOT+2000?1000+span*((x.k||0)%1):0;x.to=x.from+OA_SHOT}
+        await OBS.req('SetMediaInputCursor',{inputName:OA_CLIP,mediaCursor:Math.round(x.from)});
+        if(x.m)OBS.say('play',oaInfo(x.m));else OBS.say('cam',oaIdleMsg())}
       else if(Date.now()-h.t0>10000){h.seg=null;oaHlNext()}return}
     if(t>=x.to||st==='OBS_MEDIA_STATE_ENDED'){h.seg=null;oaHlNext()}
   }catch(e){}finally{OA.ticking=false}
@@ -2254,14 +2285,15 @@ function vOnair(){
           ${on?`<div class="row"><button class="btn ${live?'bad':''}" data-act="oastream">${live?'■ หยุดไลฟ์':'● เริ่มไลฟ์'}</button><button class="btn" data-act="oarec">${rec?'■ หยุดอัด':'⏺ เริ่มอัด'}</button></div>`:''}</div>
         <div class="panel oabrkp ${OA.brk?'on':''}"><div class="oah"><i></i>BREAK · พักเบรก / นับถอยหลัง</div>
           ${OA.brk?`<div class="oabrkt"><span>${esc(OA_BRK[OA.brk.mode])}</span><b class="mono" id="oabrk">${fmtMs(Math.max(0,OA.brk.endsAt-Date.now())).split('.')[0]}</b></div>
-            <div class="row"><label class="cc"><span>ช่องข้างนับถอยหลัง</span><select id="oabrkshow">${Object.entries(OA_SHOW).map(([k,t])=>`<option value="${k}" ${OA.brkShow===k?'selected':''}>${t}</option>`).join('')}</select></label></div>${OA.brkShow!=='ads'&&((OA.brkShow!=='rank'&&OA.brkShow!=='broll'&&OA.boardErr)||!OA.boardHas)?`<p class="small ${OA.brkShow!=='rank'&&OA.brkShow!=='broll'&&OA.boardErr?'bad':'muted'}" style="margin:0">${esc((OA.brkShow!=='rank'&&OA.brkShow!=='broll'&&OA.boardErr)||({bracket:'ยังไม่มีสายการแข่งที่นี่',rank:'ยังไม่มีอันดับ (ยังไม่ได้ออกอากาศแข่งเดี่ยว)',live:'ตอนนี้ไม่มีสนามไหนแข่งอยู่',broll:'ยังไม่มีคลิปในโฟลเดอร์ stream\\broll'}[OA.brkShow]||'')+' ช่องข้างจึงโชว์โฆษณาแทน')}</p>`:''}
+            <div class="row"><label class="cc"><span>ช่องข้างนับถอยหลัง</span><select id="oabrkshow">${Object.entries(OA_SHOW).map(([k,t])=>`<option value="${k}" ${OA.brkShow===k?'selected':''}>${t}</option>`).join('')}</select></label></div>${OA.brkShow==='broll'?`<div class="row" style="align-items:center"><button class="btn sm" data-act="oabrollmute" aria-pressed="${OA.brollVol>0}">${OA.brollVol>0?'🔊':'🔇'} เสียงคลิปบรรยากาศ</button><input type="range" id="oabrollvol" min="0" max="100" step="5" value="${OA.brollVol}" style="flex:1;max-width:220px"><span class="mono small">${OA.brollVol}%</span></div>`:''}
+            ${OA.brkShow!=='ads'&&((OA.brkShow!=='rank'&&OA.brkShow!=='broll'&&OA.boardErr)||!OA.boardHas)?`<p class="small ${OA.brkShow!=='rank'&&OA.brkShow!=='broll'&&OA.boardErr?'bad':'muted'}" style="margin:0">${esc((OA.brkShow!=='rank'&&OA.brkShow!=='broll'&&OA.boardErr)||({bracket:'ยังไม่มีสายการแข่งที่นี่',rank:'ยังไม่มีอันดับ (ยังไม่ได้ออกอากาศแข่งเดี่ยว)',live:'ตอนนี้ไม่มีสนามไหนแข่งอยู่',broll:'ยังไม่มีคลิปหรือภาพในโฟลเดอร์ stream\\broll'}[OA.brkShow]||'')+' ช่องข้างจึงโชว์โฆษณาแทน')}</p>`:''}
             <div class="row"><button class="btn sm" data-act="oabrkmore" data-v="-5">−5 นาที</button><button class="btn sm" data-act="oabrkmore" data-v="-1">−1 นาที</button><button class="btn sm" data-act="oabrkmore" data-v="1">+1 นาที</button><button class="btn sm" data-act="oabrkmore" data-v="5">+5 นาที</button><button class="btn pri" data-act="oabrkend">⏭ จบช่วงนี้ กลับรีเพลย์</button></div>`
           :`<div class="row"><label class="cc"><span>ช่วง</span><select id="oabrkmode">${Object.entries(OA_BRK).map(([k,t])=>`<option value="${k}" ${OA.brkMode===k?'selected':''}>${t}</option>`).join('')}</select></label>
             <label class="cc"><span>ช่องข้างนับถอยหลัง</span><select id="oabrkshow">${Object.entries(OA_SHOW).map(([k,t])=>`<option value="${k}" ${OA.brkShow===k?'selected':''}>${t}</option>`).join('')}</select></label>
             <label class="cc"><span>เพลง</span><select id="oabgm">${Object.entries(OA_BGM).map(([f,t])=>`<option value="${f}" ${OA.bgm===f?'selected':''}>${t}</option>`).join('')}</select></label>
             <label class="cc"><span>นาน</span><select id="oabrkmin">${[1,2,3,5,10,15,20,30].map(n=>`<option value="${n}" ${OA.brkMin===n?'selected':''}>${n} นาที</option>`).join('')}</select></label>
             <button class="btn sm" data-act="oabrkauto" aria-pressed="${OA.brkAuto}">${OA.brkAuto?'✓':'✕'} ครบเวลาไปหน้าพักเอง</button>
-            <button class="btn sm" data-act="oabrkhl" aria-pressed="${OA.brkHl}" ${OA.brkAuto?'':'disabled'}>${OA.brkHl?'✓':'✕'} ครบเวลาเล่นไฮไลต์ก่อน</button></div>
+            <button class="btn sm" data-act="oabrkhl" aria-pressed="${OA.brkHl}" ${OA.brkAuto?'':'disabled'}>${OA.brkHl?'✓':'✕'} ครบเวลาเล่นเก็บตกก่อน</button></div>
             <button class="btn pri" data-act="oabrk" ${on?'':'disabled'}>☕ เริ่ม${esc(OA_BRK[OA.brkMode])}</button>`}
         </div>
         <div class="panel oahl"><div class="oah"><i></i>HIGHLIGHT · ไฮไลต์</div>
@@ -2269,7 +2301,7 @@ function vOnair(){
             const rounds=[...new Set(OA.list.filter(m=>oaGroup(m)===OA.hlGroup).map(m=>String(m.round)))].sort((a,b)=>(+a||99)-(+b||99));if(!all&&!rounds.includes(String(OA.hlRound)))OA.hlRound=rounds[0]===''?'':+(rounds[0]||1);const n=oaHlPick(OA.hlGroup,OA.hlRound).length;
             return`<div class="row"><label class="cc"><span>รายการ</span><select id="oahlg"><option value="${OA_HL_ALL}" ${all?'selected':''}>สรุปล่าสุด (ทุกรายการ)</option>${groups.map(g=>`<option ${OA.hlGroup===g?'selected':''}>${esc(g)}</option>`).join('')}</select></label>
             ${all?'':`<label class="cc"><span>รอบ</span><select id="oahlr">${rounds.map(r=>`<option value="${esc(r)}" ${String(OA.hlRound)===r?'selected':''}>${r===''?esc(OA.list.find(m=>oaGroup(m)===OA.hlGroup&&m.round===''&&m.stageName)?.stageName||'รอบพิเศษ'):'รอบ '+esc(r)}</option>`).join('')}</select></label>`}</div>
-            ${OA.phase==='hl'?`<button class="btn" data-act="oaidle">■ หยุดไฮไลต์</button>`:`<button class="btn pri" data-act="oahl" ${n&&on?'':'disabled'}>▶ เล่นไฮไลต์ · ${n} แมตช์</button>`}`})()
+            ${OA.phase==='hl'?`<button class="btn" data-act="oaidle">■ หยุด${OA.hl?.recap?'เก็บตก':'ไฮไลต์'}</button>`:`<div class="row"><button class="btn pri" data-act="oahl" ${n&&on?'':'disabled'}>▶ เล่นไฮไลต์ · ${n} แมตช์</button><button class="btn" data-act="oarecap" ${on?'':'disabled'} title="การ์ดเปิด → บรรยากาศ → แมตช์ที่ออกอากาศแล้ว สลับบรรยากาศ → การ์ดปิด">▶ เก็บตก (สำหรับพักเที่ยง)</button></div>`}`})()
           :`<p class="small muted" style="margin:0">ต้องเปิดตัวช่วยห้องส่งก่อน</p>`}
         </div>
         <div class="panel oaset"><div class="oah" style="width:100%"><i></i>RUNDOWN · ตั้งคิว</div>
@@ -2477,11 +2509,13 @@ document.addEventListener('click',e=>{
     case'oaretry':OA.bad.delete(b.dataset.v);break;
     case'oabrk':oaBreak();return;
     case'oahl':oaHlStart(OA.hlGroup,OA.hlRound);return;
+    case'oarecap':oaRecap();return;
     case'oabrkend':oaBrkEnd();return;
     case'oabrkmore':oaBrkMore(+b.dataset.v);return;
     case'oabrkauto':OA.brkAuto=!OA.brkAuto;oaKeep();break;
     case'oasfx':OA.sfx=!OA.sfx;oaKeep();break;
     case'oablocks':OA.blocks=!OA.blocks;oaKeep();break;
+    case'oabrollmute':if(OA.brollVol){OA.brollLast=OA.brollVol;OA.brollVol=0}else OA.brollVol=OA.brollLast||60;oaKeep();oaBoardSay(true);break;
     case'oamute':OA_MUTE[b.dataset.v]=Date.now()+600000;if(b.dataset.v==='live')OA.wasLive=false;oaAlerts();return;
     case'oaprogup':case'oaprogdown':{const ps=oaProgs(),i=+b.dataset.v,j=i+(a==='oaprogup'?-1:1);if(j>=0&&j<ps.length){[ps[i],ps[j]]=[ps[j],ps[i]];OA.progOrder=ps;oaKeep()}break}
     case'oabrkhl':OA.brkHl=!OA.brkHl;oaKeep();break;
@@ -2608,6 +2642,7 @@ document.addEventListener('change',e=>{
   if(el.id==='oabrkmode'){OA.brkMode=el.value;oaKeep();render();return}
   if(el.id==='oabgm'){OA.bgm=el.value;oaKeep();return}
   if(el.id==='oabrkshow'){OA.brkShow=el.value;oaKeep();oaBrkShowApply();render();return}
+  if(el.id==='oabrollvol'){OA.brollVol=+el.value;if(OA.brollVol)OA.brollLast=OA.brollVol;oaKeep();oaBoardSay(true);render();return}
   if(el.id==='oatheme'){OA.theme=el.value;oaKeep();OBS.say('theme',{name:OA.theme});return}
   if(el.id==='oabrkmin'){OA.brkMin=+el.value;oaKeep();return}
   if(el.id==='oadelay'){OA.delay=+el.value;oaKeep();render();return}
