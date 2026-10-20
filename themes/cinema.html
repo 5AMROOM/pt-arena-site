@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>Cinema theme</title>
+<!-- Cinema: on-air theme for 5AM ROOM / PT Arena. Dark navy, warm paper type, gold only for the winner,
+     film bars and a graded last-frame backdrop on results. It follows themes/CONTRACT.md:
+     window.show(m) draws one card per message, 1920x1080, see-through where nothing is drawn. -->
+<style>
+/* Hallmark · pre-emit critique: P4 H4 E4 S4 R5 V4 */
+@font-face{font-family:Prompt;src:url(../font/Prompt-Regular.ttf);font-weight:400}
+@font-face{font-family:Prompt;src:url(../font/Prompt-Medium.ttf);font-weight:500}
+@font-face{font-family:Prompt;src:url(../font/Prompt-SemiBold.ttf);font-weight:600}
+@font-face{font-family:Prompt;src:url(../font/Prompt-Bold.ttf);font-weight:700}
+@font-face{font-family:Oxanium;src:url(../font/Oxanium.ttf);font-weight:200 800}
+
+:root{
+  --ink:#080b12;
+  --ink-2:#0e1626;
+  --paper:#f3ebdd;
+  --paper-dim:rgba(243,235,221,.62);
+  --paper-faint:rgba(243,235,221,.34);
+  --rule:rgba(243,235,221,.38);
+  --gold:#d4ad66;
+  --live:#d9453b;
+  --th:Prompt,"Leelawadee UI",sans-serif;
+  --num:Oxanium,Bahnschrift,sans-serif;
+  --t-label:24px;
+  --t-title:64px;
+  --t-display:168px;
+  --m:120px;
+  --ease:cubic-bezier(.22,.61,.36,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none !important}
+html,body{width:1920px;height:1080px;overflow:hidden;background:transparent}
+body{position:relative;font-family:var(--th);color:var(--paper)}
+.card{position:absolute;inset:0;display:none}
+.card.on{display:block;animation:cardin .45s ease both}
+.card.out{display:block;animation:cardout .4s ease both;pointer-events:none}
+@keyframes cardin{from{opacity:0}to{opacity:1}}
+@keyframes cardout{from{opacity:1}to{opacity:0}}
+
+/* backdrop: plain dark field; results lay the graded last picture over it */
+.bgl{position:absolute;inset:0}
+#break .bgl{clip-path:polygon(evenodd,0 0,1920px 0,1920px 1080px,0 1080px,0 0,800px 200px,1840px 200px,1840px 785px,800px 785px,800px 200px)}
+.pic{position:absolute;inset:0;background:radial-gradient(ellipse 70% 70% at 60% 42%,#14203a 0%,var(--ink-2) 45%,var(--ink) 100%)}
+.pic.img{background-color:var(--ink);background-repeat:no-repeat;background-size:170% auto;background-position:50% 48%;filter:sepia(.42) saturate(.78) contrast(1.08) brightness(.5)}
+.vig{position:absolute;inset:0;background:radial-gradient(ellipse 80% 75% at 58% 46%,transparent 30%,rgba(8,11,18,.78) 100%)}
+.warm{position:absolute;inset:0;background:linear-gradient(115deg,rgba(8,11,18,.92) 0%,rgba(8,11,18,.62) 48%,rgba(60,34,14,.10) 100%)}
+.tb{position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,11,18,.88) 0,rgba(8,11,18,.5) 260px,transparent 400px,transparent 760px,rgba(8,11,18,.9) 1000px)}
+.grain{position:absolute;inset:0;opacity:.07;mix-blend-mode:overlay;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>")}
+.bars:before,.bars:after{content:"";position:absolute;left:0;right:0;height:54px;background:var(--ink);z-index:5}
+.bars:before{top:0}.bars:after{bottom:0}
+
+/* type */
+.label{font-family:var(--th);font-weight:500;font-size:var(--t-label);letter-spacing:.2em;color:var(--paper-dim);white-space:nowrap}
+.label b{font-weight:500;color:var(--paper)}
+.label .en{font-size:18px;letter-spacing:.3em;color:var(--paper-faint);margin-left:10px}
+.sep{display:inline-block;width:40px;height:1px;background:var(--rule);vertical-align:middle;margin:0 22px}
+.name{font-weight:600;line-height:1.2;overflow-wrap:anywhere}
+.num{font-family:var(--num);font-weight:300;line-height:1;font-variant-numeric:tabular-nums}
+.rule{position:absolute;height:1px;background:var(--rule);transform-origin:0 50%}
+.logo{position:absolute;left:var(--m);top:84px;height:104px}
+
+@keyframes rise{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@keyframes draw{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes settle{from{transform:scale(1.045)}to{transform:scale(1)}}
+.card.on .pic{animation:settle 1.2s var(--ease) both}
+.card.on .a{animation:rise .8s var(--ease) both;animation-delay:calc(var(--d,0) * 1s)}
+.card.on .f{animation:fade .9s ease both;animation-delay:calc(var(--d,0) * 1s)}
+.card.on .rule{animation:draw .9s var(--ease) both;animation-delay:calc(var(--d,0) * 1s)}
+
+/* ===== RESULT ===== */
+#result .head{position:absolute;right:var(--m);top:74px;text-align:right;max-width:1400px}
+#result .head .label+.label{margin-top:8px}
+#result .head .label{overflow:hidden;text-overflow:ellipsis}
+#result .win{position:absolute;left:var(--m);top:250px;width:1680px}
+#result .win .tag{display:flex;align-items:center;gap:22px;color:var(--gold)}
+#result .win .tag i{display:block;width:72px;height:1px;background:var(--gold)}
+#result .win .tag span{font-weight:500;font-size:var(--t-label);letter-spacing:.2em}
+#result .win .name{font-size:var(--t-display);margin-top:20px;letter-spacing:-.005em}
+#result .win .who{font-size:34px;font-weight:400;color:var(--paper-dim);margin-top:6px;overflow-wrap:anywhere}
+#result .win .who em,#result .lose .who em{font-style:normal;font-family:var(--num);letter-spacing:.14em;margin-left:22px;color:var(--paper-faint)}
+#result .win .score{display:flex;align-items:flex-end;gap:44px;margin-top:22px}
+#result .win .sbox .num{font-size:236px;color:var(--gold)}
+#result .win .sbox .num small{font-size:72px;color:var(--paper-faint);margin-left:12px}
+#result .win .sbox .label{margin-bottom:6px}
+#result .win .tbox{padding-bottom:30px}
+#result .win .tbox .num{font-size:var(--t-title);font-weight:400;color:var(--paper);margin-top:8px}
+#result .win .tbox .rt{margin-top:10px}
+#result .lose,#result .solo{position:absolute;left:1240px;top:604px;width:560px}
+#result .lose .name{font-size:var(--t-title);color:var(--paper);opacity:.72}
+#result .lose .who{font-size:28px;color:var(--paper-faint);margin-top:2px;overflow-wrap:anywhere}
+#result .lose .who em{margin-left:18px}
+#result .lose .score{display:flex;align-items:baseline;gap:34px;margin-top:22px}
+#result .lose .score .num{font-size:130px;color:var(--paper);opacity:.62}
+#result .lose .score .num.t{font-size:40px;font-weight:400;opacity:.5}
+#result .solo .rk{display:flex;align-items:center;gap:22px}
+#result .solo .rk .num{font-size:104px;color:var(--paper)}
+#result .solo .ms{margin-top:14px;border-top:1px solid var(--rule)}
+#result .solo .ms div{display:flex;justify-content:space-between;align-items:baseline;gap:20px;height:38px;line-height:38px;border-bottom:1px solid rgba(243,235,221,.16);font-size:26px;color:var(--paper-dim)}
+#result .solo .ms div span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+#result .solo .ms div span:last-child{font-family:var(--num);font-size:28px;color:var(--paper)}
+#result .next{position:absolute;left:var(--m);right:var(--m);top:956px;display:flex;align-items:baseline;gap:30px}
+#result .next .label{flex:none}
+#result .next .name{font-size:34px;font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#result .next .vs{font-size:var(--t-label);letter-spacing:.3em;color:var(--paper-faint);flex:none}
+
+/* ===== NEXT ===== */
+#next .head{position:absolute;left:0;right:0;top:140px;text-align:center}
+#next .head .label{display:block}
+#next .head .label.big{color:var(--paper);margin-bottom:18px}
+#next .side{position:absolute;top:398px;width:760px}
+#next .side.l{left:var(--m);text-align:left}
+#next .side.r{right:var(--m);text-align:right}
+#next .side .name{font-size:112px}
+#next .side .who,#next .one .who{font-size:34px;color:var(--paper-dim);margin-top:10px;overflow-wrap:anywhere}
+#next .one{position:absolute;left:var(--m);right:var(--m);top:410px;text-align:center}
+#next .one .name{font-size:128px}
+#next .one .who{font-size:38px}
+#next .mid{position:absolute;left:50%;top:360px;height:320px;width:1px;background:var(--rule);transform-origin:50% 0}
+#next .vs{position:absolute;left:50%;top:496px;transform:translateX(-50%);padding:14px 0;font-size:var(--t-label);letter-spacing:.34em;color:var(--paper)}
+#next .foot{position:absolute;left:var(--m);right:var(--m);top:880px;text-align:center}
+#next .foot .label{display:block;overflow:hidden;text-overflow:ellipsis}
+
+/* ===== IDLE ===== */
+#idle .mark{position:absolute;left:50%;top:130px;height:430px;transform:translateX(-50%)}
+#idle .en{position:absolute;left:0;right:0;top:590px;text-align:center}
+#idle .t{position:absolute;left:var(--m);right:var(--m);top:640px;text-align:center;font-size:var(--t-title);font-weight:500;letter-spacing:.08em;line-height:1.25;overflow-wrap:anywhere}
+#idle .rule.c{left:880px;width:160px;top:790px}
+#idle .v{position:absolute;left:var(--m);right:var(--m);top:824px;text-align:center;overflow:hidden;text-overflow:ellipsis}
+
+/* ===== BREAK ===== */
+#break .copy{position:absolute;left:var(--m);top:262px;width:640px}
+#break .copy .en{display:block;margin-bottom:14px}
+#break .copy .name{font-size:96px;font-weight:600}
+#break .copy .ln{font-size:var(--t-title);font-weight:400;color:var(--paper-dim);margin-top:30px;line-height:1.25}
+#break .copy .num{font-size:216px;font-weight:300;color:var(--paper);margin-top:22px;margin-left:-8px;letter-spacing:.01em;white-space:nowrap}
+#break .copy .num.long{font-size:140px;margin-top:60px}
+#break .spons{position:absolute;left:772px;top:120px}
+#break .br{position:absolute;width:40px;height:40px;border:0 solid var(--rule)}
+#break .br.tl{left:772px;top:172px;border-width:1px 0 0 1px}
+#break .br.tr{left:1828px;top:172px;border-width:1px 1px 0 0}
+#break .br.bl{left:772px;top:797px;border-width:0 0 1px 1px}
+#break .br.brr{left:1828px;top:797px;border-width:0 1px 1px 0}
+#break .foot{position:absolute;left:var(--m);right:80px;top:942px;display:flex;justify-content:space-between;gap:40px}
+#break .foot .label{overflow:hidden;text-overflow:ellipsis}
+
+/* ===== CAM ===== */
+#cam .bug{position:absolute;left:64px;top:56px;display:flex;align-items:center;gap:22px;padding:18px 34px 18px 24px;background:rgba(8,11,18,.94);border:1px solid var(--rule)}
+#cam .bug img{height:80px;display:block;filter:drop-shadow(0 1px 8px rgba(0,0,0,.5))}
+#cam .bug .vr{width:1px;height:56px;background:var(--rule)}
+#cam .live{display:flex;align-items:center;gap:12px;font-weight:600;font-size:var(--t-label);letter-spacing:.34em;color:var(--paper)}
+#cam .live i{width:11px;height:11px;border-radius:50%;background:var(--live);display:block}
+#cam .where{margin-top:8px;font-size:26px;letter-spacing:.04em;color:var(--paper);max-width:720px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+</style>
+</head>
+<body>
+
+<!-- RESULT -->
+<section class="card bars" id="result">
+  <div class="bgl"><div class="pic" id="r-pic"></div><div class="warm"></div><div class="vig"></div><div class="tb"></div><div class="grain"></div></div>
+  <img class="logo f" style="--d:.1" src="../event-logo.webp" alt="">
+  <div class="head f" style="--d:.2">
+    <div class="label"><b>ผลการแข่งขัน<span class="en">RESULT</span></b></div>
+    <div class="label" id="r-prog"></div>
+    <div class="label" id="r-meta"></div>
+  </div>
+  <div class="rule" style="--d:.3;left:120px;width:1680px;top:222px"></div>
+
+  <div class="win">
+    <div class="tag a" style="--d:.4" id="w-tag"><i></i><span>ชนะ · WINNER</span></div>
+    <div class="name a" style="--d:.5" id="w-name"></div>
+    <div class="who a" style="--d:.6" id="w-who"><span id="w-sch"></span><em id="w-id"></em></div>
+    <div class="score a" style="--d:.7" id="w-score">
+      <div class="sbox" id="w-sbox"><div class="label">คะแนน<span class="en">SCORE</span></div><div class="num"><span id="w-num"></span><small id="w-max"></small></div></div>
+      <div class="tbox" id="w-tbox"><div class="label" id="w-tl">เวลา<span class="en">TIME</span></div><div class="num" id="w-time"></div><div class="label rt" id="w-retry"></div></div>
+    </div>
+  </div>
+
+  <div class="rule" style="--d:.6;left:1240px;width:560px;top:588px" id="r-rule"></div>
+  <div class="lose" id="r-lose">
+    <div class="name a" style="--d:.8" id="l-name"></div>
+    <div class="who a" style="--d:.85" id="l-who"><span id="l-sch"></span><em id="l-id"></em></div>
+    <div class="score a" style="--d:.9" id="l-score"><div class="num" id="l-num"></div><div class="num t" id="l-time"></div></div>
+  </div>
+  <div class="solo" id="r-solo">
+    <div class="rk a" style="--d:.8" id="s-rk"><div class="label">อันดับตอนนี้<span class="en">RANK</span></div><div class="num" id="s-rank"></div></div>
+    <div class="ms a" style="--d:.9" id="s-ms"></div>
+  </div>
+
+  <div class="rule" style="--d:.9;left:120px;width:1680px;top:936px" id="r-rule2"></div>
+  <div class="next f" style="--d:1" id="r-next"><span class="label">ถัดไป<span class="en">NEXT</span></span><span class="name" id="n-a"></span><span class="vs" id="n-vs">VS</span><span class="name" id="n-b"></span></div>
+</section>
+
+<!-- NEXT / INTRO / TITLE -->
+<section class="card bars" id="next">
+  <div class="bgl"><div class="pic"></div><div class="vig"></div><div class="tb"></div><div class="grain"></div></div>
+  <img class="logo f" style="--d:.1" src="../event-logo.webp" alt="">
+  <div class="head f" style="--d:.2">
+    <span class="label big" id="x-big"></span>
+    <span class="label" id="x-meta"></span>
+  </div>
+  <div class="mid rule" style="--d:.4" id="x-mid"></div>
+  <div class="side l" id="x-l"><div class="name a" style="--d:.5" id="xl-name"></div><div class="who a" style="--d:.6" id="xl-who"></div></div>
+  <div class="vs f" style="--d:.7" id="x-vs">VS</div>
+  <div class="side r" id="x-r"><div class="name a" style="--d:.6" id="xr-name"></div><div class="who a" style="--d:.7" id="xr-who"></div></div>
+  <div class="one" id="x-one"><div class="name a" style="--d:.5" id="xo-name"></div><div class="who a" style="--d:.7" id="xo-who"></div></div>
+  <div class="foot f" style="--d:.9"><span class="label" id="x-prog"></span></div>
+</section>
+
+<!-- IDLE -->
+<section class="card bars" id="idle">
+  <div class="bgl"><div class="pic"></div><div class="vig"></div><div class="tb"></div><div class="grain"></div></div>
+  <img class="mark f" style="--d:.2" src="../event-logo.webp" alt="">
+  <div class="en label f" style="--d:.4">STAND BY</div>
+  <div class="t a" style="--d:.5" id="i-t"></div>
+  <div class="rule c" style="--d:.7"></div>
+  <div class="v label f" style="--d:.8" id="i-sub"></div>
+</section>
+
+<!-- BREAK -->
+<section class="card bars" id="break">
+  <div class="bgl"><div class="pic"></div><div class="vig"></div><div class="tb"></div><div class="grain"></div></div>
+  <img class="logo f" style="--d:.1" src="../event-logo.webp" alt="">
+  <div class="copy">
+    <span class="label en f" style="--d:.2" id="b-en"></span>
+    <div class="name a" style="--d:.3" id="b-name"></div>
+    <div class="ln a" style="--d:.5" id="b-ln"></div>
+    <div class="num a" style="--d:.6" id="b-clock">--:--</div>
+  </div>
+  <div class="spons label f" style="--d:.5">ผู้สนับสนุน<span class="en">SPONSOR</span></div>
+  <i class="br tl f" style="--d:.5"></i><i class="br tr f" style="--d:.5"></i><i class="br bl f" style="--d:.5"></i><i class="br brr f" style="--d:.5"></i>
+  <div class="foot f" style="--d:.9"><span class="label" id="b-sub"></span><span class="label" id="b-credit"></span></div>
+</section>
+
+<!-- CAM -->
+<section class="card" id="cam">
+  <div class="bug f" style="--d:.3">
+    <img src="../logo-mark.png" alt="">
+    <span class="vr"></span>
+    <div><div class="live"><i></i>LIVE</div><div class="where" id="c-sub"></div></div>
+  </div>
+</section>
+
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const S=v=>v==null?'':String(v).trim();
+function txt(el,v){v=S(v);el.textContent=v;el.hidden=!v;return !!v}
+function hasNum(v){return v!=null&&v!==''&&!(typeof v==='number'&&isNaN(v))}
+
+/* shrink text until it fits the box (width and the given height), wrapping allowed */
+function fit(el,max,min,maxH,oneMin){
+  if(el.hidden)return;
+  const ok=(s,h)=>{el.style.fontSize=s+'px';return el.scrollHeight<=h+1&&el.scrollWidth<=el.clientWidth+1};
+  if(oneMin)for(let s=max;s>=oneMin;s-=2)if(ok(s,s*1.3))return;
+  for(let s=max;s>=min;s-=2)if(ok(s,maxH))return;
+  el.style.fontSize=min+'px';
+}
+function bil(el,th,en){el.textContent=th;const s=document.createElement('span');s.className='en';s.textContent=en;el.appendChild(s)}
+function meta(el,m,extra){
+  el.textContent='';
+  const items=[];
+  if(S(m.matchNo))items.push(['แมตช์ '+S(m.matchNo),'MATCH']);
+  if(S(m.field)&&S(m.field)!=='-')items.push(['สนาม '+S(m.field),'FIELD']);
+  if(hasNum(m.round)&&S(m.round)!=='0')items.push(['รอบ '+S(m.round),'ROUND']);
+  if(extra)items.unshift([extra,'']);
+  items.forEach((it,i)=>{
+    if(i){const sp=document.createElement('span');sp.className='sep';el.appendChild(sp)}
+    const t=document.createElement('span');t.textContent=it[0];el.appendChild(t);
+    if(it[1]){const e=document.createElement('span');e.className='en';e.textContent=it[1];el.appendChild(e)}
+  });
+  el.hidden=!items.length;
+}
+function setPic(el,frame){
+  frame=S(frame);
+  if(/^data:image\//.test(frame)){el.classList.add('img');el.style.backgroundImage='url("'+frame.replace(/"/g,'')+'")'}
+  else{el.classList.remove('img');el.style.backgroundImage=''}
+}
+
+/* ---------- RESULT ---------- */
+function renderResult(m){
+  txt($('r-prog'),m.prog);
+  meta($('r-meta'),m);
+  setPic($('r-pic'),m.frame);
+  const pair=m.h2h===true&&Array.isArray(m.teams)&&m.teams.length>0;
+  let w,l=null,tag=false;
+  if(pair){
+    const t=m.teams.filter(Boolean);
+    w=t.find(x=>x.winner)||t[0]||{};
+    tag=!!w.winner;
+    l=t.find(x=>x!==w)||null;
+  }else{
+    w={name:m.team,school:m.school,teamId:m.teamId,score:m.total,time:m.time};
+  }
+  $('w-tag').hidden=!tag;
+  txt($('w-name'),w.name);
+  txt($('w-sch'),w.school);
+  txt($('w-id'),w.teamId||w.id);
+  $('w-who').hidden=!(S(w.school)||S(w.teamId||w.id));
+  const sc=hasNum(w.score);
+  $('w-sbox').hidden=!sc;
+  $('w-num').textContent=sc?S(w.score):'';
+  const mx=!pair&&Number(m.max)>0;
+  txt($('w-max'),mx?'/'+S(m.max):'');
+  const tm=txt($('w-time'),w.time);
+  $('w-tl').hidden=!tm;
+  const rt=!pair&&Number(m.retry)>0;
+  txt($('w-retry'),rt?'RETRY '+S(m.retry):'');
+  $('w-tbox').hidden=!(tm||rt);
+  $('w-score').hidden=!(sc||tm||rt);
+
+  const showL=pair&&!!l;
+  $('r-lose').hidden=!showL;
+  if(showL){
+    txt($('l-name'),l.name);
+    txt($('l-sch'),l.school);
+    txt($('l-id'),l.teamId||l.id);
+    $('l-who').hidden=!(S(l.school)||S(l.teamId||l.id));
+    const ls=hasNum(l.score);
+    txt($('l-num'),ls?l.score:'');
+    txt($('l-time'),l.time);
+    $('l-score').hidden=!(ls||S(l.time));
+  }
+  let solo=false;
+  if(!pair){
+    const rank=Number(m.rank)>0;
+    const ms=Array.isArray(m.missions)?m.missions.filter(x=>x&&S(x.label)):[];
+    const showMs=ms.length>0&&ms.length<=4;
+    $('s-rk').hidden=!rank;
+    $('s-rank').textContent=rank?S(m.rank):'';
+    const box=$('s-ms');box.textContent='';
+    if(showMs)ms.forEach(x=>{
+      const d=document.createElement('div'),a=document.createElement('span'),b=document.createElement('span');
+      a.textContent=S(x.label);
+      b.textContent=hasNum(x.n)?(Number(x.max)>0?x.n+'/'+x.max:S(x.n)):'';
+      d.appendChild(a);d.appendChild(b);box.appendChild(d);
+    });
+    box.hidden=!showMs;
+    solo=rank||showMs;
+  }
+  $('r-solo').hidden=!solo;
+  $('r-rule').hidden=!(showL||solo);
+
+  /* next strip */
+  const nx=S(m.next);
+  const parts=nx.split(/\s+vs\.?\s+/i);
+  $('r-next').hidden=!nx;
+  $('r-rule2').hidden=!nx;
+  if(nx){
+    if(parts.length===2){txt($('n-a'),parts[0]);$('n-vs').hidden=false;txt($('n-b'),parts[1])}
+    else{txt($('n-a'),nx);$('n-vs').hidden=true;$('n-b').hidden=true}
+  }
+  fit($('w-name'),168,40,204,100);
+  fit($('w-who'),34,16,82);
+  if(showL){fit($('l-name'),64,24,100,40);fit($('l-who'),28,14,70)}
+}
+
+/* ---------- NEXT / INTRO / TITLE ---------- */
+function renderNext(m){
+  const k=m.k;
+  let teams=[];
+  if(k==='title')teams=[{name:m.title,school:m.sub}];
+  else if(Array.isArray(m.teams)&&m.teams.filter(Boolean).length)teams=m.teams.filter(Boolean);
+  else if(S(m.team)||S(m.school))teams=[{name:m.team,school:m.school}];
+  const pair=teams.length>=2;
+  const big=$('x-big');
+  if(k==='title'){
+    txt(big,m.eyebrow);
+    meta($('x-meta'),{},S(m.tag)||null);
+    txt($('x-prog'),'');
+  }else{
+    if(k==='intro')bil(big,'เตรียมความพร้อม','SETUP');
+    else bil(big,pair?'คู่ถัดไป':'ทีมถัดไป','NEXT MATCH');
+    big.hidden=false;
+    meta($('x-meta'),m);
+    txt($('x-prog'),m.prog);
+  }
+  ['x-l','x-r','x-mid','x-vs'].forEach(i=>$(i).hidden=!pair);
+  $('x-one').hidden=pair||!teams.length;
+  if(pair){
+    txt($('xl-name'),teams[0].name);txt($('xl-who'),teams[0].school);
+    txt($('xr-name'),teams[1].name);txt($('xr-who'),teams[1].school);
+    fit($('xl-name'),112,32,200,64);fit($('xr-name'),112,32,200,64);
+    fit($('xl-who'),34,16,82);fit($('xr-who'),34,16,82);
+  }else if(teams.length){
+    txt($('xo-name'),teams[0].name);txt($('xo-who'),teams[0].school);
+    fit($('xo-name'),k==='title'?136:128,36,210,80);fit($('xo-who'),k==='title'?40:38,18,100);
+  }
+}
+
+/* ---------- IDLE / CAM ---------- */
+function renderIdle(m){
+  txt($('i-t'),S(m.title)||'โปรดรอสักครู่');
+  txt($('i-sub'),m.sub);
+  fit($('i-t'),64,30,160);
+}
+function renderCam(m){txt($('c-sub'),m.sub)}
+
+/* ---------- BREAK ---------- */
+let endsAt=0;
+const MODES={
+  live:['การถ่ายทอดสด','จะเริ่มในอีก','ON AIR IN'],
+  match:['การแข่งขัน','จะเริ่มในอีก','STARTING IN'],
+  break:['พักการแข่งขัน','จะกลับมาในอีก','BACK IN']
+};
+function pad(n){return n<10?'0'+n:''+n}
+function tick(){
+  const el=$('b-clock');
+  if(!endsAt){el.textContent='--:--';return}
+  const s=Math.max(0,Math.ceil((endsAt-Date.now())/1000));
+  const h=Math.floor(s/3600),mi=Math.floor(s%3600/60),se=s%60;
+  const t=h>0?h+':'+pad(mi)+':'+pad(se):pad(mi)+':'+pad(se);
+  if(el.textContent!==t)el.textContent=t;
+  el.classList.toggle('long',h>0);
+}
+function renderBreak(m){
+  const t=MODES[m.mode]||MODES.break;
+  txt($('b-name'),t[0]);txt($('b-ln'),t[1]);txt($('b-en'),t[2]);
+  txt($('b-sub'),m.sub);
+  const c=S(m.credit);
+  txt($('b-credit'),c?'♪ '+c:'');
+  const e=Number(m.endsAt);
+  endsAt=e>0?e:0;
+  fit($('b-name'),96,44,116);
+  tick();
+}
+setInterval(tick,250);
+
+/* ---------- card switching ---------- */
+const CARD={result:'result',next:'next',intro:'next',title:'next',idle:'idle',break:'break',cam:'cam'};
+const RENDER={result:renderResult,next:renderNext,intro:renderNext,title:renderNext,idle:renderIdle,break:renderBreak,cam:renderCam};
+let curK=null,ready=false,pending=null;
+const timers={};
+function leave(c){
+  if(!c.classList.contains('on'))return;
+  c.classList.remove('on');c.classList.add('out');
+  clearTimeout(timers[c.id]);
+  timers[c.id]=setTimeout(()=>c.classList.remove('out'),420);
+}
+function enter(c){
+  clearTimeout(timers[c.id]);
+  c.classList.remove('out');
+  if(c.classList.contains('on')){c.classList.remove('on');void c.offsetWidth}
+  c.classList.add('on');
+}
+function apply(m){
+  const k=m.k;
+  if(k==='play'){document.querySelectorAll('.card').forEach(leave);curK='play';return}
+  const id=CARD[k];
+  if(!id)return;
+  const c=$(id);
+  if(k!==curK){
+    document.querySelectorAll('.card').forEach(x=>{if(x!==c)leave(x)});
+    enter(c);
+    curK=k;
+  }
+  RENDER[k](m);
+}
+window.show=function(m){
+  try{
+    if(!m||typeof m!=='object')return;
+    if(!ready){pending=m;return}
+    apply(m);
+  }catch(e){try{console.error(e)}catch(_){}}
+};
+window.THEME='cinema';
+(document.fonts?document.fonts.ready:Promise.resolve()).then(()=>{
+  ready=true;window.THEME_READY=true;
+  if(pending){const p=pending;pending=null;window.show(p)}
+});
+})();
+</script>
+</body>
+</html>

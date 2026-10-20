@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>Daytime Board</title>
+<!-- Light on-air theme ("Daytime Board"): warm paper cards, navy ink, one red accent.
+     Driven only by window.show(m) from overlay.html; follows themes/CONTRACT.md (messages, words, transparent break hole). -->
+<style>
+/* Hallmark · pre-emit critique: P4 H5 E4 S4 R5 V4 */
+@font-face{font-family:"Prompt";src:url(../font/Prompt-Regular.ttf);font-weight:400}
+@font-face{font-family:"Prompt";src:url(../font/Prompt-Medium.ttf);font-weight:500}
+@font-face{font-family:"Prompt";src:url(../font/Prompt-SemiBold.ttf);font-weight:600}
+@font-face{font-family:"Prompt";src:url(../font/Prompt-Bold.ttf);font-weight:700}
+@font-face{font-family:"Oxanium";src:url(../font/Oxanium.ttf);font-weight:200 800}
+:root{
+  --paper:#F3F1EB;
+  --card:#FFFEFA;
+  --ink:#0F2350;
+  --ink-soft:#5B6782;
+  --ink-faint:#9AA2B4;
+  --line:#DEDACF;
+  --accent:#E1322B;
+  --on-ink:#F7F5EF;
+  --on-ink-soft:#AEB8D2;
+  --shadow:0 1px 2px rgba(15,35,80,.08),0 10px 28px rgba(15,35,80,.10);
+  --f-th:"Prompt",sans-serif;
+  --f-num:"Oxanium","Bahnschrift",sans-serif;
+  --t-xl:144px; --t-l:56px; --t-s:26px;
+  --m:96px;
+  --r:6px;
+  --ease:cubic-bezier(.16,1,.3,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1920px;height:1080px;margin:0;overflow:hidden;background:transparent}
+[hidden]{display:none!important}
+.card{position:absolute;left:0;top:0;width:1920px;height:1080px;overflow:hidden;display:none;color:var(--ink);font-family:var(--f-th)}
+.card.on{display:block;animation:fade .45s var(--ease)}
+.card.out{display:block;opacity:0;transition:opacity .45s var(--ease)}
+.base{background:var(--paper)}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.en{font-family:var(--f-num);font-size:var(--t-s);font-weight:600;letter-spacing:.1em;color:var(--ink-soft);margin-left:24px;white-space:nowrap;vertical-align:middle}
+
+/* header strip, shared */
+.head{position:absolute;left:var(--m);right:var(--m);top:124px;height:64px;display:flex;align-items:center;gap:24px}
+.tile{width:64px;height:64px;border-radius:var(--r);background:var(--ink);display:grid;place-items:center;flex:none}
+.tile img{width:40px;height:40px}
+.prog{font-size:var(--t-s);font-weight:600;line-height:1.2;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prog.org{font-family:var(--f-num);font-weight:700;letter-spacing:.08em}
+.meta{margin-left:auto;font-family:var(--f-num);font-size:var(--t-s);font-weight:600;letter-spacing:.06em;color:var(--ink-soft);display:flex;gap:28px;flex:none}
+.meta b{color:var(--ink);font-weight:700}
+
+.panel{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow)}
+
+/* RESULT (pair and single team share the frame, rows and next strip) */
+.shot{position:absolute;left:var(--m);top:236px;width:1024px;height:576px;border-radius:var(--r);box-shadow:var(--shadow);background:var(--ink) center/contain no-repeat;display:grid;place-items:center}
+.shot img{width:120px;height:120px;opacity:.18}
+.shot.has img{display:none}
+.rows{position:absolute;left:1152px;right:var(--m);top:236px;height:576px;display:grid;grid-template-rows:1fr 1fr;gap:16px}
+.rows.one{grid-template-rows:1fr}
+.row{position:relative;padding:36px 40px;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto 1fr auto;column-gap:24px;min-height:0}
+.row>*{min-width:0}
+.row .name{grid-column:1;font-size:var(--t-l);font-weight:600;line-height:1.25;white-space:nowrap;overflow-wrap:anywhere}
+.row .sub{grid-column:1;font-size:var(--t-s);color:var(--ink-soft);margin-top:6px;white-space:nowrap;overflow-wrap:anywhere}
+.row .time{grid-column:1;grid-row:3;align-self:end;font-size:var(--t-s);color:var(--ink-soft);white-space:nowrap}
+.row .time .num{color:var(--ink);font-weight:600;margin-left:8px}
+.row .score{grid-column:2;grid-row:1/4;align-self:end;font-family:var(--f-num);font-size:var(--t-xl);font-weight:700;line-height:.8;letter-spacing:-.02em;text-align:right}
+.row .score .sl{display:block;font-family:var(--f-th);font-size:var(--t-s);font-weight:500;letter-spacing:0;line-height:1.2;margin-bottom:18px;color:var(--on-ink-soft)}
+.row.win{background:var(--ink);color:var(--on-ink)}
+.row.win .sub,.row.win .time{color:var(--on-ink-soft)}
+.row.win .time .num{color:var(--on-ink)}
+.row.win.chipped .name{padding-right:112px}
+.row.lose .name{color:var(--ink-soft)}
+.row.lose .score{color:var(--ink-faint)}
+.chip{position:absolute;right:40px;top:36px;background:var(--accent);color:var(--on-ink);font-size:var(--t-s);font-weight:600;line-height:1;padding:10px 18px 12px;border-radius:6px}
+.stats{padding:36px 40px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-content:space-between;gap:20px 24px;min-height:0}
+.stat{min-width:0}
+.stat .k{font-size:var(--t-s);color:var(--ink-soft);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat .k.lat{font-family:var(--f-num);font-weight:600;letter-spacing:.06em}
+.stat .v{font-family:var(--f-num);font-size:var(--t-l);font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums;white-space:nowrap}
+.stat .v .of{color:var(--ink-faint)}
+.nextbar{position:absolute;left:var(--m);top:860px;height:96px;max-width:1728px;display:flex;align-items:center;padding:0 40px;gap:28px;font-size:var(--t-s);white-space:nowrap;overflow:hidden}
+.nextbar .lbl{font-weight:600}
+.nextbar .m{font-family:var(--f-num);font-weight:700;letter-spacing:.06em;color:var(--ink-soft)}
+.nextbar .sep{width:1px;height:40px;background:var(--line);flex:none}
+.nextbar .pair{font-weight:600;display:flex;gap:20px;align-items:baseline;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.nextbar .vs{font-family:var(--f-num);color:var(--ink-faint);font-weight:600}
+
+/* NEXT / INTRO / TITLE */
+#next .title{position:absolute;left:var(--m);right:var(--m);top:292px;font-size:var(--t-l);font-weight:600;line-height:1.2;white-space:nowrap}
+#next .side{position:absolute;top:436px;width:780px;height:440px;padding:0 56px;display:flex;flex-direction:column;justify-content:center}
+#next .side .sd{position:absolute;left:56px;top:44px;font-size:var(--t-s);color:var(--ink-soft)}
+#next .side.l{left:var(--m)}
+#next .side.r{right:var(--m)}
+#next .side.w{width:auto;right:var(--m)}
+#next .side .tn{font-size:var(--t-xl);font-weight:600;line-height:1.15;white-space:nowrap;letter-spacing:-.01em;overflow-wrap:anywhere}
+#next .side .sc{font-size:var(--t-s);color:var(--ink-soft);margin-top:20px;white-space:nowrap;overflow-wrap:anywhere}
+#next .vsx{position:absolute;left:876px;width:168px;top:436px;height:440px;display:grid;place-items:center;font-family:var(--f-num);font-size:var(--t-l);font-weight:700;color:var(--accent);letter-spacing:.04em}
+
+/* IDLE */
+#idle .logo{position:absolute;left:120px;top:236px;width:808px;height:660px;object-fit:contain}
+#idle .msg{position:absolute;left:1056px;top:430px;right:var(--m)}
+#idle .msg h1{font-size:var(--t-l);font-weight:600;line-height:1.25;overflow-wrap:anywhere}
+#idle .msg .rule{width:96px;height:6px;border-radius:3px;background:var(--accent);margin:28px 0}
+#idle .msg p{font-size:var(--t-s);color:var(--ink-soft)}
+#idle .foot{position:absolute;left:1056px;right:var(--m);top:892px;display:flex;align-items:center;gap:20px;font-size:var(--t-s);color:var(--ink-soft)}
+#idle .foot .tile{width:48px;height:48px;border-radius:8px}
+#idle .foot .tile img{width:30px;height:30px}
+#idle .foot .org{font-family:var(--f-num);font-weight:700;letter-spacing:.08em;color:var(--ink)}
+
+/* BREAK: the paper is the frame's spread shadow, so x=800 y=200 w=1040 h=585 stays see-through */
+#break .frame{position:absolute;left:788px;top:188px;width:1064px;height:609px;border:12px solid var(--card);border-radius:10px;background:transparent;box-shadow:var(--shadow),0 0 0 2400px var(--paper)}
+#break .bhead{position:absolute;left:var(--m);top:200px;display:flex;align-items:center;gap:24px;max-width:640px}
+#break .bt{position:absolute;left:var(--m);top:420px;width:640px}
+#break .bt h1{font-size:var(--t-l);font-weight:600;line-height:1.25}
+#break .bt p{font-size:var(--t-s);color:var(--ink-soft);margin-top:40px}
+#break .bt p .en{font-size:22px;margin-left:16px}
+#break .cd{font-family:var(--f-num);font-size:var(--t-xl);font-weight:700;line-height:1;letter-spacing:-.01em;margin-top:8px;white-space:nowrap;font-variant-numeric:tabular-nums}
+#break .bar{width:100%;height:6px;background:var(--line);border-radius:3px;margin-top:28px;overflow:hidden}
+#break .bar i{display:block;height:100%;width:100%;background:var(--accent);border-radius:3px}
+#break .bfoot{position:absolute;left:var(--m);right:80px;top:860px;display:flex;justify-content:space-between;align-items:baseline;gap:40px;font-size:var(--t-s);color:var(--ink-soft);white-space:nowrap}
+#break .bfoot .mus{font-family:var(--f-num);font-weight:600;letter-spacing:.04em;overflow:hidden;text-overflow:ellipsis}
+
+/* CAM: only the corner bug */
+#cam .bug{position:absolute;left:72px;top:64px;height:112px;display:flex;align-items:center;gap:24px;padding:0 32px 0 12px}
+#cam .bug img{height:96px;width:auto}
+#cam .bug .div{width:1px;height:56px;background:var(--line)}
+#cam .live{display:flex;align-items:center;gap:12px;font-family:var(--f-num);font-size:var(--t-s);font-weight:700;letter-spacing:.1em;line-height:1}
+#cam .live i{width:14px;height:14px;border-radius:50%;background:var(--accent)}
+#cam .ven{font-size:var(--t-s);color:var(--ink-soft);margin-top:8px;line-height:1.2;white-space:nowrap}
+
+/* motion */
+@keyframes rise{from{opacity:0;transform:translateY(16px)}}
+@keyframes fade{from{opacity:0}}
+@keyframes wipe{from{transform:scaleX(0)}}
+.a{animation:rise .7s var(--ease) backwards}
+.f{animation:fade .6s var(--ease) backwards}
+.d1{animation-delay:.08s}.d2{animation-delay:.18s}.d3{animation-delay:.3s}.d4{animation-delay:.42s}.d5{animation-delay:.54s}
+.w{transform-origin:left;animation:wipe .6s var(--ease) .5s backwards}
+</style>
+</head>
+<body>
+
+<section class="card base" id="result">
+  <div class="head f">
+    <div class="tile"><img src="../logo-mark.png" alt=""></div>
+    <div class="prog"></div>
+    <div class="meta"><span class="mt"><b></b></span><span class="fd"></span><span class="rd"></span></div>
+  </div>
+  <div class="shot f d1"><img src="../logo-mark.png" alt=""></div>
+  <div class="rows">
+    <div class="row panel t0 a d2">
+      <span class="chip">ชนะ</span>
+      <div class="name"></div>
+      <div class="sub"></div>
+      <div class="time">เวลา<span class="num"></span></div>
+      <div class="score"></div>
+    </div>
+    <div class="row panel t1 a d3">
+      <span class="chip">ชนะ</span>
+      <div class="name"></div>
+      <div class="sub"></div>
+      <div class="time">เวลา<span class="num"></span></div>
+      <div class="score"></div>
+    </div>
+  </div>
+  <div class="nextbar panel a d4">
+    <span class="lbl">ถัดไป</span><span class="m">NEXT</span><span class="sep"></span>
+    <span class="pair"></span>
+  </div>
+</section>
+
+<section class="card base" id="solo">
+  <div class="head f">
+    <div class="tile"><img src="../logo-mark.png" alt=""></div>
+    <div class="prog"></div>
+    <div class="meta"><span class="mt"><b></b></span><span class="fd"></span><span class="rd"></span></div>
+  </div>
+  <div class="shot f d1"><img src="../logo-mark.png" alt=""></div>
+  <div class="rows">
+    <div class="row panel win a d2">
+      <div class="name"></div>
+      <div class="sub"></div>
+      <div class="time">เวลา<span class="num"></span></div>
+      <div class="score"><span class="sl"></span><span class="sv"></span></div>
+    </div>
+    <div class="stats panel a d3"></div>
+  </div>
+  <div class="nextbar panel a d4">
+    <span class="lbl">ถัดไป</span><span class="m">NEXT</span><span class="sep"></span>
+    <span class="pair"></span>
+  </div>
+</section>
+
+<section class="card base" id="next">
+  <div class="head f">
+    <div class="tile"><img src="../logo-mark.png" alt=""></div>
+    <div class="prog"></div>
+    <div class="meta"><span class="mt"><b></b></span><span class="fd"></span><span class="rd"></span></div>
+  </div>
+  <div class="title a d1"><span class="th"></span><span class="en"></span></div>
+  <div class="side l panel a d2"><div class="sd">ฝั่งซ้าย</div><div class="tn"></div><div class="sc"></div></div>
+  <div class="vsx f d4">VS</div>
+  <div class="side r panel a d3"><div class="sd">ฝั่งขวา</div><div class="tn"></div><div class="sc"></div></div>
+</section>
+
+<section class="card base" id="idle">
+  <img class="logo f" src="../event-logo.webp" alt="">
+  <div class="msg">
+    <h1 class="a d2"><span class="th"></span><span class="en">STAND BY</span></h1>
+    <div class="rule w"></div>
+    <p class="a d3"></p>
+  </div>
+  <div class="foot a d4"><div class="tile"><img src="../logo-mark.png" alt=""></div><span class="org">PT ROBOTICS</span></div>
+</section>
+
+<section class="card" id="break">
+  <div class="frame f"></div>
+  <div class="bhead f">
+    <div class="tile"><img src="../logo-mark.png" alt=""></div>
+    <div class="prog"></div>
+  </div>
+  <div class="bt">
+    <h1 class="a d1"></h1>
+    <p class="a d2"><span class="th"></span><span class="en"></span></p>
+    <div class="cd a d3"></div>
+    <div class="bar a d4"><i class="w"></i></div>
+  </div>
+  <div class="bfoot a d5"><span class="ven"></span><span class="mus"></span></div>
+</section>
+
+<section class="card" id="cam">
+  <div class="bug panel a">
+    <img src="../event-logo.webp" alt="">
+    <span class="div"></span>
+    <div><div class="live"><i></i>LIVE</div><div class="ven"></div></div>
+  </div>
+</section>
+
+<script>
+(function(){
+window.THEME='light';
+const $=(r,s)=>r.querySelector(s);
+const has=v=>v!==undefined&&v!==null&&String(v).trim()!==''&&String(v).trim()!=='-';
+const set=(el,v)=>{if(!el)return;if(has(v)){el.textContent=String(v);el.hidden=false}else{el.textContent='';el.hidden=true}};
+
+/* shrink a one-line text until it fits its box; if it still does not fit, let it wrap */
+function fit(el,max,min){
+  if(!el||el.hidden)return;
+  el.style.whiteSpace='nowrap';
+  let s=max;el.style.fontSize=s+'px';
+  while(el.scrollWidth>el.clientWidth+1&&s>min){s-=2;el.style.fontSize=s+'px'}
+  if(el.scrollWidth<=el.clientWidth+1)return;
+  /* two lines: the largest size that wraps at most once */
+  el.style.whiteSpace='normal';s=max;el.style.fontSize=s+'px';
+  const lh=parseFloat(getComputedStyle(el).lineHeight)/s||1.25;
+  while(el.scrollHeight>2*lh*s+4&&s>12){s-=2;el.style.fontSize=s+'px'}
+}
+
+function head(card,m){
+  const pg=$(card,'.prog');
+  set(pg,has(m.prog)?m.prog:'PT ROBOTICS');pg.classList.toggle('org',!has(m.prog));
+  const mt=$(card,'.mt');
+  if(mt){
+    set($(mt,'b'),has(m.matchNo)?'MATCH '+m.matchNo:'');mt.hidden=!has(m.matchNo);
+    set($(card,'.fd'),has(m.field)?'FIELD '+m.field:'');
+    set($(card,'.rd'),has(m.round)&&m.round!==0?'ROUND '+m.round:'');
+  }
+}
+
+function frame(card,f){
+  const s=$(card,'.shot');
+  const ok=typeof f==='string'&&/^data:image\/[a-z.+-]+;base64,[A-Za-z0-9+/=\s]+$/.test(f);
+  s.style.backgroundImage=ok?'url("'+f.replace(/\s/g,'')+'")':'none';
+  s.classList.toggle('has',ok);
+}
+
+function nextbar(card,txt){
+  const bar=$(card,'.nextbar'),pair=$(bar,'.pair');
+  pair.textContent='';
+  if(!has(txt)){bar.hidden=true;return}
+  bar.hidden=false;
+  const parts=String(txt).split(/\s+vs\.?\s+/i);
+  parts.forEach((p,i)=>{
+    if(i){const v=document.createElement('span');v.className='vs';v.textContent='VS';pair.appendChild(v)}
+    const s=document.createElement('span');s.textContent=p;pair.appendChild(s);
+  });
+}
+
+function rResult(card,m){
+  head(card,m);frame(card,m.frame);nextbar(card,m.next);
+  const teams=Array.isArray(m.teams)?m.teams:[];
+  ['.t0','.t1'].forEach((sel,i)=>{
+    const row=$(card,sel),t=teams[i]||{};
+    row.hidden=!teams[i];
+    const win=t.winner===true;
+    row.classList.toggle('win',win);row.classList.toggle('lose',!win);
+    $(row,'.chip').hidden=!win;
+    set($(row,'.name'),t.name||'–');
+    set($(row,'.sub'),t.school);
+    const tm=$(row,'.time');tm.hidden=!has(t.time);$(tm,'.num').textContent=has(t.time)?t.time:'';
+    const sc=$(row,'.score');set(sc,typeof t.score==='number'||has(t.score)?t.score:'');
+    row.classList.toggle('chipped',win&&sc.hidden);
+    fit($(row,'.name'),56,30);fit($(row,'.sub'),26,18);
+  });
+  $(card,'.rows').classList.toggle('one',teams.length<2);
+}
+
+function rSolo(card,m){
+  head(card,m);frame(card,m.frame);nextbar(card,m.next);
+  const row=$(card,'.row');
+  set($(row,'.name'),m.team||'–');
+  set($(row,'.sub'),[m.school,m.teamId].filter(has).join(' · '));
+  const tm=$(row,'.time');tm.hidden=!has(m.time);$(tm,'.num').textContent=has(m.time)?m.time:'';
+  const sc=$(row,'.score'),tot=typeof m.total==='number'||has(m.total);
+  sc.hidden=!tot;
+  $(sc,'.sv').textContent=tot?String(m.total):'';
+  $(sc,'.sl').textContent='คะแนน'+(Number(m.max)>0?' / '+m.max:'');
+  const st=$(card,'.stats');st.textContent='';
+  const cell=(k,lat,v,of)=>{
+    const c=document.createElement('div');c.className='stat';
+    const kk=document.createElement('div');kk.className='k'+(lat?' lat':'');kk.textContent=k;
+    const vv=document.createElement('div');vv.className='v';vv.textContent=String(v);
+    if(of){const o=document.createElement('span');o.className='of';o.textContent='/'+of;vv.appendChild(o)}
+    c.append(kk,vv);st.appendChild(c);
+  };
+  if(Number(m.rank)>0)cell('อันดับตอนนี้',false,m.rank);
+  if(typeof m.retry==='number'||has(m.retry))cell('RETRY',true,m.retry);
+  (Array.isArray(m.missions)?m.missions:[]).slice(0,4).forEach(x=>{
+    if(!x)return;cell(has(x.label)?x.label:'–',true,has(x.n)||x.n===0?x.n:'–',Number(x.max)>0?x.max:'');
+  });
+  st.hidden=!st.children.length;
+  $(card,'.rows').classList.toggle('one',st.hidden);
+  fit($(row,'.name'),56,30);fit($(row,'.sub'),26,18);
+}
+
+function rNext(card,m){
+  const l=$(card,'.side.l'),r=$(card,'.side.r'),vs=$(card,'.vsx');
+  const title=$(card,'.title');
+  let list=[];
+  if(m.k==='title'){
+    head(card,m);
+    set($(title,'.th'),m.eyebrow);set($(title,'.en'),m.tag);
+    list=[{name:m.title,school:m.sub}];
+  }else{
+    head(card,m);
+    if(Array.isArray(m.teams)&&m.teams.length)list=m.teams.slice(0,2).map(t=>t||{});
+    else list=[{name:m.team,school:m.school}];
+    const pair=list.length>1;
+    set($(title,'.th'),m.k==='intro'?'เตรียมความพร้อม':(pair?'คู่ถัดไป':'ทีมถัดไป'));
+    set($(title,'.en'),m.k==='intro'?'SETUP':'NEXT MATCH');
+  }
+  title.hidden=$(title,'.th').hidden&&$(title,'.en').hidden;
+  const pair=list.length>1;
+  l.classList.toggle('w',!pair);r.hidden=!pair;vs.hidden=!pair;
+  $(l,'.sd').hidden=!pair;
+  [l,r].forEach((s,i)=>{
+    const t=list[i]||{};
+    set($(s,'.tn'),has(t.name)?t.name:'–');set($(s,'.sc'),t.school);
+    if(!s.hidden){fit($(s,'.tn'),144,56);fit($(s,'.sc'),26,18)}
+  });
+}
+
+function rIdle(card,m){
+  const custom=has(m.title);
+  set($(card,'.th'),custom?m.title:'โปรดรอสักครู่');
+  $(card,'h1 .en').hidden=custom;
+  set($(card,'.msg p'),m.sub);
+}
+
+const MODES={
+  live:['การถ่ายทอดสด','จะเริ่มในอีก','ON AIR IN'],
+  match:['การแข่งขัน','จะเริ่มในอีก','STARTING IN'],
+  break:['พักการแข่งขัน','จะกลับมาในอีก','BACK IN']};
+let brk={start:0,end:0},timer=0;
+function clock(){
+  const card=document.getElementById('break'),cd=$(card,'.cd'),bar=$(card,'.bar');
+  if(!brk.end){cd.textContent='--:--';bar.hidden=true;return}
+  const now=Date.now(),left=Math.max(0,Math.ceil((brk.end-now)/1000));
+  const h=Math.floor(left/3600),mm=Math.floor(left%3600/60),ss=left%60,p=n=>String(n).padStart(2,'0');
+  cd.textContent=h?h+':'+p(mm)+':'+p(ss):p(mm)+':'+p(ss);
+  bar.hidden=false;
+  const span=brk.end-brk.start;
+  $(bar,'i').style.width=(span>0?Math.max(0,Math.min(1,(brk.end-now)/span))*100:0)+'%';
+}
+function rBreak(card,m,fresh){
+  const w=MODES[m.mode]||MODES.break;
+  $(card,'h1').textContent=w[0];$(card,'p .th').textContent=w[1];$(card,'p .en').textContent=w[2];
+  head(card,m);
+  set($(card,'.ven'),m.sub);
+  set($(card,'.mus'),has(m.credit)?'♪ '+m.credit:'');
+  const end=Number(m.endsAt)||0;
+  if(fresh||!brk.start)brk.start=Date.now();
+  brk.end=end;
+  clock();fit($(card,'.cd'),144,96);
+  if(!timer)timer=setInterval(clock,250);
+}
+
+function rCam(card,m){set($(card,'.ven'),m.sub)}
+
+const ROUTE={
+  result:m=>m.h2h===true?['result',rResult]:['solo',rSolo],
+  next:()=>['next',rNext],intro:()=>['next',rNext],title:()=>['next',rNext],
+  idle:()=>['idle',rIdle],break:()=>['break',rBreak],cam:()=>['cam',rCam],play:()=>[null,null]};
+
+let curKey=null,curCard=null,last=null;
+function swap(id){
+  const next=id?document.getElementById(id):null;
+  if(curCard&&curCard!==next){
+    const old=curCard;old.classList.remove('on');old.classList.add('out');
+    setTimeout(()=>{if(!old.classList.contains('on'))old.classList.remove('out')},500);
+  }
+  if(next){next.classList.remove('on','out');void next.offsetWidth;next.classList.add('on')}
+  curCard=next;
+}
+
+window.show=function(m){
+  try{
+    if(!m||typeof m!=='object'||!ROUTE[m.k])return;
+    const [id,render]=ROUTE[m.k](m);
+    const key=m.k+'|'+id,fresh=key!==curKey;
+    if(fresh)swap(id);
+    curKey=key;last=m;
+    if(m.k!=='break'&&timer){clearInterval(timer);timer=0}
+    if(id&&render)render(document.getElementById(id),m,fresh);
+  }catch(e){console.error(e)}
+};
+
+const faces=['400 26px Prompt','500 26px Prompt','600 26px Prompt','700 26px Prompt','700 26px Oxanium','600 26px Oxanium'];
+Promise.all(faces.map(f=>document.fonts.load(f).catch(()=>{}))).then(()=>document.fonts.ready).then(()=>{
+  window.THEME_READY=true;
+  if(last)window.show(last); /* same key: re-measure the fitted text in place */
+});
+})();
+</script>
+</body>
+</html>

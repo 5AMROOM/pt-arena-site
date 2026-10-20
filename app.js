@@ -1551,8 +1551,10 @@ const OA_ADBOX={x:800,y:200,w:1040,h:585};
 const OA_SND={loop:'pt_loop.wav',sting:'pt_sting.wav',open:'pt_open.wav'};
 const OA_BRK={break:'พักการแข่งขัน',match:'ก่อนเริ่มแข่ง',live:'ก่อนเริ่มไลฟ์'};
 // break music: the file in the sound folder, picked per break
-const OA_BGM={'pt_loop.wav':'สดใส ปลุกใจ','pt_loop_chill.wav':'ชิลล์ (vaportrap)','pt_loop_house.wav':'แดดเช้า (house)','pt_loop_wave.wav':'ลอยๆ (wave)','pt_loop_hiphop.wav':'ฮิปฮอป (boom-bap)','pt_loop_funk.wav':'ฟังก์ (funk)','pt_loop_ca.wav':'มืดๆ เท่ๆ (alt-R&B)'};
+const OA_BGM={'':'ไม่มีเพลง','pt_loop.wav':'สดใส ปลุกใจ','pt_loop_chill.wav':'ชิลล์ (vaportrap)','pt_loop_house.wav':'แดดเช้า (house)','pt_loop_wave.wav':'ลอยๆ (wave)','pt_loop_hiphop.wav':'ฮิปฮอป (boom-bap)','pt_loop_funk.wav':'ฟังก์ (funk)','pt_loop_ca.wav':'มืดๆ เท่ๆ (alt-R&B)'};
 // tools/studio_helper.py on this computer keeps copies of the clips that OBS can jump inside
+// the graphics come in ten looks (themes/<name>.html, one contract: themes/CONTRACT.md); the desk's dropdown picks one
+const OA_THEMES={sports:'ทีวีกีฬา',esports:'อีสปอร์ต',minimal:'มินิมอล',thaitv:'ทีวีไทย',arcade:'อาร์เคด',poster:'โปสเตอร์',blueprint:'บลูพรินต์',playful:'เด็กสนุก',cinema:'ภาพยนตร์',light:'สว่าง'};
 const OA_HELPER='http://127.0.0.1:8788';
 // the walking camera (DJI Osmo Pocket 4P through the Mimo app) sends RTMP to MediaMTX on this computer
 // (rtmp://<this computer>:1935/live/osmo); OBS reads it back over RTSP, which carries the camera's H.265 picture well
@@ -1560,11 +1562,11 @@ const OA_OSMO='PT Osmo',OA_OSMO_URL='rtsp://127.0.0.1:8554/live/osmo';
 // the phone as the walking camera: our own camera page, no app (see #cam-ROAM / #rx-ROAM)
 const OA_PHONE='PT มือถือ',oaSite=()=>location.origin+location.pathname+location.search;
 const OA={H:null,hsig:'',files:[],webm:[],stable:new Set(),ipSeen:'',list:[],order:[],played:new Set(),bad:new Map(),auto:true,delay:0,prog:'all',skipSetup:true,cur:null,nextM:null,phase:'idle',err:'',
-  ws:'ws://127.0.0.1:4455',pw:'',ads:'',advid:'',snd:'',credit:'',brk:null,cache:{},helperOk:false,hlGroup:'',hlRound:1,hl:null,brkMode:'break',brkMin:5,brkAuto:true,bgm:'pt_loop.wav',obsWant:false,obsState:'off',obsErr:'',scene:'',stat:null,hold:false,offAir:false,shown:0,cursor:0,dur:0,paused:false,gen:0,waitAt:0,waitFn:null};
+  ws:'ws://127.0.0.1:4455',pw:'',theme:'sports',ads:'',advid:'',snd:'',credit:'',brk:null,cache:{},helperOk:false,hlGroup:'',hlRound:1,hl:null,brkMode:'break',brkMin:5,brkAuto:true,bgm:'pt_loop.wav',obsWant:false,obsState:'off',obsErr:'',scene:'',stat:null,hold:false,offAir:false,shown:0,cursor:0,dur:0,paused:false,gen:0,waitAt:0,waitFn:null};
 try{const k=JSON.parse(localStorage.getItem('ptarena:oa')||'{}');OA.order=k.order||[];OA.played=new Set(k.played||[]);OA.auto=k.auto!==false;OA.delay=k.delay||0;OA.prog=k.prog||'all';OA.skipSetup=k.skipSetup!==false;OA.tests=!!k.tests;
   OA.ws=k.ws||OA.ws;OA.pw=k.pw||'';OA.ipSeen=k.ipSeen||'';OA.obsWant=!!k.obsWant;
-  OA.ads=k.ads||'';OA.advid=k.advid||'';OA.snd=k.snd||'';OA.credit=k.credit||'';OA.brkMode=k.brkMode||'break';OA.brkMin=k.brkMin||5;OA.brkAuto=k.brkAuto!==false;OA.bgm=OA_BGM[k.bgm]?k.bgm:'pt_loop.wav'}catch(e){}
-const oaKeep=()=>{try{localStorage.setItem('ptarena:oa',JSON.stringify({order:OA.order,played:[...OA.played],auto:OA.auto,delay:OA.delay,prog:OA.prog,skipSetup:OA.skipSetup,tests:OA.tests,ws:OA.ws,pw:OA.pw,ipSeen:OA.ipSeen,obsWant:OA.obsWant,ads:OA.ads,advid:OA.advid,snd:OA.snd,credit:OA.credit,brkMode:OA.brkMode,brkMin:OA.brkMin,brkAuto:OA.brkAuto,bgm:OA.bgm}))}catch(e){}};
+  OA.ads=k.ads||'';OA.advid=k.advid||'';OA.snd=k.snd||'';OA.credit=k.credit||'';OA.brkMode=k.brkMode||'break';OA.brkMin=k.brkMin||5;OA.brkAuto=k.brkAuto!==false;OA.bgm=k.bgm in OA_BGM?k.bgm:'pt_loop.wav';OA.theme=k.theme in OA_THEMES?k.theme:'sports'}catch(e){}
+const oaKeep=()=>{try{localStorage.setItem('ptarena:oa',JSON.stringify({order:OA.order,played:[...OA.played],auto:OA.auto,delay:OA.delay,prog:OA.prog,skipSetup:OA.skipSetup,tests:OA.tests,ws:OA.ws,pw:OA.pw,ipSeen:OA.ipSeen,obsWant:OA.obsWant,ads:OA.ads,advid:OA.advid,snd:OA.snd,credit:OA.credit,brkMode:OA.brkMode,brkMin:OA.brkMin,brkAuto:OA.brkAuto,bgm:OA.bgm,theme:OA.theme}))}catch(e){}};
 const oaGroup=m=>`${m.prog} · สนาม ${m.field}`;
 const oaTime=v=>{const t=typeof v==='number'?v:new Date(v||0).getTime();return isFinite(t)?t:0};
 
@@ -1609,18 +1611,22 @@ function oaParseRec(d,rel){
   const teams=d.participants.map(p=>({teamId:str(p.teamId),name:str(p.team||p.teamId),school:str(p.school),side:str(p.side),
     score:p.score==null||p.score===''?null:num(p.score),timeMs:p.timeMs==null?null:num(p.timeMs),winner:p.winner===true}));
   // left of the picture first, so the names sit on the side each robot runs
-  const at=x=>/^(left|a)$/i.test(x.side)?0:/^(right|b)$/i.test(x.side)?1:0.5;teams.sort((a,b)=>at(a)-at(b));
-  // there are no draws: a file that names no winner has no result yet
+  const sideAt=x=>/^(left|a)$/i.test(x.side)?0:/^(right|b)$/i.test(x.side)?1:0.5;teams.sort((a,b)=>sideAt(a)-sideAt(b));
   const rec=t(d.recordingCreatedAt),go=t(d.matchStartedAt),stop=t(d.matchStoppedAt);
+  const clipAt={start:rec!=null&&go!=null?Math.max(0,go-rec):0,end:rec!=null&&stop!=null?Math.max(0,stop-rec):null};
+  const ok=d.resultStatus==='confirmed'&&d.verified!==false&&!replaced,at=t(d.confirmedAt)||rec||0;
+  const common={id:'rec:'+id,rec:true,replaced,field:str(d.fieldName||d.fieldId||'-'),round:num(d.round,1),
+    prog:str(d.competitionName||String(d.competition||'').toUpperCase()),comp:str(d.competition),matchNo:d.matchNo==null||d.matchNo===''?'':str(d.matchNo),
+    missions:[],items:{},steps:[],ok,at,...clipAt,file:clip.split('/').pop(),vok:!!clip,rel};
+  // kind "solo" (RoboArena's word): one team runs alone and is judged on its own score and time, no winner;
+  // its result card is the one-team card, without a score in the file there is no card
+  if(d.kind==='solo'||teams.length===1){const p=d.participants[0]||{},x=teams[0]||{name:'',teamId:'',school:'',score:null,timeMs:null};
+    return{...common,team:x.name,teamId:x.teamId,school:x.school,total:x.score==null?'':x.score,retry:num(p.retry,0),
+      ms:x.timeMs!=null?x.timeMs:(go!=null&&stop!=null?stop-go:0),noResult:x.score==null}}
+  // kind "pair": two teams in one clip; there are no draws, so a file that names no winner has no result yet
   const w=teams.find(x=>x.winner);
-  return{id:'rec:'+id,h2h:true,rec:true,replaced,noResult:!w,teams,team:teams.map(x=>x.name).join(' vs '),teamId:teams.map(x=>x.teamId).join(' vs '),
-    school:'',field:str(d.fieldName||d.fieldId||'-'),round:num(d.round,1),prog:str(d.competitionName||String(d.competition||'').toUpperCase()),comp:str(d.competition),
-    matchNo:d.matchNo==null||d.matchNo===''?'':str(d.matchNo),missions:[],items:{},retry:0,
-    total:w&&w.score!=null?w.score:'',ms:go!=null&&stop!=null?stop-go:0,
-    ok:d.resultStatus==='confirmed'&&d.verified!==false&&!replaced,at:t(d.confirmedAt)||rec||0,
-    // where the run sits in the clip: the recording started a moment before the match did
-    start:rec!=null&&go!=null?Math.max(0,go-rec):0,end:rec!=null&&stop!=null?Math.max(0,stop-rec):null,steps:[],
-    file:clip.split('/').pop(),vok:!!clip,rel}}
+  return{...common,h2h:true,noResult:!w,teams,team:teams.map(x=>x.name).join(' vs '),teamId:teams.map(x=>x.teamId).join(' vs '),school:'',
+    total:w&&w.score!=null?w.score:'',ms:go!=null&&stop!=null?stop-go:0,retry:0}}
 // what a clip's own name tells: <programme>_<match>_<team A>_vs_<team B>_<round>_<time>_... (team codes only, no names or result)
 function oaClipName(f){
   const x=/^([a-z0-9]+)_([0-9a-f-]{36})_(.+?)_vs_(.+?)_(\d+)_(\d{4}-\d\d-\d\d)T(\d\d)_(\d\d)_(\d\d)_(\d+)Z_/i.exec(String(f));
@@ -1687,7 +1693,7 @@ const OBS={ws:null,ok:false,n:0,wait:new Map(),
     this.ws.send(JSON.stringify({op:6,d:{requestType:type,requestId:id,requestData:data||{}}}));
     setTimeout(()=>{if(this.wait.has(id)){this.wait.delete(id);no(new Error('OBS ไม่ตอบ'))}},5000)})},
   // what the graphics show: a message every PT Arena graphics page connected to the same OBS hears
-  say(k,data){if(OA.brk&&k!=='break')return Promise.resolve();return this.req('BroadcastCustomEvent',{eventData:{pt:1,k,...data}}).catch(()=>{})}
+  say(k,data){if(OA.brk&&k!=='break'&&k!=='theme')return Promise.resolve();return this.req('BroadcastCustomEvent',{eventData:{pt:1,k,...data}}).catch(()=>{})}
 };
 async function obsReady(){
   try{OA.scene=(await OBS.req('GetSceneList')).currentProgramSceneName}catch(e){}
@@ -1716,7 +1722,7 @@ function oaRes(m){
 // where this run stands in its programme, field and round, counting only runs already shown on air (no spoilers):
 // more points first, then less time, then fewer retries (the order the rule sheets give for a tie)
 function oaStand(m){
-  const runs=OA.list.filter(x=>x.ok&&(OA.played.has(x.id)||x.id===m.id)&&oaGroup(x)===oaGroup(m)&&x.round===m.round)
+  const runs=OA.list.filter(x=>x.ok&&!x.h2h&&!x.noResult&&(OA.played.has(x.id)||x.id===m.id)&&oaGroup(x)===oaGroup(m)&&x.round===m.round)
     .sort((a,b)=>b.total-a.total||a.ms-b.ms||a.retry-b.retry);
   const rank=runs.findIndex(x=>x.id===m.id)+1,row=(x,i)=>({rank:i+1,team:x.team,total:x.total,time:fmtMs(x.ms),me:x.id===m.id});
   const top=runs.slice(0,3).map(row);
@@ -1728,6 +1734,7 @@ const oaNextName=m=>{const n=OA.auto&&oaQueue().find(x=>oaReady(x)&&x.id!==m.id)
 const oaIdleMsg=()=>({sub:VENUES.find(v=>v[0]===S.venue)[1]});
 // a graphics page that has just loaded asks what is on; this answers with the present state
 function oaSay(){const m=OA.cur;
+  OBS.say('theme',{name:OA.theme});
   if(OA.brk)OBS.say('break',oaBrkMsg());
   else if(OA.scene===OA_CAM)OBS.say('cam',oaIdleMsg());
   else if(OA.phase==='play'&&m)OBS.say(OA.cover?'intro':'play',oaInfo(m));
@@ -1740,7 +1747,7 @@ const oaPath=(dir,f)=>dir.replace(/[\\/]+$/,'')+'\\'+f;
 async function obsSetup(){
   try{
     // a new address each time, so OBS's built-in browser cannot keep an old copy of the graphics
-    const url=new URL('overlay.html',location.href);url.search='?v='+Date.now();url.hash=new URLSearchParams({ws:OA.ws,pw:OA.pw}).toString();
+    const url=new URL('overlay.html',location.href);url.search='?v='+Date.now();url.hash=new URLSearchParams({ws:OA.ws,pw:OA.pw,theme:OA.theme,v:String(Date.now())}).toString();
     const vs=await OBS.req('GetVideoSettings'),W=vs.baseWidth,k=W/1920;
     const scenes=new Set((await OBS.req('GetSceneList')).scenes.map(x=>x.sceneName));
     for(const sc of[OA_SCENE,OA_CAM,OA_BREAK])if(!scenes.has(sc))await OBS.req('CreateScene',{sceneName:sc});
@@ -1762,7 +1769,8 @@ async function obsSetup(){
     await fit(OA_SCENE,OA_CLIP,full);await fit(OA_SCENE,OA_GFX,full,true);
     // break: the shop's ads in their window, the music bed (starts with the scene, loops), the same graphics on top
     await place(OA_BREAK,OA_ADS,'slideshow_v2',{files:oaAds()?[{value:oaAds(),hidden:false,selected:false}]:[],slide_time:6000,transition:'fade',transition_speed:700,playback_behavior:'always_play',playback_mode:'loop',slide_mode:'mode_auto',use_custom_size:'1600x900'});
-    await place(OA_BREAK,OA_MUSIC,'ffmpeg_source',{is_local_file:true,local_file:snd(OA.bgm),looping:true,restart_on_activate:true,close_when_inactive:true});
+    await place(OA_BREAK,OA_MUSIC,'ffmpeg_source',{is_local_file:true,local_file:OA.bgm?snd(OA.bgm):'',looping:true,restart_on_activate:true,close_when_inactive:true});
+    await OBS.req('SetInputMute',{inputName:OA_MUSIC,inputMuted:!OA.bgm}).catch(()=>{});
     await place(OA_BREAK,OA_GFX,'browser_source',{url:url.href,width:1920,height:1080,css:'',shutdown:false,restart_when_active:false});
     // a video ad, when one is set, plays in the same window over the slideshow (the slideshow cannot play video)
     await place(OA_BREAK,OA_ADVID,'ffmpeg_source',{is_local_file:true,local_file:oaAdvid(),looping:true,restart_on_activate:true,close_when_inactive:true,hw_decode:true});
@@ -1791,7 +1799,8 @@ async function oaBreak(){
   if(!OBS.ok)return toast('ยังไม่ได้ต่อ OBS');
   OA.brk={mode:OA.brkMode,endsAt:Date.now()+OA.brkMin*60000};
   // the chosen music is set before the scene comes up, which starts it from the top
-  if(oaSnd())await OBS.req('SetInputSettings',{inputName:OA_MUSIC,inputSettings:{local_file:oaPath(oaSnd(),OA.bgm)}}).catch(()=>{});
+  if(oaSnd()&&OA.bgm)await OBS.req('SetInputSettings',{inputName:OA_MUSIC,inputSettings:{local_file:oaPath(oaSnd(),OA.bgm)}}).catch(()=>{});
+  await OBS.req('SetInputMute',{inputName:OA_MUSIC,inputMuted:!OA.bgm}).catch(()=>{});
   OBS.say('break',oaBrkMsg());
   try{await OBS.req('SetCurrentProgramScene',{sceneName:OA_BREAK})}catch(e){toast('สลับไปฉากพักเบรกไม่ได้: '+e.message+' · กด "ตั้งฉากให้ใน OBS" ก่อน');OA.brk=null;oaSay()}
   oaDraw();
@@ -2009,7 +2018,7 @@ function vOnair(){
               :`<button class="btn pri" data-act="oago" ${ready.length&&on?'':'disabled'}>▶ เริ่มเล่นคิว</button>`}
             <button class="btn" data-act="oaidle" ${OA.phase==='idle'&&!OA.wantRun?'disabled':''}>☕ หน้าพัก</button>
           </div></div>
-        <div class="panel"><div class="oah"><i></i>PROGRAM · ฉากที่ออกอากาศ</div>
+        <div class="panel"><div class="oah"><i></i>PROGRAM · ฉากที่ออกอากาศ <label class="cc oatheme"><span>ธีมกราฟิก</span><select id="oatheme">${Object.entries(OA_THEMES).map(([k,t])=>`<option value="${k}" ${OA.theme===k?'selected':''}>${t}</option>`).join('')}</select></label></div>
           <div class="row">${[[OA_SCENE,'🎞 รีเพลย์'],[OA_BREAK,'☕ พักเบรก'],[OA_CAM,'🎥 กล้องเดิน']].map(([s,t])=>`<button class="btn oascb" data-act="oascene" data-v="${esc(s)}" aria-pressed="${OA.scene===s}" ${on?'':'disabled'}>${t}</button>`).join('')}</div>
           ${on&&OA.scene&&OA.scene!==OA_SCENE&&OA.scene!==OA_CAM&&OA.scene!==OA_BREAK?`<p class="small muted" style="margin:0">ตอนนี้ OBS อยู่ฉาก "${esc(OA.scene)}"</p>`:''}
           ${on?`<div class="row"><button class="btn ${live?'bad':''}" data-act="oastream">${live?'■ หยุดไลฟ์':'● เริ่มไลฟ์'}</button><button class="btn" data-act="oarec">${rec?'■ หยุดอัด':'⏺ เริ่มอัด'}</button></div>`:''}</div>
@@ -2355,6 +2364,7 @@ document.addEventListener('change',e=>{
   if(el.id==='oahlr'){OA.hlRound=+el.value;render();return}
   if(el.id==='oabrkmode'){OA.brkMode=el.value;oaKeep();render();return}
   if(el.id==='oabgm'){OA.bgm=el.value;oaKeep();return}
+  if(el.id==='oatheme'){OA.theme=el.value;oaKeep();OBS.say('theme',{name:OA.theme});return}
   if(el.id==='oabrkmin'){OA.brkMin=+el.value;oaKeep();return}
   if(el.id==='oadelay'){OA.delay=+el.value;oaKeep();render();return}
   if(el.id==='gsel'){GFX=GFX_LIST[el.value]?el.value:'strip';keep('ptarena:gfx',GFX);return}

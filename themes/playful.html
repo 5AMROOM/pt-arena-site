@@ -1,0 +1,528 @@
+<!doctype html>
+<!-- PT Arena · "playful" on-air theme. Indigo base, sun-yellow winner tile, Prompt + Oxanium.
+     Built from design/preview/theme-playful.html (the approved mockup) and driven by window.show(m)
+     from overlay.html. Messages, paths, words and the test harness follow themes/CONTRACT.md. -->
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>PT Arena · Playful theme</title>
+<style>
+/* Hallmark · pre-emit critique: P4 H5 E4 S4 R4 V4 · pass 3 */
+/* Hallmark · macrostructure: Stat-Led (two tiles, one turns yellow) · tone: playful · anchor hue: indigo 280 · accent: sun 90 */
+
+@font-face{font-family:"Prompt";src:url("../font/Prompt-Regular.ttf") format("truetype");font-weight:400}
+@font-face{font-family:"Prompt";src:url("../font/Prompt-Medium.ttf") format("truetype");font-weight:500}
+@font-face{font-family:"Prompt";src:url("../font/Prompt-SemiBold.ttf") format("truetype");font-weight:600}
+@font-face{font-family:"Prompt";src:url("../font/Prompt-Bold.ttf") format("truetype");font-weight:700}
+@font-face{font-family:"Oxanium";src:url("../font/Oxanium.ttf") format("truetype");font-weight:200 800}
+
+:root{
+  --c-base:oklch(25% 0.075 280);
+  --c-tile:oklch(33% 0.08 280);
+  --c-tile-dim:oklch(29% 0.06 280);
+  --c-scrim:oklch(22% 0.07 280 / 0.8);
+  --c-sun:oklch(88% 0.17 92);
+  --c-cyan:oklch(82% 0.12 215);
+  --c-ink:oklch(22% 0.07 280);
+  --c-white:oklch(98% 0.004 280);
+  --c-mute:oklch(78% 0.03 280);
+  --c-line:oklch(98% 0.004 280 / 0.28);
+
+  --f-th:"Prompt",sans-serif;
+  --f-num:"Oxanium","Prompt",sans-serif;
+
+  --t-s:32px;
+  --t-h:64px;
+  --t-xl:220px;
+
+  --m:96px;
+  --gut:48px;
+  --r:32px;
+  --sp-1:8px; --sp-2:16px; --sp-3:24px; --sp-4:32px; --sp-6:48px;
+
+  --ease-out:cubic-bezier(0.16,1,0.3,1);
+  --dur:450ms;
+}
+
+html,body{width:1920px;height:1080px;margin:0;overflow:hidden;background:transparent}
+body{position:relative;font-family:var(--f-th);color:var(--c-white);font-size:var(--t-s);line-height:1.25}
+[hidden]{display:none!important}
+
+.card{display:none;position:absolute;inset:0;overflow:hidden;transition:opacity 400ms var(--ease-out)}
+.card.on{display:block;z-index:2}
+.card.out{opacity:0;z-index:1;pointer-events:none}
+.card.solid{background:var(--c-base)}
+
+/* ---- shared ---- */
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums;font-weight:800}
+.caps{font-family:var(--f-num);font-weight:600;letter-spacing:0.08em;text-transform:uppercase;font-size:var(--t-s);color:var(--c-mute)}
+.h{font-size:var(--t-h);font-weight:700;line-height:1.1;letter-spacing:-0.01em}
+.pill{display:inline-flex;align-items:center;gap:var(--sp-2);padding:6px var(--sp-3);border-radius:999px;background:var(--c-tile);
+  font-family:var(--f-num);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;font-size:var(--t-s);color:var(--c-white);line-height:1.3;white-space:nowrap}
+.pill.sun{background:var(--c-sun);color:var(--c-ink)}
+.pill.th{font-family:var(--f-th);letter-spacing:0;text-transform:none}
+.dot{width:18px;height:18px;border-radius:50%;background:var(--c-sun)}
+
+.ring{position:absolute;width:1100px;height:1100px;border-radius:50%;background:var(--c-tile-dim);right:-300px;bottom:-480px}
+
+.hdr{position:absolute;left:var(--m);top:80px;right:var(--m);display:flex;align-items:flex-start;gap:var(--sp-4)}
+.hdr .lead{min-width:0;flex:1}
+.hdr .prog{font-size:var(--t-h);font-weight:700;line-height:1;white-space:nowrap;letter-spacing:-0.01em;overflow:hidden;text-overflow:ellipsis}
+.hdr .row{display:flex;gap:var(--sp-2);margin-top:var(--sp-3)}
+.hdr .right{margin-left:auto;text-align:right;flex:none;padding-top:4px}
+.hdr .right .th{font-size:var(--t-h);font-weight:700;line-height:1;letter-spacing:-0.01em;white-space:nowrap}
+.hdr .right .caps{display:block;margin-top:var(--sp-2)}
+
+.ptmark{position:absolute;right:var(--m);bottom:56px;height:40px;width:auto;opacity:0.9}
+
+.tile{position:absolute;top:290px;height:520px;border-radius:var(--r);background:var(--c-tile);padding:var(--sp-6);box-sizing:border-box;overflow:hidden}
+.tile .name{font-size:var(--t-h);font-weight:700;line-height:1.1;letter-spacing:-0.01em;overflow-wrap:anywhere}
+.tile .school{color:var(--c-mute);margin-top:var(--sp-1);overflow-wrap:anywhere}
+.tile .score{position:absolute;right:var(--sp-6);bottom:var(--sp-4);font-size:var(--t-xl);line-height:0.9;letter-spacing:-0.02em;white-space:nowrap}
+.tile .score .max{font-size:var(--t-h);font-weight:600;color:var(--c-mute);margin-left:var(--sp-1)}
+.tile .foot{position:absolute;left:var(--sp-6);bottom:var(--sp-6);display:flex;align-items:flex-end;gap:var(--sp-6)}
+.tile .time{font-family:var(--f-num);font-weight:600;font-variant-numeric:tabular-nums;color:var(--c-mute)}
+.tile .retry{display:flex;align-items:baseline;gap:var(--sp-2)}
+.tile .retry .num{font-size:var(--t-s);font-weight:700}
+.tile .code{color:var(--c-mute);margin-top:var(--sp-1);font-family:var(--f-num);font-weight:600;letter-spacing:0.06em}
+.tile .badge{position:absolute;right:var(--sp-6);top:var(--sp-6)}
+.tile.has-badge .name{max-width:calc(100% - 250px)}
+.tile.win{background:var(--c-sun);color:var(--c-ink)}
+.tile.win .school,.tile.win .time,.tile.win .code,.tile.win .caps,.tile.win .score .max{color:var(--c-ink);opacity:0.75}
+.tile.win .badge{background:var(--c-ink);color:var(--c-sun)}
+.tile.lose{background:var(--c-tile-dim)}
+.tile.lose .name{opacity:0.8}
+.tile.lose .score{opacity:0.7}
+
+/* ---- motion ---- */
+@keyframes rise{from{opacity:0;transform:translateY(32px)}to{opacity:1;transform:none}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@keyframes pop{from{opacity:0;transform:scale(0.92)}to{opacity:1;transform:none}}
+.rise{animation:rise var(--dur) var(--ease-out) both}
+.fade{animation:fade var(--dur) var(--ease-out) both}
+.pop{animation:pop 350ms var(--ease-out) both}
+.d1{animation-delay:150ms}.d2{animation-delay:300ms}.d3{animation-delay:450ms}
+@media (prefers-reduced-motion:reduce){*{animation-duration:120ms!important;animation-name:fade!important}}
+
+/* ---- result ---- */
+#result .bg{position:absolute;inset:0;background:50% 48%/170% auto no-repeat;filter:blur(6px);transform:scale(1.04)}
+#result .scrim{position:absolute;inset:0;background:var(--c-scrim)}
+#result .tile.a{left:var(--m);width:840px}
+#result .tile.b{left:984px;width:840px}
+#result .missions{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-4) var(--sp-6);margin-top:var(--sp-2)}
+#result .missions .mi .caps{display:block}
+#result .missions .mi .num{font-size:var(--t-h);line-height:1.1}
+#result .nextup{position:absolute;left:var(--m);bottom:56px;right:260px;display:flex;align-items:center;gap:var(--sp-3);white-space:nowrap;overflow:hidden}
+#result .nextup b{font-weight:700}
+
+/* ---- next ---- */
+#next .tile{display:flex;flex-direction:column;justify-content:center;top:380px;height:320px}
+#next .tile.a{left:var(--m);width:780px}
+#next .tile.b{left:1044px;width:780px;text-align:right;align-items:flex-end}
+#next.solo .tile.a{width:1728px}
+#next .vs{position:absolute;left:50%;top:540px;width:200px;height:200px;margin:-100px 0 0 -100px;border-radius:50%;
+  background:var(--c-sun);color:var(--c-ink);display:grid;place-items:center;font-size:var(--t-h);letter-spacing:0.02em}
+#next .tile .side{color:var(--c-cyan)}
+
+/* ---- idle ---- */
+#idle .logo{position:absolute;left:var(--m);top:200px;height:620px;width:auto}
+#idle .copy{position:absolute;left:960px;top:0;height:1080px;width:864px;display:flex;flex-direction:column;justify-content:center;gap:var(--sp-3)}
+#idle .copy .wait{font-size:var(--t-h);font-weight:700;line-height:1.1;overflow-wrap:anywhere}
+#idle .copy .venue{color:var(--c-mute)}
+#idle .copy .pill{align-self:flex-start;margin-top:var(--sp-2)}
+
+/* ---- break ---- */
+/* the base colour and the ring live on a layer with the sponsor window cut out, so x=800 y=200 w=1040 h=585 stays see-through */
+#break .bgx{position:absolute;inset:0;background:var(--c-base);overflow:hidden;
+  clip-path:polygon(evenodd,0 0,1920px 0,1920px 1080px,0 1080px,0 0,800px 200px,800px 785px,1840px 785px,1840px 200px,800px 200px)}
+#break .hole{position:absolute;left:800px;top:200px;width:1040px;height:585px;background:transparent;border-radius:0;box-shadow:0 0 0 8px var(--c-tile)}
+#break .left{position:absolute;left:var(--m);top:200px;width:640px}
+#break .title{font-size:var(--t-h);font-weight:700;line-height:1.1}
+#break .in{color:var(--c-mute);margin-top:var(--sp-4);display:flex;align-items:baseline;gap:var(--sp-3);flex-wrap:wrap}
+#break .in .caps{color:var(--c-cyan)}
+#break .count{font-size:var(--t-xl);line-height:1;letter-spacing:-0.02em;color:var(--c-sun);margin-top:var(--sp-2);white-space:nowrap}
+#break .count.long{font-size:150px;line-height:1.4}
+#break .venue{color:var(--c-mute);margin-top:var(--sp-4)}
+#break .music{position:absolute;right:var(--m);top:820px;color:var(--c-mute);font-family:var(--f-num);font-weight:600;letter-spacing:0.04em}
+#break .robot{position:absolute;left:1100px;top:850px;width:460px;height:auto}
+#break .ring{right:-120px;bottom:-760px}
+
+/* ---- cam ---- */
+#cam .bug{position:absolute;left:var(--m);top:72px;display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-2) var(--sp-4) var(--sp-2) var(--sp-2);
+  background:var(--c-scrim);border-radius:var(--r)}
+#cam .bug img{height:150px;width:auto}
+#cam .bug .col{display:flex;flex-direction:column;gap:var(--sp-1)}
+#cam .bug .live{display:flex;align-items:center;gap:var(--sp-2);font-family:var(--f-num);font-weight:800;letter-spacing:0.1em;color:var(--c-white)}
+#cam .bug .live .dot{background:var(--c-cyan)}
+#cam .bug .venue{color:var(--c-mute)}
+</style>
+</head>
+<body>
+
+<!-- RESULT -->
+<section id="result" class="card solid">
+  <div class="bg"></div><div class="scrim"></div>
+  <header class="hdr rise">
+    <div class="lead">
+      <div class="prog"></div>
+      <div class="row"><span class="pill p-match"></span><span class="pill p-field"></span><span class="pill p-round"></span></div>
+    </div>
+    <div class="right"><div class="th">ผลการแข่งขัน</div><span class="caps">RESULT</span></div>
+  </header>
+  <div class="tile a rise d1">
+    <div class="name"></div>
+    <div class="school"></div>
+    <div class="code"></div>
+    <span class="pill badge pop d3"></span>
+    <div class="foot"><div class="time"></div><div class="retry"><span class="caps">RETRY</span><span class="num"></span></div></div>
+    <div class="score num"><span class="n"></span><span class="max"></span></div>
+  </div>
+  <div class="tile b rise d2">
+    <div class="who">
+      <div class="name"></div>
+      <div class="school"></div>
+      <div class="code"></div>
+    </div>
+    <span class="pill badge pop d3"></span>
+    <div class="missions"></div>
+    <div class="foot"><div class="time"></div></div>
+    <div class="score num"><span class="n"></span><span class="max"></span></div>
+  </div>
+  <div class="nextup fade d3">
+    <span class="pill">NEXT</span>
+    <span class="txt">ถัดไป <b class="n1"></b> <span class="vs">พบ</span> <b class="n2"></b></span>
+  </div>
+  <img class="ptmark" src="../logo-mark.png" alt="">
+</section>
+
+<!-- NEXT · INTRO · TITLE -->
+<section id="next" class="card solid">
+  <header class="hdr rise">
+    <div class="lead">
+      <div class="prog"></div>
+      <div class="row"><span class="pill sun p-match"></span><span class="pill p-field"></span><span class="pill p-round"></span></div>
+    </div>
+    <div class="right"><div class="th"></div><span class="caps"></span></div>
+  </header>
+  <div class="tile a rise d1">
+    <div class="side caps">ซ้าย</div>
+    <div class="name"></div>
+    <div class="school"></div>
+  </div>
+  <div class="tile b rise d1">
+    <div class="side caps">ขวา</div>
+    <div class="name"></div>
+    <div class="school"></div>
+  </div>
+  <div class="vs num pop d2">VS</div>
+  <img class="ptmark" src="../logo-mark.png" alt="">
+</section>
+
+<!-- IDLE -->
+<section id="idle" class="card solid">
+  <div class="ring"></div>
+  <img class="logo fade" src="../event-logo.webp" alt="">
+  <div class="copy rise d1">
+    <div class="wait"></div>
+    <div class="venue"></div>
+    <span class="pill">Stand by</span>
+  </div>
+  <img class="ptmark" src="../logo-mark.png" alt="">
+</section>
+
+<!-- BREAK -->
+<section id="break" class="card">
+  <div class="bgx"><div class="ring"></div></div>
+  <div class="hole fade"></div>
+  <div class="left rise">
+    <div class="title"></div>
+    <div class="in"><span class="l2"></span><span class="caps"></span></div>
+    <div class="count num"></div>
+    <div class="venue"></div>
+  </div>
+  <div class="music fade d2"></div>
+  <img class="robot rise d2" src="robot.webp" alt="">
+  <img class="ptmark" src="../logo-mark.png" alt="">
+</section>
+
+<!-- CAM -->
+<section id="cam" class="card">
+  <div class="bug rise">
+    <img src="../event-logo.webp" alt="">
+    <div class="col">
+      <div class="live"><span class="dot"></span>LIVE</div>
+      <div class="venue"></div>
+    </div>
+  </div>
+</section>
+
+<script>
+(function(){
+'use strict';
+window.THEME='playful';
+window.THEME_READY=false;
+
+var $=function(sel,root){return (root||document).querySelector(sel)};
+var str=function(v){return v==null?'':String(v).trim()};
+var txt=function(el,v){v=str(v);el.textContent=v;el.hidden=!v;return !!v};
+var hide=function(el,yes){el.hidden=!!yes};
+
+var cards={result:$('#result'),next:$('#next'),idle:$('#idle'),'break':$('#break'),cam:$('#cam')};
+var cur=null;          // card element on screen
+var curK='';           // last message kind shown
+var endsAt=0, ticker=null;
+
+/* ---- card switching: same card updates in place, a new card cross-fades and runs its entrance ---- */
+function switchTo(card){
+  if(card===cur) return false;
+  var old=cur;
+  cur=card;
+  if(old){
+    old.classList.add('out');
+    setTimeout(function(){ if(old!==cur){old.classList.remove('on','out')} },450);
+  }
+  if(card){ card.classList.remove('out'); card.classList.add('on'); }
+  return true;
+}
+
+/* ---- long names: shrink a little to stay on one line; past that, wrap once at a size that still reads ---- */
+function fit(el,base,min1,wrap){
+  if(!el||el.hidden) return;
+  el.style.whiteSpace='nowrap';
+  var size=base;
+  el.style.fontSize=size+'px';
+  while(el.scrollWidth>el.clientWidth+1 && size>min1){ size-=2; el.style.fontSize=size+'px'; }
+  if(el.scrollWidth<=el.clientWidth+1 || !wrap) return;
+  el.style.whiteSpace='normal';
+  size=56; el.style.fontSize=size+'px';
+  while(el.scrollHeight>size*1.1*2+4 && size>36){ size-=2; el.style.fontSize=size+'px'; }
+}
+function fitNames(card){
+  var names=card.querySelectorAll('.name');
+  for(var i=0;i<names.length;i++){ fit(names[i],64,56,true); }
+  fit($('.prog',card),64,48,false);
+}
+
+/* ---- header: programme + pills ---- */
+function header(card,m){
+  txt($('.prog',card),m.prog);
+  var f=str(m.field), r=str(m.round), n=str(m.matchNo);
+  txt($('.p-match',card),n?'Match '+n:'');
+  txt($('.p-field',card),(f&&f!=='-')?'Field '+f:'');
+  txt($('.p-round',card),(r&&r!=='0')?'Round '+r:'');
+}
+function heading(card,th,en){
+  txt($('.right .th',card),th);
+  txt($('.right .caps',card),en);
+}
+
+/* ---- result ---- */
+function who(tile,name,school,code){
+  txt($('.name',tile),name);
+  txt($('.school',tile),school);
+  txt($('.code',tile),code);
+}
+function scoreOf(tile,n,max){
+  var has=(n!==null&&n!==undefined&&str(n)!=='');
+  var sc=$('.score',tile);
+  hide(sc,!has);
+  if(has){
+    $('.n',sc).textContent=str(n);
+    var mx=Number(max)||0;
+    txt($('.max',sc),mx>0?'/'+mx:'');
+  }
+}
+function backdrop(frame){
+  var bg=$('#result .bg');
+  frame=str(frame);
+  if(frame.indexOf('data:image/')===0){
+    bg.style.backgroundImage='url("'+frame+'")';
+    bg.hidden=false;
+  }else{
+    bg.style.backgroundImage='';
+    bg.hidden=true;
+  }
+}
+function nextStrip(next){
+  var strip=$('#result .nextup');
+  next=str(next);
+  if(!next){ strip.hidden=true; return; }
+  strip.hidden=false;
+  var parts=next.split(/\s+vs\.?\s+/i);
+  $('.n1',strip).textContent=parts[0];
+  var two=parts.length>1;
+  hide($('.vs',strip),!two);
+  txt($('.n2',strip),two?parts.slice(1).join(' vs '):'');
+}
+function showResult(m){
+  var card=cards.result;
+  header(card,m);
+  heading(card,'ผลการแข่งขัน','RESULT');
+  backdrop(m.frame);
+  nextStrip(m.next);
+  var a=$('.tile.a',card), b=$('.tile.b',card);
+  var retryA=$('.retry',a);
+  var missions=$('.missions',b), whoB=$('.who',b);
+  if(m.h2h===true || (Array.isArray(m.teams)&&m.teams.length>1)){
+    var t=Array.isArray(m.teams)?m.teams:[];
+    var ta=t[0]||{}, tb=t[1]||{};
+    hide(b,false); hide(whoB,false); hide(missions,true); hide(retryA,true);
+    [[a,ta],[b,tb]].forEach(function(p){
+      var tile=p[0], tm=p[1];
+      who(tile,tm.name,tm.school,'');
+      txt($('.time',tile),tm.time);
+      scoreOf(tile,tm.score,0);
+      var win=tm.winner===true;
+      tile.classList.toggle('win',win);
+      tile.classList.toggle('lose',!win);
+      txt($('.badge',tile),win?'ชนะ':'');
+      $('.badge',tile).classList.remove('th','sun');
+      tile.classList.toggle('has-badge',win);
+    });
+  }else{
+    a.classList.remove('win','lose'); b.classList.remove('win'); b.classList.add('lose');
+    who(a,m.team,m.school,m.teamId);
+    txt($('.time',a),m.time);
+    scoreOf(a,m.total,m.max);
+    var retry=Number(m.retry);
+    hide(retryA,!(retry>0));
+    if(retry>0) $('.num',retryA).textContent=String(retry);
+    var rank=Number(m.rank)||0;
+    var badge=$('.badge',a);
+    badge.classList.add('th','sun');
+    txt(badge,rank>0?'อันดับตอนนี้ '+rank:'');
+    a.classList.toggle('has-badge',rank>0);
+    b.classList.remove('has-badge');
+    // second tile: missions (up to 4)
+    var list=Array.isArray(m.missions)?m.missions.slice(0,4):[];
+    hide(whoB,true); hide($('.badge',b),true); hide($('.time',b),true); hide($('.score',b),true);
+    missions.textContent='';
+    list.forEach(function(mi){
+      var box=document.createElement('div'); box.className='mi';
+      var lab=document.createElement('span'); lab.className='caps'; lab.textContent=str(mi.label);
+      var val=document.createElement('div'); val.className='num';
+      var mx=Number(mi.max)||0;
+      val.textContent=str(mi.n)+(mx>0?'/'+mx:'');
+      box.appendChild(lab); box.appendChild(val); missions.appendChild(box);
+    });
+    hide(missions,!list.length);
+    hide(b,!list.length);
+  }
+}
+
+/* ---- next · intro · title ---- */
+function showNext(m){
+  var card=cards.next;
+  var a=$('.tile.a',card), b=$('.tile.b',card), vs=$('.vs',card);
+  var pair=Array.isArray(m.teams)&&m.teams.length>1;
+  var one=Array.isArray(m.teams)&&m.teams.length===1?m.teams[0]:null;
+  if(m.k==='title'){
+    txt($('.prog',card),m.eyebrow);
+    var tag=$('.p-match',card); txt(tag,m.tag);
+    txt($('.p-field',card),''); txt($('.p-round',card),'');
+    heading(card,'','');
+    card.classList.add('solo');
+    hide(b,true); hide(vs,true); hide($('.side',a),true);
+    txt($('.name',a),m.title);
+    txt($('.school',a),m.sub);
+    return;
+  }
+  header(card,m);
+  if(pair){
+    card.classList.remove('solo');
+    heading(card,m.k==='intro'?'เตรียมความพร้อม':'คู่ถัดไป',m.k==='intro'?'SETUP':'NEXT MATCH');
+    hide(b,false); hide(vs,false);
+    hide($('.side',a),false); hide($('.side',b),false);
+    txt($('.name',a),m.teams[0].name); txt($('.school',a),m.teams[0].school);
+    txt($('.name',b),m.teams[1].name); txt($('.school',b),m.teams[1].school);
+  }else{
+    card.classList.add('solo');
+    heading(card,m.k==='intro'?'เตรียมความพร้อม':'ทีมถัดไป',m.k==='intro'?'SETUP':'NEXT MATCH');
+    hide(b,true); hide(vs,true); hide($('.side',a),true);
+    txt($('.name',a),one?one.name:m.team);
+    txt($('.school',a),one?one.school:m.school);
+  }
+}
+
+/* ---- idle ---- */
+function showIdle(m){
+  var card=cards.idle;
+  txt($('.wait',card),str(m.title)||'โปรดรอสักครู่');
+  txt($('.venue',card),m.sub);
+}
+
+/* ---- break ---- */
+var MODES={
+  live:{l1:'การถ่ายทอดสด',l2:'จะเริ่มในอีก',en:'ON AIR IN'},
+  match:{l1:'การแข่งขัน',l2:'จะเริ่มในอีก',en:'STARTING IN'},
+  'break':{l1:'พักการแข่งขัน',l2:'จะกลับมาในอีก',en:'BACK IN'}
+};
+function two(n){return (n<10?'0':'')+n}
+function tick(){
+  var el=$('#break .count');
+  var left=Math.max(0,endsAt-Date.now());
+  var s=Math.ceil(left/1000);
+  var h=Math.floor(s/3600), mm=Math.floor(s%3600/60), ss=s%60;
+  el.textContent=h>0?(h+':'+two(mm)+':'+two(ss)):(two(mm)+':'+two(ss));
+  el.classList.toggle('long',h>0);
+}
+function showBreak(m){
+  var card=cards['break'];
+  var mode=MODES[str(m.mode)]||MODES['break'];
+  txt($('.title',card),mode.l1);
+  txt($('.in .l2',card),mode.l2);
+  txt($('.in .caps',card),mode.en);
+  txt($('.venue',card),m.sub);
+  var credit=str(m.credit);
+  txt($('.music',card),credit?'♪ '+credit:'');
+  var e=Number(m.endsAt);
+  endsAt=isFinite(e)&&e>0?e:Date.now();
+  tick();
+  if(!ticker) ticker=setInterval(tick,250);
+}
+function stopClock(){ if(ticker){clearInterval(ticker);ticker=null} }
+
+/* ---- cam ---- */
+function showCam(m){ txt($('#cam .venue'),m.sub); }
+
+/* ---- entry point ---- */
+window.show=function(m){
+  try{
+    m=(m&&typeof m==='object')?m:{};
+    var k=str(m.k);
+    var card=null;
+    if(k==='result') card=cards.result;
+    else if(k==='next'||k==='intro'||k==='title') card=cards.next;
+    else if(k==='idle') card=cards.idle;
+    else if(k==='break') card=cards['break'];
+    else if(k==='cam') card=cards.cam;
+    else if(k==='play') card=null;
+    else return; // score, theme, hello and anything unknown: ignore
+
+    if(k!=='break') stopClock();
+    if(card===cards.result) showResult(m);
+    else if(card===cards.next) showNext(m);
+    else if(card===cards.idle) showIdle(m);
+    else if(card===cards['break']) showBreak(m);
+    else if(card===cards.cam) showCam(m);
+
+    // a different kind on the same card (next → intro) still counts as a new card: replay the entrance
+    if(card && card===cur && k!==curK && card.getAnimations){
+      card.getAnimations({subtree:true}).forEach(function(a){ a.cancel(); a.play(); });
+    }
+    curK=k;
+    switchTo(card);
+    if(card) fitNames(card);
+  }catch(err){
+    if(window.console) console.error('playful theme: show() failed',err);
+  }
+};
+
+(document.fonts?document.fonts.ready:Promise.resolve()).then(function(){
+  window.THEME_READY=true;
+  if(cur) fitNames(cur);
+});
+})();
+</script>
+</body>
+</html>

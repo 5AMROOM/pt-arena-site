@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>Theme · Poster</title>
+<!-- Poster: the on-air theme with hard navy / red / paper fields, 192 px names and Oxanium numbers.
+     Built from the approved mockup design/preview/theme-poster.html; follows themes/CONTRACT.md (window.show(m), see-through page). -->
+<!-- Hallmark · macrostructure: Marquee Hero (poster fields) · tone: austere / Swiss · anchor hue: navy + signal red
+     custom palette: navy, red, ink, paper · display: Prompt Bold + Oxanium · pre-emit critique: P5 H5 E4 S4 R5 V4 -->
+<style>
+@font-face{font-family:"PromptP";src:url("../font/Prompt-Regular.ttf");font-weight:400}
+@font-face{font-family:"PromptP";src:url("../font/Prompt-Medium.ttf");font-weight:500}
+@font-face{font-family:"PromptP";src:url("../font/Prompt-SemiBold.ttf");font-weight:600}
+@font-face{font-family:"PromptP";src:url("../font/Prompt-Bold.ttf");font-weight:700}
+@font-face{font-family:"OxaniumP";src:url("../font/Oxanium.ttf");font-weight:200 800}
+
+:root{
+  --navy:#0B1F5E;
+  --red:#E0262D;
+  --ink:#0A0D18;
+  --paper:#F4F1E8;
+  --mute:#A9B2D0;
+  --f-th:"PromptP","Prompt",system-ui,sans-serif;
+  --f-num:"OxaniumP","Oxanium","Bahnschrift",sans-serif;
+  --t-s:32px;
+  --t-m:96px;
+  --t-l:192px;
+  --m:60px;
+  --ease:cubic-bezier(.2,.7,.1,1);
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
+html,body{width:1920px;height:1080px;margin:0;overflow:hidden;background:transparent}
+body{font-family:var(--f-th);color:var(--paper);position:relative}
+.card{position:absolute;inset:0;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .4s linear,visibility 0s .4s}
+.card.on{opacity:1;visibility:visible;transition:opacity .4s linear,visibility 0s 0s}
+.abs{position:absolute}
+img{display:block}
+
+.s{font-size:var(--t-s);line-height:1.25;font-weight:600;letter-spacing:.01em}
+.m{font-size:var(--t-m);line-height:1.2;font-weight:700}
+.l{font-size:var(--t-l);line-height:1.2;font-weight:700}
+.num{font-family:var(--f-num);font-weight:800;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.num.s{font-weight:600;letter-spacing:.04em}
+.mute{color:var(--mute)}
+.slot{display:flex;align-items:center;white-space:nowrap}
+.ln1{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:6px 0;margin:-6px 0}
+
+/* header strip */
+.hd{position:absolute;left:0;top:0;width:1920px;height:120px;display:flex;background:var(--navy)}
+.hd>div{display:flex;align-items:center;height:120px;padding:0 var(--m);white-space:nowrap}
+.hd .mk{width:120px;padding:0;justify-content:center;background:var(--ink)}
+.hd .mk img{width:72px;height:auto}
+.hd .pg{flex:1;padding-left:48px;padding-right:24px;overflow:hidden;text-overflow:ellipsis;display:block;line-height:120px}
+.hd .c{width:240px;justify-content:flex-start;padding:0 0 0 36px;border-left:6px solid var(--ink)}
+.hd .c.hot{background:var(--paper);color:var(--ink)}
+
+/* ---------- RESULT (pair) and SOLO ---------- */
+#result,#solo{background:var(--navy)}
+.win{left:0;top:120px;width:1200px;height:720px;background:var(--red)}
+.tag{left:var(--m);top:180px;background:var(--paper);color:var(--ink);padding:6px 26px 8px;white-space:nowrap}
+.wn{left:var(--m);top:250px;height:230px}
+.wsch{left:var(--m);top:482px;max-width:1080px}
+.sc{left:var(--m);top:566px}
+.sc .num{margin-top:6px;font-size:var(--t-l);white-space:nowrap}
+.sc .num small{font-size:var(--t-m);font-weight:700;opacity:.8}
+.tm{top:566px}
+.tm .num{margin-top:6px;font-size:var(--t-m);font-weight:700;white-space:nowrap}
+.lb{display:block;font-family:var(--f-th);font-weight:600;white-space:nowrap}
+.frm{left:1200px;top:120px;width:720px;height:405px;background:var(--ink);overflow:hidden}
+.frm img{width:720px;height:405px;object-fit:cover}
+.nxt{left:1200px;top:525px;width:720px;height:315px;background:var(--paper);color:var(--ink)}
+.nxt .lab{left:60px;top:30px;white-space:nowrap}
+.nxt .lab i{font-style:normal;color:var(--red)}
+.nxt .n1{left:60px;top:80px;height:115px}
+.nxt .n2{left:60px;top:182px;height:115px}
+.nxt .vs{font-family:var(--f-num);font-weight:800;font-size:var(--t-s);color:var(--red);margin-right:16px;vertical-align:.5em}
+.bar{left:0;top:840px;width:1920px;height:240px;background:var(--ink)}
+.bar .lsc{left:var(--m);top:34px}
+.bar .lsc .num{font-size:var(--t-m);margin-top:6px}
+.bar .ln{left:340px;top:42px;height:115px}
+.bar .lsch{left:340px;top:168px}
+.bar .ltm{left:1260px;top:34px}
+.bar .ltm .num{font-size:var(--t-m);margin-top:6px;font-weight:700}
+#solo .rk{left:var(--m);top:34px;width:400px}
+#solo .rk .num{font-size:var(--t-m);margin-top:6px}
+#solo .ms{top:34px;display:flex}
+#solo .ms>div{flex:1;min-width:0;padding-right:24px}
+#solo .ms .mv{font-size:var(--t-m);margin-top:6px;white-space:nowrap}
+#solo .ms .mv small{font-size:var(--t-s);font-family:var(--f-num);font-weight:600;color:var(--mute);margin-left:6px}
+
+/* ---------- NEXT ---------- */
+#next .top{left:0;top:120px;width:1920px;height:480px;background:var(--paper);color:var(--ink)}
+#next .bot{left:0;top:600px;width:1920px;height:480px;background:var(--red);color:var(--paper)}
+#next .lab{left:60px;top:160px;color:var(--ink);white-space:nowrap}
+#next .lab i{font-style:normal;color:var(--red)}
+#next .nm1{left:60px;top:230px;height:230px;color:var(--ink)}
+#next .sc1{left:60px;top:476px;color:var(--ink);max-width:1560px}
+#next .nm2{right:var(--m);top:740px;height:230px;color:var(--paper)}
+#next .sc2{right:var(--m);top:986px;color:var(--paper);max-width:1800px;text-align:right}
+#next .bt{right:var(--m);top:740px;height:230px;color:var(--paper)}
+#next .vsb{left:1680px;top:480px;width:240px;height:240px;background:var(--ink);display:flex;align-items:center;justify-content:center}
+#next .vsb .num{font-size:var(--t-m);color:var(--paper)}
+
+/* ---------- IDLE ---------- */
+#idle .lft{left:0;top:0;width:960px;height:900px;background:var(--navy)}
+#idle .rgt{left:960px;top:0;width:960px;height:900px;background:var(--red)}
+#idle .en{left:1020px;top:60px;white-space:nowrap;color:var(--paper)}
+#idle .wait{left:1020px;bottom:240px;width:840px;line-height:1.15;overflow-wrap:anywhere}
+#idle .base{left:0;top:900px;width:1920px;height:180px;background:var(--paper);color:var(--ink)}
+#idle .base .m{left:var(--m);top:32px;height:115px}
+
+/* ---------- BREAK ---------- */
+#break .bgn{left:0;top:0;width:1920px;height:1080px;background:var(--navy);
+  clip-path:polygon(evenodd,0 0,1920px 0,1920px 1080px,0 1080px,0 0,800px 200px,1840px 200px,1840px 785px,800px 785px,800px 200px)}
+#break .mk{left:0;top:0;width:180px;height:180px;background:var(--ink);display:flex;align-items:center;justify-content:center}
+#break .mk img{width:104px;height:auto}
+#break .ven{left:240px;top:32px;height:115px}
+#break .cd{left:0;top:180px;width:780px;height:625px;background:var(--red)}
+#break .cd .en{left:var(--m);top:40px;white-space:nowrap;font-family:var(--f-num);font-weight:600;letter-spacing:.04em}
+#break .cd .m{left:var(--m);top:84px;height:115px}
+#break .cd .num{left:var(--m);top:330px;height:230px;display:flex;align-items:center;font-size:var(--t-l);white-space:nowrap}
+#break .mat{left:780px;top:180px;width:1080px;height:625px;background:var(--paper);
+  clip-path:polygon(evenodd,0 0,1080px 0,1080px 625px,0 625px,0 0,20px 20px,1060px 20px,1060px 605px,20px 605px,20px 20px)}
+#break .spn{right:var(--m);top:822px;white-space:nowrap}
+#break .ttl{left:var(--m);top:834px;height:230px}
+#break .mus{right:var(--m);top:1000px;max-width:620px;text-align:right}
+
+/* ---------- CAM ---------- */
+#cam .bug{left:var(--m);top:var(--m);height:96px;width:700px}
+#cam .bug .mk{left:0;top:0;width:96px;height:96px;background:var(--navy);display:flex;align-items:center;justify-content:center}
+#cam .bug .mk img{width:56px;height:auto}
+#cam .bug .lv{left:96px;top:0;width:128px;height:48px;background:var(--red);color:var(--paper);display:flex;align-items:center;padding-left:20px;font-size:var(--t-s);line-height:1}
+#cam .bug .vn{left:96px;top:48px;max-width:604px;height:48px;background:var(--paper);color:var(--ink);display:flex;align-items:center;padding:0 20px;font-size:var(--t-s);line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ---------- ENTRANCE (<= 1.2 s, no bounce); only while the card has .anim ---------- */
+@keyframes wipeR{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes wipeD{from{clip-path:inset(0 0 100% 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes rise{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:none}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.anim .w{animation:wipeR .55s var(--ease) both}
+.anim .wd{animation:wipeD .55s var(--ease) both}
+.anim .r{animation:rise .5s var(--ease) both}
+.anim .f{animation:fade .5s linear both}
+.anim .d1{animation-delay:0s}.anim .d2{animation-delay:.12s}.anim .d3{animation-delay:.24s}.anim .d4{animation-delay:.36s}.anim .d5{animation-delay:.5s}.anim .d6{animation-delay:.62s}
+@media (prefers-reduced-motion:reduce){.anim .w,.anim .wd,.anim .r{animation:fade .15s linear both}}
+</style>
+</head>
+<body>
+
+<!-- RESULT (pair) -->
+<section id="result" class="card">
+  <div class="hd w d1">
+    <div class="mk"><img src="../logo-mark.png" alt=""></div>
+    <div class="pg s" data-f="prog"></div>
+    <div class="c s num" data-f="field"></div>
+    <div class="c s num" data-f="round"></div>
+    <div class="c s num hot" data-f="match"></div>
+  </div>
+  <div class="abs win w d2"></div>
+  <div class="abs tag s r d4" data-f="tag">ชนะ · WINNER</div>
+  <div class="abs wn l slot r d4" data-f="wname"></div>
+  <div class="abs wsch s ln1 r d5" data-f="wsch"></div>
+  <div class="abs sc r d5" data-f="wsc"><b class="s lb">คะแนน · SCORE</b><div class="num"></div></div>
+  <div class="abs tm r d5" data-f="wtm" style="left:540px"><b class="s lb">เวลา · TIME</b><div class="num"></div></div>
+  <div class="abs frm wd d3"><img data-f="frame" alt=""></div>
+  <div class="abs nxt w d4" data-f="nxt">
+    <div class="abs lab s r d5"><i class="num s">NEXT</i> · ถัดไป</div>
+    <div class="abs m slot n1 r d6" data-f="n1"></div>
+    <div class="abs m slot n2 r d6" data-f="n2"><span class="vs">VS</span><span class="t"></span></div>
+  </div>
+  <div class="abs bar wd d5" data-f="bar">
+    <div class="abs lsc r d6" data-f="lsc"><div class="s mute lb">คะแนน · SCORE</div><div class="num"></div></div>
+    <div class="abs ln m slot r d6" data-f="lname"></div>
+    <div class="abs lsch s mute ln1 r d6" data-f="lsch"></div>
+    <div class="abs ltm r d6" data-f="ltm"><div class="s mute lb">เวลา · TIME</div><div class="num"></div></div>
+  </div>
+</section>
+
+<!-- SOLO RESULT (one team) -->
+<section id="solo" class="card">
+  <div class="hd w d1">
+    <div class="mk"><img src="../logo-mark.png" alt=""></div>
+    <div class="pg s" data-f="prog"></div>
+    <div class="c s num" data-f="field"></div>
+    <div class="c s num" data-f="round"></div>
+    <div class="c s num hot" data-f="match"></div>
+  </div>
+  <div class="abs win w d2"></div>
+  <div class="abs tag s r d4">ผลการแข่งขัน · RESULT</div>
+  <div class="abs wn l slot r d4" data-f="wname"></div>
+  <div class="abs wsch s ln1 r d5" data-f="wsch"></div>
+  <div class="abs sc r d5" data-f="wsc"><b class="s lb">คะแนน · SCORE</b><div class="num"></div></div>
+  <div class="abs tm r d5" data-f="wtm" style="left:660px"><b class="s lb">เวลา · TIME</b><div class="num"></div></div>
+  <div class="abs tm r d5" data-f="retry" style="left:1090px"><b class="s lb">RETRY</b><div class="num"></div></div>
+  <div class="abs frm wd d3"><img data-f="frame" alt=""></div>
+  <div class="abs nxt w d4" data-f="nxt">
+    <div class="abs lab s r d5"><i class="num s">NEXT</i> · ถัดไป</div>
+    <div class="abs m slot n1 r d6" data-f="n1"></div>
+  </div>
+  <div class="abs bar wd d5" data-f="bar">
+    <div class="abs rk r d6" data-f="rank"><div class="s mute lb">อันดับตอนนี้ · RANK</div><div class="num"></div></div>
+    <div class="abs ms r d6" data-f="ms"></div>
+  </div>
+</section>
+
+<!-- NEXT / INTRO / TITLE -->
+<section id="next" class="card">
+  <div class="hd w d1">
+    <div class="mk"><img src="../logo-mark.png" alt=""></div>
+    <div class="pg s" data-f="prog"></div>
+    <div class="c s num" data-f="field"></div>
+    <div class="c s num" data-f="round"></div>
+    <div class="c s num hot" data-f="match"></div>
+  </div>
+  <div class="abs top wd d2"></div>
+  <div class="abs bot wd d3"></div>
+  <div class="abs lab s r d5" data-f="lab"><i class="num s"></i><span class="th"></span></div>
+  <div class="abs nm1 l slot r d5" data-f="nm1"></div>
+  <div class="abs sc1 s ln1 r d6" data-f="sc1"></div>
+  <div class="abs nm2 l slot r d5" data-f="nm2"></div>
+  <div class="abs sc2 s ln1 r d6" data-f="sc2"></div>
+  <div class="abs bt m slot r d6" data-f="bt"></div>
+  <div class="abs vsb w d4" data-f="vsb"><div class="num">VS</div></div>
+</section>
+
+<!-- IDLE -->
+<section id="idle" class="card">
+  <div class="abs lft wd d1"></div>
+  <img class="abs" style="left:60px;top:107px;width:840px" src="../event-logo.webp" alt="">
+  <div class="abs rgt wd d2"></div>
+  <div class="abs en s num r d3">STAND BY</div>
+  <div class="abs wait l r d4" data-f="title"></div>
+  <div class="abs base w d3"><div class="abs m slot r d5" data-f="sub"></div></div>
+</section>
+
+<!-- BREAK: the rectangle x=800 y=200 w=1040 h=585 is the ad window and stays transparent -->
+<section id="break" class="card">
+  <div class="abs bgn"></div>
+  <div class="abs mk w d1"><img src="../logo-mark.png" alt=""></div>
+  <div class="abs ven m slot r d3" data-f="ven"></div>
+  <div class="abs cd w d2">
+    <div class="abs en s r d4" data-f="en"></div>
+    <div class="abs m slot r d4" data-f="l2"></div>
+    <div class="abs num r d5" data-f="clock">00:00</div>
+  </div>
+  <div class="abs mat f d3"></div>
+  <div class="abs spn s mute r d5"><span class="num s">SPONSOR</span> · ผู้สนับสนุน</div>
+  <div class="abs ttl l slot r d5" data-f="l1"></div>
+  <div class="abs mus s mute ln1 r d6" data-f="mus"></div>
+</section>
+
+<!-- CAM: only the corner bug -->
+<section id="cam" class="card">
+  <div class="abs bug w d1">
+    <div class="abs mk"><img src="../logo-mark.png" alt=""></div>
+    <div class="abs lv num s">LIVE</div>
+    <div class="abs vn s" data-f="vn"></div>
+  </div>
+</section>
+
+<script>
+(function(){
+var $=function(s){return document.getElementById(s)};
+var cards={result:$('result'),solo:$('solo'),next:$('next'),idle:$('idle'),'break':$('break'),cam:$('cam')};
+var cur=null,curKey=null,last=null,endsAt=0;
+
+function q(card,f){return card.querySelector('[data-f="'+f+'"]')}
+function has(v){return v!==undefined&&v!==null&&String(v).trim()!==''}
+function setTxt(el,v){if(!el)return false;if(has(v)){el.textContent=String(v);el.hidden=false;return true}el.textContent='';el.hidden=true;return false}
+// shrink to the first size whose text fits max px wide; last resort is an ellipsis
+function fit(el,max,sizes){
+  if(!el||el.hidden)return;
+  el.style.maxWidth='';el.style.overflow='';el.style.textOverflow='';
+  for(var i=0;i<sizes.length;i++){
+    el.style.fontSize=sizes[i]+'px';
+    if(el.offsetWidth<=max)return;
+  }
+  el.style.maxWidth=max+'px';el.style.overflow='hidden';el.style.textOverflow='ellipsis';
+}
+function head(card,m){
+  setTxt(q(card,'prog'),m.prog);
+  setTxt(q(card,'field'),has(m.field)&&String(m.field).trim()!=='-'?'FIELD '+m.field:'');
+  setTxt(q(card,'round'),has(m.round)&&Number(m.round)!==0?'ROUND '+m.round:'');
+  setTxt(q(card,'match'),has(m.matchNo)?'MATCH '+m.matchNo:'');
+}
+function numBox(box,v){
+  if(!box)return;
+  if(!has(v)){box.hidden=true;return}
+  box.hidden=false;box.querySelector('.num').textContent=String(v);
+}
+function setFrame(card,fr){
+  var img=q(card,'frame');
+  if(typeof fr==='string'&&fr.indexOf('data:image')===0){if(img.getAttribute('src')!==fr)img.src=fr;img.hidden=false}
+  else{img.removeAttribute('src');img.hidden=true}
+}
+function setNext(card,txt){
+  var box=q(card,'nxt'),n1=q(card,'n1'),n2=q(card,'n2');
+  if(!has(txt)){box.hidden=true;return}
+  box.hidden=false;
+  var parts=String(txt).split(/\s+vs\.?\s+/i);
+  setTxt(n1,parts[0]);
+  if(n2){if(parts.length>1&&has(parts[1])){n2.hidden=false;n2.querySelector('.t').textContent=parts.slice(1).join(' vs ')}else n2.hidden=true}
+  var sz=[96,72,56,44,36];
+  fit(n1,600,sz);
+  if(n2)fit(n2,600,sz);
+}
+function school(el,sch,id,max){
+  el.textContent='';
+  if(has(sch))el.appendChild(document.createTextNode(String(sch)));
+  if(has(id)){
+    if(has(sch))el.appendChild(document.createTextNode(' · '));
+    var sp=document.createElement('span');sp.className='num s';sp.textContent=String(id);el.appendChild(sp);
+  }
+  el.hidden=!(has(sch)||has(id));
+  if(max)el.style.maxWidth=max+'px';
+}
+var BIG=[192,128,96,72,56,44];
+
+function fillResult(m){
+  var c=cards.result,t=(m.teams||[]).filter(Boolean),w=null,l=null,i;
+  head(c,m);
+  for(i=0;i<t.length;i++){if(t[i].winner&&!w)w=t[i];else if(!l)l=t[i]}
+  if(!w){w=t[0]||{};l=t[1]||null}
+  q(c,'tag').hidden=!w.winner;
+  setTxt(q(c,'wname'),has(w.name)?w.name:'-');fit(q(c,'wname'),1080,BIG);
+  school(q(c,'wsch'),w.school,'',1080);
+  numBox(q(c,'wsc'),w.score);
+  numBox(q(c,'wtm'),w.time);
+  setFrame(c,m.frame);
+  setNext(c,m.next);
+  var bar=q(c,'bar');
+  if(!l){bar.hidden=true;return}
+  bar.hidden=false;
+  var mw=has(l.time)?880:1520;
+  setTxt(q(c,'lname'),has(l.name)?l.name:'-');fit(q(c,'lname'),mw,[96,72,56,44,36]);
+  school(q(c,'lsch'),l.school,'',mw);
+  numBox(q(c,'lsc'),l.score);
+  numBox(q(c,'ltm'),l.time);
+}
+function fillSolo(m){
+  var c=cards.solo;
+  head(c,m);
+  setTxt(q(c,'wname'),has(m.team)?m.team:'-');fit(q(c,'wname'),1080,BIG);
+  school(q(c,'wsch'),m.school,m.teamId,1080);
+  var sc=q(c,'wsc'),ne=sc.querySelector('.num');
+  ne.textContent=has(m.total)?String(m.total):'–';
+  if(Number(m.max)>0){var sm=document.createElement('small');sm.textContent='/'+m.max;ne.appendChild(sm)}
+  numBox(q(c,'wtm'),m.time);
+  numBox(q(c,'retry'),m.retry);
+  setFrame(c,m.frame);
+  setNext(c,m.next);
+  var rank=Number(m.rank)>0;
+  q(c,'rank').hidden=!rank;
+  if(rank)q(c,'rank').querySelector('.num').textContent=String(m.rank);
+  var ms=q(c,'ms');ms.textContent='';
+  var list=Array.isArray(m.missions)?m.missions.filter(Boolean).slice(0,4):[];
+  list.forEach(function(x){
+    var d=document.createElement('div');
+    var a=document.createElement('div');a.className='s mute ln1';a.textContent=has(x.label)?String(x.label):'';
+    var b=document.createElement('div');b.className='num mv';b.textContent=has(x.n)?String(x.n):'–';
+    if(Number(x.max)>0){var s=document.createElement('small');s.textContent='/'+x.max;b.appendChild(s)}
+    d.appendChild(a);d.appendChild(b);ms.appendChild(d);
+  });
+  ms.hidden=!list.length;
+  var x0=rank?480:60;
+  ms.style.left=x0+'px';ms.style.width=(1920-x0-36)+'px';
+  q(c,'bar').hidden=!(rank||list.length);
+}
+function fillNext(m){
+  var c=cards.next,k=m.k,t=Array.isArray(m.teams)?m.teams.filter(Boolean):[];
+  head(c,m);
+  if(k==='title')t=[{name:m.title,school:m.sub}];
+  else if(!t.length&&(has(m.team)||has(m.school)))t=[{name:m.team,school:m.school}];
+  var pair=k!=='title'&&t.length>1;
+  var lab=q(c,'lab'),en=lab.querySelector('i'),th=lab.querySelector('.th');
+  lab.hidden=false;
+  if(k==='title'){en.textContent='';th.textContent=has(m.eyebrow)?String(m.eyebrow):'';lab.hidden=!has(m.eyebrow)}
+  else if(k==='intro'){en.textContent='SETUP';th.textContent=' · เตรียมความพร้อม'}
+  else{en.textContent='NEXT MATCH';th.textContent=pair?' · คู่ถัดไป':' · ทีมถัดไป'}
+  var a=t[0]||{},b=t[1]||{};
+  setTxt(q(c,'nm1'),has(a.name)?a.name:(k==='title'?'':'-'));fit(q(c,'nm1'),1800,BIG);
+  school(q(c,'sc1'),a.school,'',pair?1560:1800);
+  var bt=q(c,'bt');
+  if(pair){
+    setTxt(q(c,'nm2'),has(b.name)?b.name:'-');fit(q(c,'nm2'),1800,BIG);
+    school(q(c,'sc2'),b.school,'',1800);
+    bt.hidden=true;q(c,'vsb').hidden=false;
+  }else{
+    q(c,'nm2').hidden=true;q(c,'sc2').hidden=true;q(c,'vsb').hidden=true;
+    setTxt(bt,k==='title'?m.tag:m.sub);fit(bt,1800,[96,72,56,44]);
+  }
+}
+function fillIdle(m){
+  var w=q(cards.idle,'title'),sz=[192,128,96,72],i;
+  w.textContent='';
+  if(has(m.title))w.appendChild(document.createTextNode(String(m.title)));
+  else{w.appendChild(document.createTextNode('โปรดรอ'));w.appendChild(document.createElement('br'));w.appendChild(document.createTextNode('สักครู่'))}
+  for(i=0;i<sz.length;i++){
+    w.style.fontSize=sz[i]+'px';
+    if(w.offsetHeight<=660)break;
+  }
+  var s=q(cards.idle,'sub');setTxt(s,m.sub);fit(s,1800,[96,72,56,44]);
+}
+var MODES={
+  live:['ON AIR IN','การถ่ายทอดสด','จะเริ่มในอีก'],
+  match:['STARTING IN','การแข่งขัน','จะเริ่มในอีก'],
+  'break':['BACK IN','พักการแข่งขัน','จะกลับมาในอีก']
+};
+function fillBreak(m){
+  var c=cards['break'],md=MODES[m.mode]||MODES['break'];
+  setTxt(q(c,'en'),md[0]);
+  setTxt(q(c,'l1'),md[1]);fit(q(c,'l1'),1800,[192,160,128,96]);
+  setTxt(q(c,'l2'),md[2]);fit(q(c,'l2'),660,[96,80,64,48]);
+  setTxt(q(c,'ven'),m.sub);fit(q(c,'ven'),1560,[96,72,56,44]);
+  setTxt(q(c,'mus'),has(m.credit)?'♪ '+m.credit:'');
+  endsAt=Number(m.endsAt)||0;
+  q(c,'clock').textContent='';
+  tick();
+}
+function fillCam(m){setTxt(q(cards.cam,'vn'),m.sub)}
+
+function fmt(ms){
+  var s=Math.max(0,Math.ceil(ms/1000)),h=Math.floor(s/3600),mm=Math.floor(s%3600/60),ss=s%60;
+  var p=function(n){return (n<10?'0':'')+n};
+  return h>0?h+':'+p(mm)+':'+p(ss):p(mm)+':'+p(ss);
+}
+function tick(){
+  if(cur!=='break')return;
+  var el=q(cards['break'],'clock'),t=endsAt?fmt(endsAt-Date.now()):'--:--';
+  if(el.textContent!==t){el.textContent=t;fit(el,660,[192,160,128,104])}
+}
+setInterval(tick,250);
+
+function enter(name,key){
+  var prev=cur;
+  cur=name;curKey=key;
+  Object.keys(cards).forEach(function(n){
+    var c=cards[n];
+    if(n===name){c.classList.remove('anim');void c.offsetWidth;c.classList.add('anim');c.classList.add('on')}
+    else c.classList.remove('on');
+  });
+  if(prev&&prev!==name){var pc=cards[prev];setTimeout(function(){if(cur!==prev)pc.classList.remove('anim')},500)}
+}
+function cardOf(m){
+  switch(m.k){
+    case 'result':return m.h2h?'result':'solo';
+    case 'next':case 'intro':case 'title':return 'next';
+    case 'idle':case 'break':case 'cam':return m.k;
+    case 'play':return '';
+  }
+  return null;
+}
+window.show=function(m){
+  try{
+    if(!m||typeof m!=='object')return;
+    var name=cardOf(m);
+    if(name===null)return;
+    last=m;
+    if(name===''){
+      cur=null;curKey=null;
+      Object.keys(cards).forEach(function(n){cards[n].classList.remove('on')});
+      return;
+    }
+    if(name==='result')fillResult(m);
+    else if(name==='solo')fillSolo(m);
+    else if(name==='next')fillNext(m);
+    else if(name==='idle')fillIdle(m);
+    else if(name==='break')fillBreak(m);
+    else fillCam(m);
+    // same k on screen: text updated in place; a different k cross-fades and plays the entrance
+    var key=name+'|'+m.k;
+    if(key!==curKey)enter(name,key);
+  }catch(e){if(window.console)console.error(e)}
+};
+window.THEME='poster';
+(document.fonts&&document.fonts.ready?document.fonts.ready:Promise.resolve()).then(function(){
+  window.THEME_READY=true;
+  if(last&&cur){var m=last;window.show(m)}
+});
+})();
+</script>
+</body>
+</html>

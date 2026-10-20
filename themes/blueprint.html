@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>Theme: Blueprint</title>
+<!-- Blueprint on-air theme: graphite engineering sheet, one cyan signal, red only for LIVE.
+     Driven by window.show(m) and follows themes/CONTRACT.md (paths, messages, words, see-through rules). -->
+<!-- Hallmark · pre-emit critique: P4 H5 E4 S4 R5 V4 -->
+<style>
+@font-face{font-family:"Prompt";font-weight:400;src:url("../font/Prompt-Regular.ttf")}
+@font-face{font-family:"Prompt";font-weight:500;src:url("../font/Prompt-Medium.ttf")}
+@font-face{font-family:"Prompt";font-weight:600;src:url("../font/Prompt-SemiBold.ttf")}
+@font-face{font-family:"Oxanium";font-weight:200 800;src:url("../font/Oxanium.ttf")}
+
+:root{
+  /* palette: graphite field, one cyan signal, one red for LIVE only */
+  --field:#0d1217;
+  --field-2:#121921;
+  --veil:rgba(13,18,23,.9);
+  --veil-soft:rgba(13,18,23,.55);
+  --grid-minor:rgba(120,190,215,.045);
+  --grid-major:rgba(120,190,215,.09);
+  --rule:rgba(196,222,232,.22);
+  --rule-strong:rgba(196,222,232,.5);
+  --ink:#e6eef2;
+  --mute:#8494a0;
+  --dim:#4f5d68;
+  --cyan:#56d4ec;
+  --cyan-wash:rgba(86,212,236,.08);
+  --live:#e5484d;
+  /* type: label / text / name, plus one numeral size */
+  --font-th:"Prompt","Leelawadee UI",sans-serif;
+  --font-num:"Oxanium","Bahnschrift",sans-serif;
+  --t-label:20px;
+  --t-text:30px;
+  --t-name:88px;
+  --t-num:168px;
+  /* grid: 80px margins on a 40px engineering grid */
+  --m:80px;
+  --ease:cubic-bezier(.2,.7,.2,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
+html,body{width:1920px;height:1080px;margin:0;overflow:hidden;background:transparent}
+body{position:relative;font-family:var(--font-th);color:var(--ink);-webkit-font-smoothing:antialiased}
+.card{position:absolute;left:0;top:0;width:1920px;height:1080px;display:none}
+.card.on{display:block;animation:fade .4s var(--ease) both}
+.card.leaving{animation:fadeout .4s var(--ease) both}
+.fit{overflow-wrap:anywhere}
+
+/* ---- the system ---- */
+.paper{position:absolute;inset:0}
+.paper .bg{position:absolute;inset:0;background:var(--field)}
+.grid{position:absolute;inset:0;
+  background-image:
+    linear-gradient(var(--grid-major) 1px,transparent 1px),
+    linear-gradient(90deg,var(--grid-major) 1px,transparent 1px),
+    linear-gradient(var(--grid-minor) 1px,transparent 1px),
+    linear-gradient(90deg,var(--grid-minor) 1px,transparent 1px);
+  background-size:160px 160px,160px 160px,40px 40px,40px 40px;
+  background-position:0 0,0 0,0 0,0 0}
+.reg{position:absolute;width:24px;height:24px}
+.reg::before,.reg::after{content:"";position:absolute;background:var(--rule-strong)}
+.reg::before{left:11.5px;top:0;width:1px;height:24px}
+.reg::after{top:11.5px;left:0;height:1px;width:24px}
+.reg.tl{left:68px;top:68px}.reg.tr{right:68px;top:68px}.reg.bl{left:68px;bottom:68px}.reg.br{right:68px;bottom:68px}
+
+.lab{font-family:var(--font-num);font-size:var(--t-label);font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:var(--mute);line-height:1}
+.cy{color:var(--cyan)}
+.th{font-family:var(--font-th);letter-spacing:0;font-weight:500;text-transform:none;margin-right:14px;font-size:1.15em}
+.num{font-family:var(--font-num);font-variant-numeric:tabular-nums}
+.hr{position:absolute;height:1px;background:var(--rule)}
+.vr{position:absolute;width:1px;background:var(--rule)}
+
+/* header rail, shared by result / next / break */
+.rail{position:absolute;left:var(--m);right:var(--m);top:84px;height:56px;display:flex;align-items:center;gap:24px}
+.rail img{height:44px;width:auto;opacity:.95}
+.rail .prog{font-size:var(--t-text);font-weight:500;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:8px 0;min-width:0}
+.rail .meta{margin-left:auto;display:flex;gap:40px;flex:none}
+.rail .meta b{font-weight:600;color:var(--ink);margin-left:12px;letter-spacing:.08em}
+.rail-rule{left:var(--m);right:var(--m);top:160px}
+
+/* corner brackets around any window */
+.brk{position:absolute;pointer-events:none}
+.brk i{position:absolute;width:28px;height:28px;border-color:var(--cyan);border-style:solid;border-width:0}
+.brk i:nth-child(1){left:-12px;top:-12px;border-left-width:2px;border-top-width:2px}
+.brk i:nth-child(2){right:-12px;top:-12px;border-right-width:2px;border-top-width:2px}
+.brk i:nth-child(3){left:-12px;bottom:-12px;border-left-width:2px;border-bottom-width:2px}
+.brk i:nth-child(4){right:-12px;bottom:-12px;border-right-width:2px;border-bottom-width:2px}
+.brk.tight i:nth-child(1){left:0;top:0}.brk.tight i:nth-child(2){right:0;top:0}.brk.tight i:nth-child(3){left:0;bottom:0}.brk.tight i:nth-child(4){right:0;bottom:0}
+
+/* ---- motion: rules draw, content settles ---- */
+@keyframes draw{from{transform:scaleX(0)}}
+@keyframes drawY{from{transform:scaleY(0)}}
+@keyframes rise{from{opacity:0;transform:translateY(12px)}}
+@keyframes fade{from{opacity:0}}
+@keyframes fadeout{to{opacity:0}}
+@keyframes wipe{from{clip-path:inset(0 100% 0 0)}}
+.a-draw{transform-origin:left center;animation:draw .5s var(--ease) both}
+.a-drawY{transform-origin:center top;animation:drawY .5s var(--ease) both}
+.a-rise{animation:rise .45s var(--ease) both}
+.a-fade{animation:fade .5s var(--ease) both}
+.a-wipe{animation:wipe .6s var(--ease) both}
+.d1{animation-delay:.1s}.d2{animation-delay:.2s}.d3{animation-delay:.3s}.d4{animation-delay:.4s}.d5{animation-delay:.5s}.d6{animation-delay:.6s}
+
+/* ================= RESULT ================= */
+#result .win-zone{position:absolute;left:var(--m);top:232px;width:880px;height:272px;background:var(--cyan-wash)}
+#result .row{position:absolute;left:var(--m);width:880px;height:272px;padding:36px 40px 0 40px}
+#result .row .tag{display:flex;gap:20px;align-items:center;min-height:34px}
+#result .row .name{font-size:var(--t-name);font-weight:600;line-height:1.05;margin-top:16px}
+#result .row .school{font-size:var(--t-text);color:var(--mute);margin-top:4px;line-height:1.2}
+#result .row .score{position:absolute;right:40px;top:20px;font-size:var(--t-num);font-weight:600;line-height:1;letter-spacing:-.02em;white-space:nowrap}
+#result .row .score .of{font-size:56px;color:var(--dim);letter-spacing:0;margin-left:6px}
+#result .row .time{position:absolute;right:44px;top:200px;font-size:var(--t-text);color:var(--mute);font-weight:500;white-space:nowrap}
+#result .row .time .lab{margin-right:14px}
+#result .w{top:232px}
+#result .w .score{color:var(--cyan)}
+#result .l{top:536px}
+#result .l .name{color:var(--mute)}
+#result .l .score{color:var(--dim)}
+#result .l .school{color:var(--dim)}
+.badge{font-family:var(--font-num);font-size:var(--t-label);font-weight:600;letter-spacing:.18em;padding:7px 12px 6px;line-height:1;border:1px solid currentColor}
+.badge.win{color:var(--field);background:var(--cyan);border-color:var(--cyan)}
+#result .shot{position:absolute;left:1040px;top:232px;width:800px;height:450px;background:var(--field-2);overflow:hidden}
+#result .shot img{width:100%;height:100%;object-fit:contain;display:block}
+#result .shot-cap{position:absolute;left:1040px;top:708px;width:800px;display:flex;justify-content:flex-end}
+#result .next{position:absolute;left:var(--m);right:var(--m);top:880px;display:flex;align-items:baseline;gap:40px}
+#result .next .pair{font-size:var(--t-text);font-weight:500;min-width:0;overflow-wrap:anywhere}
+#result .next .pair .vs{font-family:var(--font-num);color:var(--mute);font-size:var(--t-label);letter-spacing:.18em;margin:0 18px;font-weight:600}
+/* single-team stats, same rules as the break info list */
+#result .stats{position:absolute;left:var(--m);top:536px;width:880px}
+#result .stats .srow{display:flex;border-top:1px solid var(--rule)}
+#result .stats .srow+.srow{margin-top:12px}
+#result .stats .cell{flex:1 1 0;min-width:0;padding:20px 0 0 40px}
+#result .stats .cell+.cell{border-left:1px solid var(--rule)}
+#result .stats .cell .lab{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-bottom:4px}
+#result .stats .cell .v{font-family:var(--font-num);font-variant-numeric:tabular-nums;font-size:64px;font-weight:600;line-height:1.1;margin-top:10px}
+#result .stats .cell .v .of{color:var(--dim);font-size:40px}
+
+/* ================= NEXT / INTRO / TITLE ================= */
+#next .team{position:absolute;top:0;height:1080px;width:760px}
+#next .team .head{position:absolute;left:0;right:0;bottom:489px}
+#next .team .lab{display:block;margin-bottom:28px}
+#next .team .name{font-size:var(--t-name);font-weight:600;line-height:1.1}
+#next .team .school{position:absolute;left:0;right:0;top:667px;font-size:var(--t-text);color:var(--mute);line-height:1.2}
+#next .L{left:var(--m)}
+#next .R{right:var(--m);text-align:right}
+#next.single .L{width:1760px}
+#next .dim-line{position:absolute;top:630px;height:1px;background:var(--rule-strong)}
+#next .tick{position:absolute;top:618px;width:1px;height:25px;background:var(--rule-strong)}
+#next .vs{position:absolute;left:880px;top:598px;width:160px;height:64px;display:flex;align-items:center;justify-content:center;font-family:var(--font-num);font-size:var(--t-text);font-weight:600;letter-spacing:.2em;color:var(--cyan)}
+#next .mtag{position:absolute;left:var(--m);top:232px;display:flex;align-items:baseline;gap:24px}
+
+/* ================= IDLE ================= */
+#idle .logo-win{position:absolute;left:240px;top:200px;width:735px;height:600px}
+#idle .logo-win img{width:100%;height:100%;object-fit:contain}
+#idle .txt{position:absolute;left:1120px;top:384px;width:720px}
+#idle .txt .head{font-size:var(--t-name);font-weight:600;line-height:1.15;margin-top:24px}
+#idle .txt .venue{font-size:var(--t-text);color:var(--mute);margin-top:20px}
+#idle .vr{left:1040px;top:240px;height:520px}
+
+/* ================= BREAK ================= */
+/* the paper is cut around the sponsor hole (x800 y200 w1040 h585): nothing is drawn inside it */
+#break .paper{clip-path:polygon(evenodd,0 0,1920px 0,1920px 1080px,0 1080px,0 0,800px 200px,800px 785px,1840px 785px,1840px 200px,800px 200px)}
+#break .hole-cap{position:absolute;left:800px;top:808px;width:1040px;display:flex;justify-content:space-between}
+#break .left{position:absolute;left:var(--m);top:232px;width:672px}
+#break .left .head{font-size:var(--t-name);font-weight:600;line-height:1.1;margin-top:20px}
+#break .left .sub{font-size:var(--t-text);color:var(--mute);margin-top:56px}
+#break .count{font-size:var(--t-num);font-weight:600;line-height:1;color:var(--cyan);margin-top:12px;margin-left:-8px;letter-spacing:-.01em;white-space:nowrap}
+#break .info{position:absolute;left:var(--m);top:700px;width:672px}
+#break .info .item{display:flex;justify-content:space-between;align-items:baseline;gap:24px;padding:18px 0;border-top:1px solid var(--rule)}
+#break .info .item .v{font-size:var(--t-text);font-weight:500;text-align:right;min-width:0;overflow-wrap:anywhere}
+#break .info .item .v.mus{color:var(--mute)}
+
+/* ================= CAM ================= */
+#cam .bug{position:absolute;left:var(--m);top:var(--m);display:flex;align-items:center;gap:22px;padding:14px 28px 14px 16px;background:var(--veil);border:1px solid var(--rule)}
+#cam .bug img{height:128px;width:auto}
+#cam .bug .vr{position:static;height:64px}
+#cam .bug .live{display:flex;align-items:center;gap:12px;font-family:var(--font-num);font-weight:700;letter-spacing:.2em;font-size:var(--t-label);color:var(--ink)}
+#cam .bug .live i{width:10px;height:10px;border-radius:50%;background:var(--live)}
+#cam .bug .venue{font-size:var(--t-label);color:var(--ink);margin-top:10px;font-weight:500;max-width:640px}
+@keyframes pulse{50%{opacity:.35}}
+#cam .bug .live i{animation:pulse 1.6s ease-in-out infinite}
+</style>
+</head>
+<body>
+
+<!-- RESULT -->
+<section class="card" id="result">
+  <div class="paper"><div class="bg"></div><div class="grid a-fade"></div></div>
+  <span class="reg tl"></span><span class="reg tr"></span><span class="reg bl"></span><span class="reg br"></span>
+  <div class="rail a-rise">
+    <img src="../logo-mark.png" alt="">
+    <span class="prog"></span>
+    <span class="meta lab"></span>
+  </div>
+  <div class="hr rail-rule a-draw"></div>
+
+  <div class="win-zone a-wipe d2"></div>
+  <div class="brk tight a-fade d4" style="left:80px;top:232px;width:880px;height:272px"><i></i><i></i><i></i><i></i></div>
+  <div class="row w a-rise d3">
+    <div class="tag"><span class="badge win"><span class="th">ชนะ</span>WINNER</span><span class="lab num id"></span></div>
+    <div class="name fit"></div>
+    <div class="school fit"></div>
+    <div class="score num"></div>
+    <div class="time num"><span class="lab"><span class="th">เวลา</span>TIME</span><span class="tv"></span></div>
+  </div>
+  <div class="hr a-draw d3 mid-rule" style="left:80px;width:880px;top:520px"></div>
+  <div class="row l a-rise d4">
+    <div class="tag"><span class="lab num id"></span></div>
+    <div class="name fit"></div>
+    <div class="school fit"></div>
+    <div class="score num"></div>
+    <div class="time num"><span class="lab"><span class="th">เวลา</span>TIME</span><span class="tv"></span></div>
+  </div>
+  <div class="stats a-rise d4">
+    <div class="srow s1">
+      <div class="cell rank"><span class="lab"><span class="th">อันดับตอนนี้</span>RANK</span><div class="v"></div></div>
+      <div class="cell retry"><span class="lab">RETRY</span><div class="v"></div></div>
+    </div>
+    <div class="srow s2"></div>
+  </div>
+
+  <div class="shot a-fade d2"><img alt=""></div>
+  <div class="brk a-fade d4" style="left:1040px;top:232px;width:800px;height:450px"><i></i><i></i><i></i><i></i></div>
+  <div class="shot-cap a-fade d5"><span class="lab num cap"></span></div>
+
+  <div class="hr a-draw d5 next-rule" style="left:80px;right:80px;top:848px"></div>
+  <div class="next a-rise d6">
+    <span class="lab cy"><span class="th">ถัดไป</span>NEXT</span>
+    <span class="pair"></span>
+  </div>
+</section>
+
+<!-- NEXT / INTRO / TITLE -->
+<section class="card" id="next">
+  <div class="paper"><div class="bg"></div><div class="grid a-fade"></div></div>
+  <span class="reg tl"></span><span class="reg tr"></span><span class="reg bl"></span><span class="reg br"></span>
+  <div class="rail a-rise">
+    <img src="../logo-mark.png" alt="">
+    <span class="prog"></span>
+    <span class="meta lab"></span>
+  </div>
+  <div class="hr rail-rule a-draw"></div>
+
+  <div class="mtag a-rise d1"><span class="lab cy"><span class="th"></span><span class="en"></span></span></div>
+
+  <div class="team L a-rise d3">
+    <div class="head"><span class="lab side">LEFT</span><div class="name fit"></div></div>
+    <div class="school fit"></div>
+  </div>
+  <div class="team R a-rise d4">
+    <div class="head"><span class="lab side">RIGHT</span><div class="name fit"></div></div>
+    <div class="school fit"></div>
+  </div>
+  <div class="dim-line a-draw d2 paironly" style="left:80px;width:808px"></div>
+  <div class="dim-line a-draw d2 paironly" style="left:1032px;width:808px"></div>
+  <div class="dim-line a-draw d2 soloonly" style="left:80px;width:1760px"></div>
+  <div class="tick a-fade d3" style="left:80px"></div>
+  <div class="tick a-fade d3" style="right:80px"></div>
+  <div class="vs a-fade d5 paironly">VS</div>
+</section>
+
+<!-- IDLE -->
+<section class="card" id="idle">
+  <div class="paper"><div class="bg"></div><div class="grid a-fade"></div></div>
+  <span class="reg tl"></span><span class="reg tr"></span><span class="reg bl"></span><span class="reg br"></span>
+  <div class="logo-win a-fade d1"><img src="../event-logo.webp" alt="THAILAND 5 REGIONS YOUTH ROBOTICS CHAMPIONSHIP"></div>
+  <div class="vr a-drawY d3"></div>
+  <div class="txt a-rise d4">
+    <span class="lab cy">STAND BY</span>
+    <div class="head fit"></div>
+    <div class="venue"></div>
+  </div>
+</section>
+
+<!-- BREAK -->
+<section class="card" id="break">
+  <div class="paper"><div class="bg"></div><div class="grid a-fade"></div></div>
+  <span class="reg tl"></span><span class="reg tr"></span><span class="reg bl"></span><span class="reg br"></span>
+  <div class="rail a-rise">
+    <img src="../logo-mark.png" alt="">
+    <span class="prog"></span>
+  </div>
+  <div class="hr rail-rule a-draw"></div>
+
+  <div class="left a-rise d2">
+    <span class="lab cy mode"></span>
+    <div class="head"></div>
+    <div class="sub"></div>
+    <div class="count num">--:--</div>
+  </div>
+  <div class="info a-rise d4">
+    <div class="item venue"><span class="lab">VENUE</span><span class="v"></span></div>
+    <div class="item music"><span class="lab">MUSIC</span><span class="v mus"></span></div>
+  </div>
+
+  <div class="brk a-fade d3" style="left:800px;top:200px;width:1040px;height:585px"><i></i><i></i><i></i><i></i></div>
+  <div class="hole-cap a-fade d5"><span class="lab"><span class="th">ผู้สนับสนุน</span>SPONSOR</span></div>
+</section>
+
+<!-- CAM -->
+<section class="card" id="cam">
+  <div class="bug a-wipe">
+    <img src="../event-logo.webp" alt="THAILAND 5 REGIONS YOUTH ROBOTICS CHAMPIONSHIP">
+    <span class="vr"></span>
+    <div>
+      <div class="live"><i></i>LIVE</div>
+      <div class="venue"></div>
+    </div>
+  </div>
+</section>
+
+<script>
+(function(){
+window.THEME='blueprint';
+const $=(s,r)=>(r||document).querySelector(s);
+const str=v=>(v==null?'':String(v)).trim();
+const put=(el,v)=>{const s=str(v);el.textContent=s;el.hidden=!s;return !!s};
+const pad2=v=>{const s=str(v);return /^\d$/.test(s)?'0'+s:s};
+const el=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e};
+
+/* shrink a block until it sits on one line; accept two lines once the size is at or under cap2 */
+function fit(e,max,min,cap2){
+  if(!e||e.hidden||!e.textContent)return;
+  for(let s=max;s>=min;s-=2){
+    e.style.fontSize=s+'px';
+    const lh=parseFloat(getComputedStyle(e).lineHeight)||s*1.1;
+    const n=Math.round(e.offsetHeight/lh);
+    if(n<=1||(n<=2&&s<=cap2))return;
+  }
+}
+
+function meta(rail,m){
+  const box=$('.meta',rail);if(!box)return;
+  box.textContent='';
+  const add=(label,v,num)=>{const s=str(v);if(!s||s==='-')return;const sp=el('span',null,label);const b=el('b',num?'num':null,s);sp.appendChild(b);box.appendChild(sp)};
+  add('MATCH',pad2(m.matchNo),true);add('FIELD',m.field,false);add('ROUND',m.round,true);
+  box.hidden=!box.childNodes.length;
+}
+function rail(card,m){const r=$('.rail',card);put($('.prog',r),m.prog);meta(r,m)}
+
+/* ---------- result ---------- */
+function fillRow(row,t,isWin){
+  t=t||{};
+  if(isWin!==undefined){const b=$('.badge',row);if(b)b.hidden=!isWin}
+  put($('.id',row),t.id);
+  const name=$('.name',row),school=$('.school',row),score=$('.score',row),time=$('.time',row);
+  put(name,t.name);put(school,t.school);
+  score.textContent='';
+  const sc=t.score;
+  if(sc==null||str(sc)===''){score.hidden=true}else{
+    score.hidden=false;score.appendChild(document.createTextNode(str(sc)));
+    if(t.max){score.appendChild(el('span','of','/'+str(t.max)))}
+  }
+  time.hidden=!put($('.tv',time),t.time);
+  row.hidden=false;
+  /* the name column stops before the score / time column */
+  const reserve=Math.max(score.hidden?0:score.offsetWidth,time.hidden?0:time.offsetWidth);
+  const w=800-(reserve?reserve+32:0);
+  name.style.width=w+'px';school.style.width=w+'px';
+  fit(name,88,40,56);fit(school,30,20,24);
+}
+function fillResult(c,m){
+  rail(c,m);
+  const pair=m.h2h===true;
+  const w=$('.row.w',c),l=$('.row.l',c),stats=$('.stats',c);
+  if(pair){
+    const ts=Array.isArray(m.teams)?m.teams:[];
+    let wi=ts.findIndex(t=>t&&t.winner===true);
+    const top=wi>=0?ts[wi]:ts[0],bot=ts.find((t,i)=>i!==(wi>=0?wi:0));
+    fillRow(w,top,wi>=0);
+    if(bot){fillRow(l,bot);l.hidden=false}else l.hidden=true;
+    $('.mid-rule',c).hidden=!bot;
+    stats.hidden=true;
+  }else{
+    l.hidden=true;$('.mid-rule',c).hidden=true;
+    fillRow(w,{name:m.team,school:m.school,id:m.teamId,score:m.total,max:m.max,time:m.time},false);
+    stats.hidden=false;
+    const rk=Number(m.rank);
+    const rc=$('.cell.rank',stats),rt=$('.cell.retry',stats);
+    rc.hidden=!(rk>0);$('.v',rc).textContent=rk>0?String(rk):'';
+    const rv=str(m.retry);rt.hidden=!rv;$('.v',rt).textContent=rv;
+    $('.s1',stats).hidden=rc.hidden&&rt.hidden;
+    const s2=$('.s2',stats);s2.textContent='';
+    const ms=Array.isArray(m.missions)?m.missions:[];
+    if(ms.length&&ms.length<=4){
+      ms.forEach(x=>{x=x||{};const cell=el('div','cell');cell.appendChild(el('span','lab',str(x.label)||'-'));
+        const v=el('div','v',str(x.n)||'0');if(x.max!=null&&str(x.max)!=='')v.appendChild(el('span','of','/'+str(x.max)));cell.appendChild(v);s2.appendChild(cell)});
+      s2.hidden=false;
+    }else s2.hidden=true;
+  }
+  /* last picture, shown whole in the window; plain dark window when there is none */
+  const img=$('.shot img',c),f=str(m.frame);
+  if(/^data:image\//.test(f)){if(img.getAttribute('src')!==f)img.src=f;img.hidden=false}else{img.removeAttribute('src');img.hidden=true}
+  const parts=[];const mn=pad2(m.matchNo),fd=str(m.field);
+  if(mn)parts.push('MATCH '+mn);if(fd&&fd!=='-')parts.push('FIELD '+fd);
+  put($('.cap',c),parts.join(' · '));
+  const pairEl=$('.next .pair',c);pairEl.textContent='';
+  const nx=str(m.next);
+  if(nx){
+    const bits=nx.split(/\s+vs\s+/i);
+    bits.forEach((b,i)=>{if(i)pairEl.appendChild(el('span','vs','VS'));pairEl.appendChild(document.createTextNode(b))});
+  }
+  $('.next',c).hidden=!nx;$('.next-rule',c).hidden=!nx;
+}
+
+/* ---------- next / intro / title ---------- */
+function fillNext(c,m){
+  const k=m.k;
+  const mt=$('.mtag',c);
+  let teams=null,single=null;
+  if(k==='title'){
+    single={name:m.title,school:m.sub};
+    rail(c,{prog:m.prog});
+    put($('.th',mt),m.eyebrow);put($('.en',mt),m.tag);
+  }else{
+    rail(c,m);
+    const ts=Array.isArray(m.teams)?m.teams.filter(Boolean):[];
+    if(ts.length>=2)teams=ts.slice(0,2);else single=ts[0]||{name:m.team,school:m.school};
+    if(k==='intro'){put($('.th',mt),'เตรียมความพร้อม');put($('.en',mt),'SETUP')}
+    else{put($('.th',mt),teams?'คู่ถัดไป':'ทีมถัดไป');put($('.en',mt),'NEXT MATCH')}
+  }
+  mt.hidden=!($('.th',mt).textContent||$('.en',mt).textContent);
+  c.classList.toggle('single',!teams);
+  c.querySelectorAll('.paironly').forEach(e=>e.hidden=!teams);
+  c.querySelectorAll('.soloonly').forEach(e=>e.hidden=!!teams);
+  const L=$('.team.L',c),R=$('.team.R',c);
+  const fillT=(box,t,side)=>{t=t||{};const sd=$('.side',box);sd.hidden=!side;
+    const n=$('.name',box),s=$('.school',box);put(n,t.name);put(s,t.school);
+    fit(n,88,44,60);fit(s,30,20,24)};
+  if(teams){R.hidden=false;fillT(L,teams[0],true);fillT(R,teams[1],true)}
+  else{fillT(L,single,false);R.hidden=true}
+}
+
+/* ---------- idle ---------- */
+function fillIdle(c,m){
+  const h=$('.head',c);h.textContent=str(m.title)||'โปรดรอสักครู่';h.hidden=false;
+  put($('.venue',c),m.sub);fit(h,88,44,60);
+}
+
+/* ---------- break ---------- */
+const MODES={live:['การถ่ายทอดสด','จะเริ่มในอีก','ON AIR IN'],match:['การแข่งขัน','จะเริ่มในอีก','STARTING IN'],break:['พักการแข่งขัน','จะกลับมาในอีก','BACK IN']};
+let endsAt=NaN;
+const fmt=ms=>{let s=Math.max(0,Math.ceil(ms/1000));const h=Math.floor(s/3600);s-=h*3600;const mi=Math.floor(s/60),se=s%60;const p=n=>String(n).padStart(2,'0');return h?h+':'+p(mi)+':'+p(se):p(mi)+':'+p(se)};
+function tick(){
+  const c=$('#break .count');if(!c)return;
+  const t=isFinite(endsAt)?fmt(endsAt-Date.now()):'--:--';
+  if(c.textContent!==t){c.textContent=t;fitCount(c)}
+}
+function fitCount(c){c.style.fontSize='';for(let s=160;s>=96&&c.scrollWidth>c.clientWidth;s-=8)c.style.fontSize=s+'px'}
+function fillBreak(c,m){
+  const md=MODES[str(m.mode)]||MODES.break;
+  put($('.mode',c),md[2]);put($('.head',c),md[0]);put($('.sub',c),md[1]);
+  put($('.rail .prog',c),m.prog);
+  const v=$('.item.venue',c);v.hidden=!put($('.v',v),m.sub);
+  const mu=$('.item.music',c),cr=str(m.credit);mu.hidden=!put($('.v',mu),cr?'♪ '+cr:'');
+  $('.info',c).hidden=v.hidden&&mu.hidden;
+  const e=Number(m.endsAt);endsAt=e>0?e:NaN;
+  $('.count',c).textContent='';tick();
+}
+setInterval(tick,250);
+
+/* ---------- cam ---------- */
+function fillCam(c,m){put($('.venue',c),m.sub)}
+
+/* ---------- switching ---------- */
+const CARD={result:'result',next:'next',intro:'next',title:'next',idle:'idle',break:'break',cam:'cam',play:null};
+const FILL={result:fillResult,next:fillNext,idle:fillIdle,break:fillBreak,cam:fillCam};
+let curK=null,curCard=null;const leaveT={};
+function hide(card){
+  if(!card)return;
+  card.classList.add('leaving');
+  clearTimeout(leaveT[card.id]);
+  leaveT[card.id]=setTimeout(()=>{card.classList.remove('on','leaving')},420);
+}
+function replay(card){card.getAnimations({subtree:true}).forEach(a=>{try{a.cancel();a.play()}catch(e){}})}
+function show(m){
+  try{
+    if(!m||typeof m!=='object')return;
+    const k=str(m.k);
+    if(!(k in CARD))return;
+    const id=CARD[k];
+    const card=id?document.getElementById(id):null;
+    if(k===curK){if(card)FILL[id](card,m);return}
+    const prev=curCard;curK=k;curCard=card;
+    if(prev&&prev!==card)hide(prev);
+    if(!card)return;
+    clearTimeout(leaveT[card.id]);
+    const was=card.classList.contains('on')&&!card.classList.contains('leaving');
+    card.classList.remove('leaving');card.classList.add('on');
+    FILL[id](card,m);
+    if(was||prev===card)replay(card);
+    window.__last=m;
+  }catch(e){console.error(e)}
+}
+window.show=show;
+
+const faces=['400 20px Prompt','500 20px Prompt','600 20px Prompt','500 20px Oxanium','600 20px Oxanium','700 20px Oxanium'];
+Promise.all(faces.map(f=>document.fonts.load(f,'ทีม 0'))).catch(()=>{}).then(()=>document.fonts.ready).finally(()=>{
+  window.THEME_READY=true;
+  /* re-measure the card on screen once real fonts are in */
+  if(curCard&&window.__last){const id=CARD[curK];try{FILL[id](curCard,window.__last)}catch(e){}}
+});
+})();
+</script>
+</body>
+</html>

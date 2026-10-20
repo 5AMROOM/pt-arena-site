@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>Esports Theme</title>
+<!-- Esports on-air theme: navy plates with one chamfered corner, one cyan signal, red only for LIVE.
+     Driven by window.show(m) from overlay.html; follows themes/CONTRACT.md (messages, paths, words). -->
+<!-- Hallmark · pre-emit critique: P4 H5 E4 S4 R5 V3 -->
+<style>
+@font-face{font-family:"Prompt";src:url(../font/Prompt-Regular.ttf);font-weight:400}
+@font-face{font-family:"Prompt";src:url(../font/Prompt-Medium.ttf);font-weight:500}
+@font-face{font-family:"Prompt";src:url(../font/Prompt-SemiBold.ttf);font-weight:600}
+@font-face{font-family:"Prompt";src:url(../font/Prompt-Bold.ttf);font-weight:700}
+@font-face{font-family:"Oxanium";src:url(../font/Oxanium.ttf);font-weight:200 800}
+
+:root{
+  /* palette: navy field, one cyan signal (the mascot's eye colour), red only for LIVE */
+  --ink:#060A14;
+  --field:#0A1120;
+  --plate:#0F1829;
+  --plate-hi:#142139;
+  --hair:rgba(160,190,230,.14);
+  --hair-strong:rgba(160,190,230,.28);
+  --text:#EEF3FA;
+  --mute:#8593AC;
+  --dim:#4A5670;
+  --cyan:#3FE0FF;
+  --cyan-glow:rgba(63,224,255,.45);
+  --cyan-wash:rgba(63,224,255,.10);
+  --red:#FF3B4E;
+  --shade:rgba(6,10,20,.78);
+  --shade-soft:rgba(6,10,20,.35);
+  --plate-ghost:rgba(15,24,41,.62);
+
+  --font-th:"Prompt",sans-serif;
+  --font-num:"Oxanium","Bahnschrift",sans-serif;
+
+  /* type scale: 3 sizes */
+  --t-xl:168px;  /* scores, countdown */
+  --t-l:56px;    /* team names, card titles */
+  --t-s:24px;    /* labels, meta */
+
+  /* grid */
+  --mx:96px;
+  --cut:28px;
+  --ease:cubic-bezier(.16,.84,.24,1);
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1920px;height:1080px;margin:0;overflow:hidden;background:transparent}
+body{position:relative;font-family:var(--font-th);color:var(--text)}
+[hidden]{display:none!important}
+
+/* cards: one visible at a time, cross-fade between them */
+.card{position:absolute;left:0;top:0;width:1920px;height:1080px;display:none;opacity:0}
+.card.on{display:block;opacity:1;transition:opacity .4s var(--ease)}
+.card.leave{display:block;opacity:0;transition:opacity .4s var(--ease)}
+@starting-style{.card.on{opacity:0}}
+.fill{position:absolute;inset:0;background:var(--field)}
+
+/* field texture: fine grid that fades out toward the edges */
+.grid{position:absolute;inset:0;
+  background-image:linear-gradient(var(--hair) 1px,transparent 1px),linear-gradient(90deg,var(--hair) 1px,transparent 1px);
+  background-size:48px 48px;opacity:.35;
+  -webkit-mask-image:radial-gradient(ellipse 70% 60% at 50% 45%,#000 0%,transparent 100%);
+          mask-image:radial-gradient(ellipse 70% 60% at 50% 45%,#000 0%,transparent 100%)}
+
+/* the one shape: a dark plate with one chamfered corner and a light-line on top */
+.plate{position:absolute;background:var(--plate);
+  clip-path:polygon(0 0,calc(100% - var(--cut)) 0,100% var(--cut),100% 100%,0 100%)}
+.plate::before{content:"";position:absolute;left:0;top:0;height:2px;width:calc(100% - var(--cut));background:var(--hair-strong)}
+.plate.lit{background:var(--plate-hi)}
+.plate.lit::before{background:var(--cyan);box-shadow:0 0 18px 2px var(--cyan-glow)}
+
+.num{font-family:var(--font-num);font-variant-numeric:tabular-nums}
+.lab{font-family:var(--font-num);font-size:var(--t-s);font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--mute)}
+.lab b{color:var(--text);font-weight:700}
+.lab-th{font-family:var(--font-th);font-size:var(--t-s);font-weight:500;color:var(--mute)}
+
+/* long text: shrink first (script), then wrap once */
+.wrap{white-space:normal!important;overflow-wrap:anywhere}
+
+/* header strip (result, next) */
+.head{position:absolute;left:var(--mx);right:var(--mx);top:64px;height:72px;display:flex;align-items:center;gap:24px}
+.head img{height:48px;width:auto}
+.head .prog{font-size:var(--t-s);font-weight:600;padding-left:24px;border-left:1px solid var(--hair-strong);line-height:48px;white-space:nowrap;min-width:0;flex:0 1 auto;overflow:hidden;text-overflow:ellipsis}
+.head .meta{margin-left:auto;display:flex;gap:32px;flex:none}
+
+/* ---------- RESULT / NEXT team panels ---------- */
+.team{top:232px;width:720px;height:520px;padding:56px 56px 48px}
+.team.l{left:var(--mx)}
+.team.r{left:1104px}
+.team .side{display:flex;align-items:center;gap:20px;height:48px}
+.chip{font-size:var(--t-s);font-weight:700;line-height:48px;padding:0 28px 0 24px;background:var(--cyan);color:var(--ink);white-space:nowrap;
+  clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,0 100%)}
+.chip .en{font-family:var(--font-num);font-size:18px;font-weight:700;letter-spacing:.14em;margin-left:14px;opacity:.7}
+.chip .en:empty{display:none}
+.team .name{font-size:var(--t-l);font-weight:600;line-height:1.25;margin-top:28px;white-space:nowrap}
+.team .school{font-size:var(--t-s);color:var(--mute);margin-top:8px;white-space:nowrap}
+.team .code{font-size:var(--t-s);color:var(--mute);letter-spacing:.08em}
+.team .stats{position:absolute;left:56px;right:56px;bottom:40px;display:flex;align-items:flex-end;justify-content:space-between}
+.team .sl{display:flex;gap:56px;align-items:flex-end;flex:none}
+.team .score{font-size:var(--t-xl);font-weight:700;line-height:.82;letter-spacing:-.02em;margin-left:auto;white-space:nowrap}
+.team .score .max{font-size:var(--t-l);font-weight:500;letter-spacing:0;color:var(--mute);margin-left:6px}
+.team .time{text-align:left}
+.team .time .num{font-size:var(--t-l);font-weight:500;line-height:1.1;color:var(--text)}
+
+.team.win .score{color:var(--cyan);text-shadow:0 0 32px var(--cyan-glow)}
+.team.win .score .max{text-shadow:none;color:var(--mute)}
+.team.lose{background:var(--plate-ghost)}
+.team.lose .name,.team.lose .score,.team.lose .time .num{color:var(--dim)}
+.team.lose .school,.team.lose .code{color:var(--dim)}
+
+.vs{position:absolute;left:816px;width:288px;top:232px;height:520px;display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-num);font-size:var(--t-l);font-weight:800;letter-spacing:.06em;color:var(--mute)}
+
+/* result background: the clip's last frame, arena floor only, pushed back */
+.still-bg{position:absolute;inset:0;background:var(--field) no-repeat 50% 48%/170% auto;filter:blur(4px) saturate(.55) brightness(.55);transform:scale(1.03)}
+.still-bg::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,var(--shade) 0%,var(--shade-soft) 45%,var(--shade) 100%)}
+
+/* single-team result: missions plate on the right */
+.mis{top:232px;left:1104px;width:720px;height:520px;padding:56px 56px 40px;display:flex;flex-direction:column}
+.mis .row{display:flex;align-items:baseline;justify-content:space-between;gap:24px;height:104px;padding-top:20px;border-top:1px solid var(--hair)}
+.mis .row:first-child{border-top:0;padding-top:0;height:84px}
+.mis .row .lab-th{font-size:32px;color:var(--text);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.mis .row .num{font-size:var(--t-l);font-weight:600;white-space:nowrap}
+.mis .row .num .of{color:var(--mute);font-weight:500}
+.mis .row.full .num .n{color:var(--cyan);text-shadow:0 0 24px var(--cyan-glow)}
+.result.solo.nomis .team.l{left:600px}
+
+/* next-up strip */
+.upnext{left:var(--mx);right:var(--mx);bottom:72px;height:104px;display:flex;align-items:center;gap:40px;padding:0 48px}
+.upnext .who{font-size:var(--t-s);font-weight:600;display:flex;align-items:center;gap:20px;flex:1;min-width:0;white-space:nowrap}
+.upnext .who .x{font-family:var(--font-num);color:var(--mute);font-weight:700;letter-spacing:.1em}
+.upnext .tag{color:var(--cyan);font-weight:600;flex:none}
+
+/* next card: both sides lit neutral */
+.next .team{height:240px;top:440px;padding:0 56px;display:flex;flex-direction:column;justify-content:center}
+.next .team .name{margin-top:0}
+.next .vs{top:440px;height:240px;font-size:var(--t-xl);color:var(--text);letter-spacing:0}
+.next .up{position:absolute;left:50%;top:352px;transform:translateX(-50%)}
+.next .team.l{text-align:right}
+.next.single .team.r,.next.single .vs{display:none}
+.next.single .team.l{left:384px;width:1152px;text-align:center}
+
+/* ---------- IDLE ---------- */
+.idle .logo{position:absolute;left:50%;top:150px;width:735px;margin-left:-367px}
+.idle .wait{position:absolute;left:var(--mx);right:var(--mx);top:770px;text-align:center;font-size:var(--t-l);font-weight:600;white-space:nowrap}
+.idle .line{position:absolute;left:50%;top:870px;width:320px;margin-left:-160px;height:2px;background:var(--cyan);box-shadow:0 0 18px 2px var(--cyan-glow)}
+.idle .venue{position:absolute;left:0;right:0;top:900px;text-align:center;font-size:var(--t-s);color:var(--mute)}
+
+/* ---------- BREAK ---------- */
+/* the field covers everything except the sponsor window x800 y200 w1040 h585, which stays see-through */
+.brk .cutout{position:absolute;inset:0;
+  clip-path:polygon(evenodd,0 0,1920px 0,1920px 1080px,0 1080px,0 0,800px 200px,800px 785px,1840px 785px,1840px 200px,800px 200px)}
+.hole-frame{position:absolute;left:792px;top:192px;width:1056px;height:601px;border:1px solid var(--hair-strong)}
+.hole-frame i{position:absolute;width:32px;height:32px;border-color:var(--cyan);border-style:solid;border-width:0}
+.hole-frame i:nth-child(1){left:-1px;top:-1px;border-left-width:3px;border-top-width:3px}
+.hole-frame i:nth-child(2){right:-1px;top:-1px;border-right-width:3px;border-top-width:3px}
+.hole-frame i:nth-child(3){left:-1px;bottom:-1px;border-left-width:3px;border-bottom-width:3px}
+.hole-frame i:nth-child(4){right:-1px;bottom:-1px;border-right-width:3px;border-bottom-width:3px}
+.brk .left{position:absolute;left:var(--mx);top:200px;width:620px;height:585px}
+.brk .left img{width:340px;display:block;margin-left:-12px}
+.brk .title{font-size:var(--t-l);font-weight:600;margin-top:24px;line-height:1.2;white-space:nowrap}
+.brk .back{font-size:var(--t-s);color:var(--mute);position:absolute;bottom:150px;display:flex;align-items:baseline;gap:16px}
+.brk .back .lab{font-size:20px}
+.brk .count{position:absolute;bottom:-14px;left:-6px;right:-40px;font-size:var(--t-xl);font-weight:700;line-height:1;color:var(--cyan);text-shadow:0 0 32px var(--cyan-glow);white-space:nowrap}
+.brk .count.long{font-size:136px}
+.brk .foot{position:absolute;left:var(--mx);right:80px;top:832px;display:flex;align-items:center;gap:32px}
+.brk .foot .v{font-size:var(--t-s);font-weight:500;color:var(--mute)}
+.brk .foot .m{margin-left:auto;font-size:var(--t-s);color:var(--mute)}
+
+/* ---------- CAM ---------- */
+.bug{position:absolute;right:64px;bottom:56px;height:136px;display:flex;align-items:center;gap:24px;padding:0 40px 0 20px;--cut:20px}
+.bug img{height:116px;width:auto}
+.bug .txt{display:flex;flex-direction:column;gap:6px}
+.bug .live{display:flex;align-items:center;gap:10px;font-family:var(--font-num);font-size:var(--t-s);font-weight:700;letter-spacing:.14em}
+.bug .live::before{content:"";width:12px;height:12px;border-radius:50%;background:var(--red);box-shadow:0 0 10px var(--red)}
+.bug .v{font-size:var(--t-s);font-weight:500;color:var(--text);white-space:nowrap}
+
+/* ---------- MOTION (≤1.2 s, ease-out, nothing bouncy) ---------- */
+@keyframes wipe{from{clip-path:polygon(0 0,0 0,0 0,0 100%,0 100%)}}
+@keyframes rise{from{opacity:0;transform:translateY(16px)}}
+@keyframes fade{from{opacity:0}}
+@keyframes draw{from{transform:scaleX(0)}}
+@keyframes push{from{opacity:0;transform:scale(1.06)}}
+
+.on .a-wipe{animation:wipe .5s var(--ease) both}
+.on .a-rise{animation:rise .45s var(--ease) both}
+.on .a-fade{animation:fade .5s var(--ease) both}
+.on .a-draw{animation:draw .5s var(--ease) both;transform-origin:left}
+.on .a-push{animation:push .9s var(--ease) both}
+.d1{animation-delay:.1s!important}.d2{animation-delay:.2s!important}.d3{animation-delay:.3s!important}
+.d4{animation-delay:.4s!important}.d5{animation-delay:.5s!important}.d6{animation-delay:.6s!important}.d7{animation-delay:.7s!important}
+</style>
+</head>
+<body>
+
+<!-- RESULT (pair and single team) -->
+<section class="card result" id="c-result">
+  <div class="fill"></div>
+  <div class="still-bg a-fade"></div>
+  <div class="head a-rise">
+    <img src="../logo-mark.png" alt="">
+    <div class="prog"></div>
+    <div class="meta"></div>
+  </div>
+
+  <div class="plate team l a-wipe d1">
+    <div class="side"><span class="chip a-rise d6"></span><span class="lab code a-rise d6"></span><span class="lab retry a-rise d6">RETRY <b></b></span></div>
+    <div class="name a-rise d3"></div>
+    <div class="school a-rise d3"></div>
+    <div class="stats">
+      <div class="sl">
+        <div class="time a-rise d4"><div class="lab-th">เวลา</div><div class="num"></div></div>
+      </div>
+      <div class="score num a-rise d5"><span class="v"></span><span class="max"></span></div>
+    </div>
+  </div>
+
+  <div class="vs a-fade d4">VS</div>
+
+  <div class="plate team r a-wipe d2">
+    <div class="side"><span class="chip a-rise d6"></span><span class="lab code a-rise d6"></span><span class="lab retry a-rise d6">RETRY <b></b></span></div>
+    <div class="name a-rise d3"></div>
+    <div class="school a-rise d3"></div>
+    <div class="stats">
+      <div class="sl">
+        <div class="time a-rise d4"><div class="lab-th">เวลา</div><div class="num"></div></div>
+      </div>
+      <div class="score num a-rise d5"><span class="v"></span><span class="max"></span></div>
+    </div>
+  </div>
+
+  <div class="plate mis a-wipe d2"></div>
+
+  <div class="plate upnext a-wipe d6">
+    <span class="lab-th tag">ถัดไป</span>
+    <span class="who"></span>
+  </div>
+</section>
+
+<!-- NEXT / INTRO / TITLE -->
+<section class="card next" id="c-next">
+  <div class="fill"></div>
+  <div class="grid"></div>
+  <div class="head a-rise">
+    <img src="../logo-mark.png" alt="">
+    <div class="prog"></div>
+    <div class="meta"></div>
+  </div>
+  <div class="plate lit team l a-wipe d1">
+    <div class="name a-rise d3"></div>
+    <div class="school a-rise d4"></div>
+  </div>
+  <div class="up"><span class="chip a-rise d5"><span class="th"></span><span class="en"></span></span></div>
+  <div class="vs a-push d3">VS</div>
+  <div class="plate lit team r a-wipe d2">
+    <div class="name a-rise d3"></div>
+    <div class="school a-rise d4"></div>
+  </div>
+</section>
+
+<!-- IDLE -->
+<section class="card idle" id="c-idle">
+  <div class="fill"></div>
+  <div class="grid"></div>
+  <img class="logo a-push" src="../event-logo.webp" alt="">
+  <div class="wait a-rise d4"></div>
+  <div class="line a-draw d5" style="transform-origin:center"></div>
+  <div class="venue a-rise d6"></div>
+</section>
+
+<!-- BREAK -->
+<section class="card brk" id="c-break">
+  <div class="cutout"><div class="fill"></div><div class="grid"></div></div>
+  <div class="hole-frame a-fade d2"><i></i><i></i><i></i><i></i></div>
+  <div class="left">
+    <img class="a-rise" src="../event-logo.webp" alt="">
+    <div class="title a-rise d2"></div>
+    <div class="back a-rise d3"><span class="th"></span><span class="lab"></span></div>
+    <div class="count num a-rise d4"></div>
+  </div>
+  <div class="foot a-fade d5">
+    <span class="v"></span>
+    <span class="m"></span>
+  </div>
+</section>
+
+<!-- CAM: only the corner bug -->
+<section class="card cam" id="c-cam">
+  <div class="plate bug a-wipe">
+    <img src="../event-logo.webp" alt="">
+    <span class="txt"><span class="live">LIVE</span><span class="v"></span></span>
+  </div>
+</section>
+
+<script>
+(function(){
+window.THEME='esports';
+const $=(s,r)=>(r||document).querySelector(s), $$=(s,r)=>[...(r||document).querySelectorAll(s)];
+const str=v=>(v==null?'':String(v)).trim();
+/* set text; hide the element when empty */
+const put=(el,v)=>{const s=str(v);el.textContent=s;el.hidden=!s;return !!s};
+
+/* shrink a line until it fits, down to min px; if it still overflows, wrap */
+function fit(el,min){
+  if(!el||el.hidden)return;
+  el.style.fontSize='';el.classList.remove('wrap');
+  let s=parseFloat(getComputedStyle(el).fontSize);
+  while(el.scrollWidth>el.clientWidth+1&&s>min){s-=2;el.style.fontSize=s+'px'}
+  if(el.scrollWidth>el.clientWidth+1)el.classList.add('wrap');
+}
+
+/* MATCH / FIELD / ROUND labels from the shared fields */
+function meta(box,m){
+  box.textContent='';
+  const add=(en,v)=>{const s=str(v);if(!s||s==='-')return;
+    const sp=document.createElement('span');sp.className='lab';sp.append(en+' ');
+    const b=document.createElement('b');b.textContent=s;sp.append(b);box.append(sp)};
+  add('MATCH',m.matchNo);add('FIELD',m.field);add('ROUND',m.round);
+}
+function head(card,m){put($('.prog',card),m.prog);meta($('.meta',card),m)}
+
+/* ---------- card switching ---------- */
+let cur=null,curK=null;
+function activate(id,k){
+  const el=id?document.getElementById(id):null;
+  if(el===cur&&k===curK)return false;          /* same k: update in place */
+  if(cur&&cur!==el){const old=cur;old.classList.remove('on');old.classList.add('leave');
+    clearTimeout(old._t);old._t=setTimeout(()=>old.classList.remove('leave'),450)}
+  if(el){clearTimeout(el._t);el.classList.remove('leave','on');void el.offsetWidth;el.classList.add('on')}
+  cur=el;curK=k;return true;
+}
+
+/* ---------- result ---------- */
+function fillTeam(p,t,opt){
+  t=t||{};
+  put($('.name',p),t.name);put($('.school',p),t.school);
+  put($('.code',p),opt.code);
+  const chip=$('.chip',p);put(chip,opt.chip);
+  $('.side',p).hidden=false;
+  const tm=$('.time:not(.retry)',p);put($('.num',tm),t.time);tm.hidden=!str(t.time);
+  const rt=$('.retry',p);const r=opt.retry==null?'':str(opt.retry);$('b',rt).textContent=r;rt.hidden=!r;
+  const sc=$('.score',p);const v=t.score==null?'':str(t.score);put($('.v',sc),v);sc.hidden=!v;
+  put($('.max',sc),opt.max?'/'+opt.max:'');
+  p.classList.toggle('win',!!opt.win);p.classList.toggle('lose',!!opt.lose);p.classList.toggle('lit',!opt.lose);
+}
+function resultCard(m){
+  const c=$('#c-result');head(c,m);
+  const f=str(m.frame),bg=$('.still-bg',c);
+  bg.style.backgroundImage=/^data:image\//.test(f)?'url("'+f.replace(/["\\\n]/g,'')+'")':'none';
+  const L=$('.team.l',c),R=$('.team.r',c),mis=$('.mis',c);
+  if(m.h2h){
+    const ts=Array.isArray(m.teams)?m.teams:[];
+    const a=ts[0]||{},b=ts[1]||{};
+    c.classList.remove('solo','nomis');
+    fillTeam(L,a,{chip:a.winner?'ชนะ':'',win:!!a.winner,lose:!a.winner&&!!b.winner});
+    fillTeam(R,b,{chip:b.winner?'ชนะ':'',win:!!b.winner,lose:!b.winner&&!!a.winner});
+    R.hidden=false;$('.vs',c).hidden=false;mis.hidden=true;
+  }else{
+    c.classList.add('solo');
+    const rank=Number(m.rank)||0,max=Number(m.max)||0;
+    fillTeam(L,{name:m.team,school:m.school,score:m.total,time:m.time},
+      {chip:rank?'อันดับตอนนี้ '+rank:'',code:m.teamId,retry:m.retry,max:max,win:true});
+    R.hidden=true;$('.vs',c).hidden=true;
+    mis.textContent='';
+    const ms=Array.isArray(m.missions)?m.missions:[];
+    const show=ms.length>0&&ms.length<=4;
+    ms.slice(0,4).forEach(x=>{x=x||{};
+      const row=document.createElement('div');row.className='row a-rise d4';
+      const lab=document.createElement('span');lab.className='lab-th';lab.textContent=str(x.label)||'–';
+      const num=document.createElement('span');num.className='num';
+      const n=document.createElement('span');n.className='n';n.textContent=x.n==null?'–':str(x.n);num.append(n);
+      if(Number(x.max)){const of=document.createElement('span');of.className='of';of.textContent='/'+x.max;num.append(of)}
+      if(Number(x.max)&&Number(x.n)>=Number(x.max))row.classList.add('full');
+      row.append(lab,num);mis.append(row)});
+    mis.hidden=!show;c.classList.toggle('nomis',!show);
+  }
+  /* next strip: "A vs B" gets the styled VS */
+  const who=$('.who',c);who.textContent='';
+  const nx=str(m.next);
+  nx.split(/\s+vs\.?\s+/i).forEach((part,i)=>{
+    if(i){const x=document.createElement('span');x.className='x';x.textContent='VS';who.append(x)}
+    const s=document.createElement('span');s.textContent=part;who.append(s)});
+  $('.upnext',c).hidden=!nx;
+}
+function fitResult(){
+  const c=$('#c-result');
+  $$('.team .name',c).forEach(e=>fit(e,34));$$('.team .school',c).forEach(e=>fit(e,18));
+  fit($('.who',c),18);
+  /* big score: shrink until time + score fit the plate (e.g. 100/100) */
+  $$('.team .stats',c).forEach(st=>{const sc=$('.score',st);sc.style.fontSize='';
+    let z=168;while(st.scrollWidth>st.clientWidth+1&&z>96){z-=8;sc.style.fontSize=z+'px'}});
+}
+
+/* ---------- next / intro / title ---------- */
+function nextCard(m){
+  const c=$('#c-next');const L=$('.team.l',c),R=$('.team.r',c);
+  let th,en;
+  if(m.k==='title'){
+    put($('.prog',c),'');$('.meta',c).textContent='';
+    th=m.eyebrow;en=m.tag;
+    c.classList.add('single');
+    put($('.name',L),m.title);put($('.school',L),m.sub);
+  }else{
+    head(c,m);
+    const ts=Array.isArray(m.teams)?m.teams.filter(Boolean):[];
+    const pair=ts.length>=2;
+    if(m.k==='intro'){th='เตรียมความพร้อม';en='SETUP'}
+    else{th=pair?'คู่ถัดไป':'ทีมถัดไป';en='NEXT MATCH'}
+    c.classList.toggle('single',!pair);
+    if(pair){put($('.name',L),ts[0].name);put($('.school',L),ts[0].school);
+             put($('.name',R),ts[1].name);put($('.school',R),ts[1].school)}
+    else{const t=ts[0]||{name:m.team,school:m.school};
+         put($('.name',L),t.name);put($('.school',L),t.school)}
+  }
+  $('.chip .th',c).textContent=str(th);$('.chip .en',c).textContent=str(en);
+  $('.up',c).hidden=!str(th)&&!str(en);
+}
+function fitNext(){const c=$('#c-next');$$('.team .name',c).forEach(e=>fit(e,34));$$('.team .school',c).forEach(e=>fit(e,18))}
+
+/* ---------- idle ---------- */
+function idleCard(m){const c=$('#c-idle');put($('.wait',c),str(m.title)||'โปรดรอสักครู่');put($('.venue',c),m.sub)}
+
+/* ---------- break ---------- */
+const MODES={live:['การถ่ายทอดสด','จะเริ่มในอีก','ON AIR IN'],
+             match:['การแข่งขัน','จะเริ่มในอีก','STARTING IN'],
+             break:['พักการแข่งขัน','จะกลับมาในอีก','BACK IN']};
+let endsAt=0;
+function pad(n){return String(n).padStart(2,'0')}
+function tick(){
+  if(curK!=='break')return;
+  const el=$('#c-break .count');
+  if(!endsAt){el.textContent='--:--';el.classList.remove('long');return}
+  const s=Math.max(0,Math.ceil((endsAt-Date.now())/1000)),h=Math.floor(s/3600),mi=Math.floor(s%3600/60),se=s%60;
+  const t=h?h+':'+pad(mi)+':'+pad(se):pad(mi)+':'+pad(se);
+  if(el.textContent!==t){el.textContent=t;
+    if(el.classList.contains('long')!==!!h){el.classList.toggle('long',!!h);fit(el,96)}}
+}
+function breakCard(m){
+  const c=$('#c-break');const w=MODES[m.mode]||MODES.break;
+  put($('.title',c),w[0]);$('.back .th',c).textContent=w[1];$('.back .lab',c).textContent=w[2];
+  const e=Number(m.endsAt);endsAt=isFinite(e)&&e>0?e:0;
+  put($('.foot .v',c),m.sub);put($('.foot .m',c),str(m.credit)?'♪ '+str(m.credit):'');
+}
+setInterval(tick,250);
+
+/* ---------- cam ---------- */
+function camCard(m){put($('#c-cam .bug .v'),m.sub)}
+
+let last=null;
+function refit(){if(curK==='result')fitResult();else if(curK==='next'||curK==='intro'||curK==='title')fitNext();
+  else if(curK==='break'){const el=$('#c-break .count');el.textContent='';tick();fit(el,96)}}
+
+window.show=function(m){
+  try{
+    if(!m||typeof m!=='object')return;
+    const k=str(m.k);
+    switch(k){
+      case 'play':activate(null,'play');break;
+      case 'cam':camCard(m);activate('c-cam',k);break;
+      case 'idle':idleCard(m);activate('c-idle',k);break;
+      case 'next':case 'intro':case 'title':nextCard(m);activate('c-next',k);break;
+      case 'result':resultCard(m);activate('c-result',k);break;
+      case 'break':breakCard(m);activate('c-break',k);break;
+      default:return;   /* score, theme, hello: ignore */
+    }
+    last=m;refit();
+  }catch(e){console.error(e)}
+};
+
+Promise.all([...document.fonts].map(f=>f.load().catch(()=>{}))).then(()=>document.fonts.ready).then(()=>{
+  window.THEME_READY=true;try{if(last)refit()}catch(e){}
+});
+})();
+</script>
+</body>
+</html>

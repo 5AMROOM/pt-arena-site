@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>PT Arena · Sports theme</title>
+<!--
+  "sports": the broadcast-scoreline theme (navy, red, Prompt + Oxanium) for the PT Arena OBS overlay.
+  Built from design/preview/theme-sports.html. Follows themes/CONTRACT.md: overlay.html loads this file in an
+  iframe and calls window.show(m) for every desk message; the page is 1920x1080 and see-through wherever a card
+  draws nothing. All message text goes in through textContent.
+-->
+<style>
+/* Hallmark · pre-emit critique: P4 H5 E4 S4 R5 V4 */
+/* Hallmark · macrostructure: Stat-Led (broadcast scoreline) · tone: utilitarian · anchor hue: navy 265 · accent: red 27 */
+
+@font-face{font-family:"Prompt";src:url("../font/Prompt-Regular.ttf") format("truetype");font-weight:400}
+@font-face{font-family:"Prompt";src:url("../font/Prompt-Medium.ttf") format("truetype");font-weight:500}
+@font-face{font-family:"Prompt";src:url("../font/Prompt-SemiBold.ttf") format("truetype");font-weight:600}
+@font-face{font-family:"Prompt";src:url("../font/Prompt-Bold.ttf") format("truetype");font-weight:700}
+@font-face{font-family:"Oxanium";src:url("../font/Oxanium.ttf") format("truetype");font-weight:200 800}
+
+:root{
+  --c-navy:oklch(22% 0.065 265);
+  --c-navy-2:oklch(30% 0.07 265);
+  --c-navy-scrim:oklch(22% 0.065 265 / 0.84);
+  --c-red:oklch(56% 0.215 27);
+  --c-white:oklch(98% 0.005 260);
+  --c-grey:oklch(76% 0.02 260);
+  --c-grey-on-red:oklch(92% 0.04 27);
+  --c-black:oklch(0% 0 0);
+  --c-line:oklch(98% 0.005 260 / 0.35);
+
+  --f-th:"Prompt",sans-serif;
+  --f-num:"Oxanium","Prompt",sans-serif;
+
+  --t-num:176px;
+  --t-h:64px;
+  --t-s:26px;
+
+  --m:96px;            /* outer margin */
+  --col:144px;         /* 12 columns of 144 inside 1728 */
+  --sp-1:8px; --sp-2:16px; --sp-3:24px; --sp-4:32px; --sp-6:48px; --sp-8:64px;
+
+  --ease-out:cubic-bezier(0.16,1,0.3,1);
+  --dur-wipe:500ms;
+  --dur-rise:400ms;
+  --dur-fade:400ms;
+}
+
+html,body{width:1920px;height:1080px;margin:0;overflow:hidden;background:transparent}
+body{position:relative;font-family:var(--f-th);color:var(--c-white);font-size:var(--t-s);line-height:1.2}
+
+/* one card at a time; a card fades in and out, hidden cards do not paint */
+.card{position:absolute;inset:0;opacity:0;visibility:hidden;transition:opacity var(--dur-fade) ease,visibility 0s var(--dur-fade)}
+.card.on{opacity:1;visibility:visible;transition:opacity var(--dur-fade) ease,visibility 0s 0s}
+.card.full{background:var(--c-navy)}
+.hide{display:none!important}
+
+/* ---- shared pieces ---- */
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums;font-weight:800}
+.caps{font-family:var(--f-num);font-weight:600;letter-spacing:0.08em;text-transform:uppercase;font-size:var(--t-s);color:var(--c-grey)}
+.nowrap{white-space:nowrap}
+
+.hdr{position:absolute;left:var(--m);top:72px;right:var(--m);height:112px;display:flex;align-items:center;gap:var(--sp-4)}
+.hdr .logo{height:112px;width:auto;display:block;flex:none}
+.hdr .sep{width:1px;height:80px;background:var(--c-line);flex:none}
+.hdr .mid{min-width:0;flex:1 1 auto}
+.hdr .prog{font-size:var(--t-h);font-weight:600;line-height:1;white-space:nowrap;letter-spacing:-0.01em;overflow:hidden;text-overflow:ellipsis}
+.hdr .meta{margin-top:var(--sp-1);white-space:nowrap}
+.hdr .right{margin-left:auto;text-align:right;flex:none}
+.hdr .right .match{font-family:var(--f-num);font-weight:800;font-size:var(--t-h);line-height:1;letter-spacing:0.02em;white-space:nowrap}
+
+.ptmark{position:absolute;right:var(--m);bottom:56px;height:40px;width:auto;opacity:0.9}
+
+.label{position:absolute;left:var(--m);right:var(--m);font-size:var(--t-s);font-weight:500;line-height:1;padding-bottom:var(--sp-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.label::after{content:"";position:absolute;left:0;bottom:0;width:72px;height:4px;background:var(--c-red)}
+.label .en,.en{font-family:var(--f-num);font-weight:600;letter-spacing:0.08em;color:var(--c-grey);margin-left:var(--sp-2);text-transform:uppercase}
+
+/* ---- motion: runs only while the card carries .enter; every animated element ends in its natural state ---- */
+.enter .wipe{animation:wipe var(--dur-wipe) var(--ease-out) both;animation-delay:var(--d,0ms)}
+.enter .rise{animation:rise var(--dur-rise) var(--ease-out) both;animation-delay:var(--d,0ms)}
+@keyframes wipe{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.enter .wipe,.enter .rise{animation:none}}
+
+/* ---- RESULT ---- */
+#result .win-pic{position:absolute;left:var(--m);top:400px;width:754px;height:424px;background:var(--c-navy-2) center/cover no-repeat;outline:1px solid var(--c-line)}
+#result .board{position:absolute;left:898px;right:var(--m);top:400px}
+#result .row{position:relative;height:208px;display:grid;grid-template-columns:1fr 220px 280px;align-items:center;margin-bottom:var(--sp-1)}
+#result .row.win{background:var(--c-red)}
+#result .row.lose{background:var(--c-navy-2)}
+#result .team{padding-left:var(--sp-6);display:flex;flex-direction:column;gap:var(--sp-1);min-width:0}
+#result .name{font-size:var(--t-h);font-weight:600;line-height:1.1;overflow-wrap:anywhere}
+#result .school{font-size:var(--t-s);font-weight:400;color:var(--c-grey);line-height:1.2;overflow-wrap:anywhere}
+#result .win .school{color:var(--c-grey-on-red)}
+#result .school .code{font-family:var(--f-num);font-weight:600;letter-spacing:0.06em;margin-left:var(--sp-2);white-space:nowrap}
+#result .time{display:flex;flex-direction:column;align-items:flex-end;gap:var(--sp-2);padding-right:var(--sp-4);min-width:0}
+#result .time .t{font-family:var(--f-num);font-weight:600;font-size:var(--t-s);font-variant-numeric:tabular-nums;letter-spacing:0.04em;color:var(--c-grey-on-red);white-space:nowrap}
+#result .lose .time .t{color:var(--c-grey)}
+#result .score{font-size:var(--t-num);line-height:1;text-align:right;padding-right:var(--sp-6);white-space:nowrap}
+#result .lose .score{color:var(--c-grey)}
+#result .score .max{font-family:var(--f-num);font-weight:600;font-size:var(--t-s);letter-spacing:0.04em;color:var(--c-grey-on-red);margin-left:4px}
+#result .tag{background:var(--c-white);color:var(--c-navy);font-family:var(--f-num);font-weight:800;font-size:22px;letter-spacing:0.12em;line-height:1;padding:8px 12px 7px;white-space:nowrap}
+#result .tag .th{font-family:var(--f-th);font-weight:600;font-size:var(--t-s);letter-spacing:0;margin-right:10px}
+#result .label{top:328px}
+#result .next{position:absolute;left:var(--m);right:var(--m);top:872px;display:flex;align-items:baseline;gap:var(--sp-4);border-top:1px solid var(--c-line);padding-top:var(--sp-3)}
+#result .next .caps{color:var(--c-white);white-space:nowrap}
+#result .next .pair{font-size:var(--t-h);font-weight:600;line-height:1;white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis}
+#result .next .vs{font-family:var(--f-num);font-weight:600;color:var(--c-red);margin:0 var(--sp-3);font-size:var(--t-s);letter-spacing:0.1em}
+/* single team: the same red row, then a stats row in the loser block style */
+#result .stats{height:208px;background:var(--c-navy-2);display:flex;align-items:stretch}
+#result .stat{flex:1 1 0;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:var(--sp-2);padding:0 var(--sp-3) 0 var(--sp-4);border-left:1px solid var(--c-line);white-space:nowrap;overflow:hidden}
+#result .stat:first-child{border-left:0;padding-left:var(--sp-6)}
+#result .stat.rank{flex:1.7 1 0}
+#result .stat .k{line-height:1}
+#result .stat .k .th{font-family:var(--f-th);font-weight:500;letter-spacing:0;text-transform:none;color:var(--c-white);margin-right:var(--sp-2)}
+#result .stat .v{font-size:var(--t-h);line-height:1}
+#result .stat .v .of{font-weight:600;font-size:var(--t-s);color:var(--c-grey);letter-spacing:0.04em}
+
+/* ---- NEXT (also intro and title) ---- */
+#next .label{top:328px}
+#next .pair{position:absolute;left:var(--m);right:var(--m);top:400px;height:424px;display:grid;grid-template-columns:1fr 160px 1fr;align-items:stretch}
+#next .pair.solo{grid-template-columns:1fr}
+#next .side{background:var(--c-white);color:var(--c-navy);display:flex;flex-direction:column;justify-content:center;gap:var(--sp-2);padding:0 var(--sp-8);min-width:0}
+#next .side.l{align-items:flex-end;text-align:right}
+#next .side.r{align-items:flex-start;text-align:left}
+#next .side.c{align-items:center;text-align:center;padding:0 var(--sp-8)}
+#next .name{font-size:var(--t-h);font-weight:700;line-height:1.1;overflow-wrap:anywhere;max-width:100%}
+#next .school{font-size:var(--t-s);font-weight:400;color:var(--c-navy);opacity:0.7;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+#next .vs{display:flex;align-items:center;justify-content:center;background:var(--c-red);font-family:var(--f-num);font-weight:800;font-size:var(--t-h);letter-spacing:0.06em}
+
+/* ---- IDLE ---- */
+#idle .center{position:absolute;left:50%;top:0;transform:translateX(-50%);width:1000px;text-align:center}
+#idle .logo{height:480px;width:auto;margin-top:168px}
+#idle .wait{font-size:var(--t-h);font-weight:500;line-height:1;margin-top:var(--sp-6);white-space:nowrap}
+#idle .wait .en{font-size:var(--t-s)}
+#idle .venue{margin-top:var(--sp-3);font-size:var(--t-s);font-weight:400;color:var(--c-grey)}
+#idle .rule{position:absolute;left:var(--m);right:var(--m);top:936px;height:1px;background:var(--c-line)}
+#idle .edge{position:absolute;left:var(--m);top:936px;width:144px;height:4px;background:var(--c-red)}
+
+/* ---- BREAK: navy drawn as four slabs around the hole (x800 y200 1040x585), the hole itself is never painted ---- */
+#break .slab{position:absolute;background:var(--c-navy)}
+#break .slab.t{left:0;top:0;width:1920px;height:200px}
+#break .slab.b{left:0;top:785px;width:1920px;height:295px}
+#break .slab.l{left:0;top:200px;width:800px;height:585px}
+#break .slab.r{left:1840px;top:200px;width:80px;height:585px}
+#break .frame{position:absolute;left:799px;top:199px;width:1040px;height:585px;border:1px solid var(--c-line);pointer-events:none}
+#break .frame::before{content:"";position:absolute;left:-1px;top:-9px;width:144px;height:8px;background:var(--c-red)}
+#break .col{position:absolute;left:var(--m);top:336px;width:644px}
+#break .title{font-size:var(--t-h);font-weight:700;line-height:1;white-space:nowrap}
+#break .back{margin-top:var(--sp-3);font-size:var(--t-s);font-weight:400;color:var(--c-grey);white-space:nowrap}
+#break .clock{margin-top:var(--sp-2);font-size:var(--t-num);line-height:1;letter-spacing:-0.01em;white-space:nowrap}
+#break .foot{position:absolute;left:var(--m);right:var(--m);top:872px;display:flex;align-items:baseline;gap:var(--sp-6);border-top:1px solid var(--c-line);padding-top:var(--sp-3)}
+#break .foot .venue{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#break .foot .music{margin-left:auto;font-family:var(--f-num);font-weight:600;letter-spacing:0.06em;color:var(--c-grey);white-space:nowrap}
+
+/* ---- CAM ---- */
+#cam .bug{position:absolute;left:var(--m);top:72px;display:flex;align-items:center;gap:var(--sp-3);background:var(--c-navy-scrim);padding:14px 28px 14px 16px;max-width:900px}
+#cam .bug .logo{height:80px;width:auto;display:block;flex:none}
+#cam .bug .sep{width:1px;height:56px;background:var(--c-line);flex:none}
+#cam .bug .txt{min-width:0}
+#cam .live{display:inline-flex;align-items:center;gap:10px;background:var(--c-red);font-family:var(--f-num);font-weight:800;font-size:var(--t-s);letter-spacing:0.12em;line-height:1;padding:7px 12px 6px 10px}
+#cam .live i{width:10px;height:10px;border-radius:50%;background:var(--c-white)}
+#cam .venue{margin-top:var(--sp-1);font-size:var(--t-s);font-weight:500;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+</style>
+</head>
+<body>
+
+<!-- RESULT -->
+<section class="card full" id="result">
+  <header class="hdr rise">
+    <img class="logo" src="../event-logo.webp" alt="">
+    <div class="sep"></div>
+    <div class="mid">
+      <div class="prog"></div>
+      <div class="caps meta"></div>
+    </div>
+    <div class="right">
+      <div class="match"></div>
+    </div>
+  </header>
+
+  <div class="label rise" style="--d:120ms"><span class="th">ผลการแข่งขัน</span><span class="en">RESULT</span></div>
+
+  <div class="win-pic wipe" style="--d:160ms"></div>
+  <div class="board">
+    <div class="row r0 wipe" style="--d:200ms">
+      <div class="team rise" style="--d:420ms">
+        <div class="name"><span class="t"></span></div>
+        <div class="school"><span class="s"></span><span class="code"></span></div>
+      </div>
+      <div class="time rise" style="--d:480ms"><span class="tag"><span class="th">ชนะ</span>WINNER</span><span class="t"></span></div>
+      <div class="score num rise" style="--d:540ms"><span class="n"></span><span class="max"></span></div>
+    </div>
+    <div class="row r1 wipe" style="--d:320ms">
+      <div class="team rise" style="--d:540ms">
+        <div class="name"><span class="t"></span></div>
+        <div class="school"><span class="s"></span><span class="code"></span></div>
+      </div>
+      <div class="time rise" style="--d:600ms"><span class="tag"><span class="th">ชนะ</span>WINNER</span><span class="t"></span></div>
+      <div class="score num rise" style="--d:660ms"><span class="n"></span><span class="max"></span></div>
+    </div>
+    <div class="stats wipe" style="--d:320ms"></div>
+  </div>
+
+  <div class="next rise" style="--d:820ms">
+    <span class="caps">ถัดไป · NEXT</span>
+    <span class="pair"><span class="a"></span><span class="vs">VS</span><span class="b"></span></span>
+  </div>
+  <img class="ptmark" src="../logo-mark.png" alt="">
+</section>
+
+<!-- NEXT / INTRO / TITLE -->
+<section class="card full" id="next">
+  <header class="hdr rise">
+    <img class="logo" src="../event-logo.webp" alt="">
+    <div class="sep"></div>
+    <div class="mid">
+      <div class="prog"></div>
+      <div class="caps meta"></div>
+    </div>
+    <div class="right">
+      <div class="match"></div>
+    </div>
+  </header>
+
+  <div class="label rise" style="--d:120ms"><span class="th"></span><span class="en"></span></div>
+
+  <div class="pair">
+    <div class="side l wipe" style="--d:200ms">
+      <div class="name rise" style="--d:460ms"></div>
+      <div class="school rise" style="--d:520ms"></div>
+    </div>
+    <div class="vs rise" style="--d:700ms">VS</div>
+    <div class="side r wipe" style="--d:320ms">
+      <div class="name rise" style="--d:580ms"></div>
+      <div class="school rise" style="--d:640ms"></div>
+    </div>
+    <div class="side c wipe" style="--d:200ms">
+      <div class="name rise" style="--d:460ms"></div>
+      <div class="school rise" style="--d:520ms"></div>
+    </div>
+  </div>
+  <img class="ptmark" src="../logo-mark.png" alt="">
+</section>
+
+<!-- IDLE -->
+<section class="card full" id="idle">
+  <div class="center">
+    <img class="logo rise" src="../event-logo.webp" alt="">
+    <div class="wait rise" style="--d:300ms"><span class="th"></span><span class="en">STAND BY</span></div>
+    <div class="venue rise" style="--d:420ms"></div>
+  </div>
+  <div class="rule"></div>
+  <div class="edge wipe" style="--d:500ms"></div>
+  <img class="ptmark" src="../logo-mark.png" alt="">
+</section>
+
+<!-- BREAK -->
+<section class="card" id="break">
+  <div class="slab t"></div><div class="slab b"></div><div class="slab l"></div><div class="slab r"></div>
+  <header class="hdr rise">
+    <img class="logo" src="../event-logo.webp" alt="">
+  </header>
+  <div class="frame wipe" style="--d:200ms"></div>
+
+  <div class="col">
+    <div class="title rise" style="--d:160ms"></div>
+    <div class="back rise" style="--d:260ms"><span class="th"></span><span class="en"></span></div>
+    <div class="clock num rise" style="--d:360ms"></div>
+  </div>
+
+  <div class="foot rise" style="--d:560ms">
+    <span class="venue"></span>
+    <span class="music"></span>
+  </div>
+  <img class="ptmark" src="../logo-mark.png" alt="">
+</section>
+
+<!-- CAM -->
+<section class="card" id="cam">
+  <div class="bug wipe">
+    <img class="logo" src="../event-logo.webp" alt="">
+    <div class="sep"></div>
+    <div class="txt">
+      <span class="live"><i></i>LIVE</span>
+      <div class="venue"></div>
+    </div>
+  </div>
+</section>
+
+<script>
+(function(){
+'use strict';
+window.THEME='sports';
+window.THEME_READY=false;
+
+var $=function(sel,root){return (root||document).querySelector(sel)};
+var $$=function(sel,root){return Array.prototype.slice.call((root||document).querySelectorAll(sel))};
+var str=function(v){return v==null?'':String(v).trim()};
+var num=function(v){return (v==null||v===''||isNaN(+v))?null:+v};
+var show=function(el,on){if(el)el.classList.toggle('hide',!on)};
+var text=function(el,v){if(!el)return;v=str(v);el.textContent=v;show(el,v!=='')};
+
+/* shrink a text block until it fits its box: nowrap blocks by width, wrapping blocks by line count */
+function fit(el,min,maxLines){
+  if(!el||el.classList.contains('hide'))return;
+  el.style.fontSize='';
+  var s=parseFloat(getComputedStyle(el).fontSize),lh=parseFloat(getComputedStyle(el).lineHeight)/s||1.1;
+  var over=function(){
+    if(el.scrollWidth>el.clientWidth+1)return true;
+    if(maxLines&&el.scrollHeight>Math.round(s*lh*maxLines)+6)return true;
+    return false;
+  };
+  var guard=0;
+  while(s>min&&over()&&guard++<60){s-=2;el.style.fontSize=s+'px'}
+}
+
+/* header shared by result / next */
+function header(card,m){
+  var prog=str(m.prog);
+  var field=str(m.field),round=str(m.round),matchNo=str(m.matchNo);
+  if(field==='-')field='';
+  var meta=[];if(field)meta.push('FIELD '+field);if(round)meta.push('ROUND '+round);
+  text($('.prog',card),prog);
+  text($('.meta',card),meta.join(' · '));
+  show($('.sep',card),prog||meta.length);
+  show($('.mid',card),prog||meta.length);
+  text($('.match',card),matchNo?'MATCH '+matchNo:'');
+  fit($('.prog',card),36);
+}
+
+function picture(el,frame){
+  frame=str(frame);
+  el.style.backgroundImage=(frame.indexOf('data:image/')===0)?'url("'+frame+'")':'';
+}
+
+/* ---- result ---- */
+function resultRow(row,t,winner,tag){
+  row.classList.toggle('win',!!winner);row.classList.toggle('lose',!winner);
+  text($('.name .t',row),t.name);
+  show($('.name',row),str(t.name)!=='');
+  text($('.school .s',row),t.school);
+  text($('.school .code',row),t.code);
+  show($('.school',row),str(t.school)!==''||str(t.code)!=='');
+  show($('.time .tag',row),!!tag);
+  text($('.time .t',row),t.time);
+  show($('.time',row),!!tag||str(t.time)!=='');
+  var sc=num(t.score);
+  text($('.score .n',row),sc==null?'':sc);
+  var mx=num(t.max);
+  text($('.score .max',row),(sc!=null&&mx)?'/'+mx:'');
+  show($('.score',row),sc!=null);
+  /* name up to two lines, school up to two lines, and the block must stay inside the 208px row */
+  var team=$('.team',row),name=$('.name',row),school=$('.school',row);
+  fit(name,30,2);fit(school,20,2);
+  var guard=0;
+  while(team.offsetHeight>196&&guard++<20){
+    var ns=parseFloat(getComputedStyle(name).fontSize),ss=parseFloat(getComputedStyle(school).fontSize);
+    if(ns>28)name.style.fontSize=(ns-2)+'px';
+    else if(ss>18)school.style.fontSize=(ss-2)+'px';
+    else break;
+  }
+  fit($('.score',row),96);
+}
+
+function renderResult(card,m){
+  header(card,m);
+  picture($('.win-pic',card),m.frame);
+  var r0=$('.r0',card),r1=$('.r1',card),stats=$('.stats',card);
+  if(m.h2h===true||Array.isArray(m.teams)){
+    var ts=Array.isArray(m.teams)?m.teams:[];
+    var a=ts[0]||{},b=ts[1]||{};
+    resultRow(r0,{name:a.name,school:a.school,score:a.score,time:a.time},a.winner===true,a.winner===true);
+    resultRow(r1,{name:b.name,school:b.school,score:b.score,time:b.time},b.winner===true,b.winner===true);
+    show(r1,true);show(stats,false);
+  }else{
+    resultRow(r0,{name:m.team,school:m.school,code:m.teamId,score:m.total,max:m.max,time:m.time},true,false);
+    show(r1,false);
+    /* stats: up to four missions, retry, rank */
+    var cells=[];
+    var ms=Array.isArray(m.missions)?m.missions.slice(0,4):[];
+    if(Array.isArray(m.missions)&&m.missions.length>4)ms=[];
+    ms.forEach(function(mi){
+      var n=num(mi.n),mx=num(mi.max);
+      if(str(mi.label)===''||n==null)return;
+      cells.push({k:str(mi.label),v:String(n),of:mx?'/'+mx:''});
+    });
+    var retry=num(m.retry);if(retry!=null)cells.push({k:'RETRY',v:String(retry)});
+    var rank=num(m.rank);if(rank)cells.push({th:'อันดับตอนนี้',k:'RANK',v:String(rank),rank:true});
+    stats.textContent='';
+    cells.forEach(function(c){
+      var d=document.createElement('div');d.className='stat'+(c.rank?' rank':'');
+      var k=document.createElement('div');k.className='k caps';
+      if(c.th){var th=document.createElement('span');th.className='th';th.textContent=c.th;k.appendChild(th)}
+      k.appendChild(document.createTextNode(c.k));
+      var v=document.createElement('div');v.className='v num';v.textContent=c.v;
+      if(c.of){var of=document.createElement('span');of.className='of';of.textContent=c.of;v.appendChild(of)}
+      d.appendChild(k);d.appendChild(v);stats.appendChild(d);
+    });
+    show(stats,cells.length>0);
+    $$('.stat .k',stats).forEach(function(k){fit(k,16)});
+  }
+  /* next strip */
+  var nx=str(m.next),parts=nx.split(/\s+vs\.?\s+/i);
+  var pair=$('.next .pair',card);
+  text($('.a',pair),parts[0]);
+  show($('.vs',pair),parts.length===2);
+  text($('.b',pair),parts.length===2?parts[1]:'');
+  show($('.next',card),nx!=='');
+  fit(pair,36);
+}
+
+/* ---- next / intro / title ---- */
+function renderNext(card,m){
+  var pairEl=$('.pair',card),L=$('.side.l',card),R=$('.side.r',card),C=$('.side.c',card),VS=$('.vs',card);
+  var ts=Array.isArray(m.teams)?m.teams:null,isPair=!!(ts&&ts.length>=2);
+  var th,en,one;
+  if(m.k==='title'){
+    header(card,{});
+    th=str(m.eyebrow);en=str(m.tag);
+    one={name:m.title,school:m.sub};
+  }else{
+    header(card,m);
+    if(m.k==='intro'){th='เตรียมความพร้อม';en='SETUP'}
+    else{th=isPair?'คู่ถัดไป':'ทีมถัดไป';en='NEXT MATCH'}
+    if(!isPair){var t0=ts&&ts[0]?ts[0]:{};one={name:m.team!=null?m.team:t0.name,school:m.school!=null?m.school:t0.school}}
+  }
+  text($('.label .th',card),th);
+  text($('.label .en',card),en);
+  show($('.label',card),th||en);
+  pairEl.classList.toggle('solo',!isPair);
+  show(L,isPair);show(R,isPair);show(VS,isPair);show(C,!isPair);
+  if(isPair){
+    text($('.name',L),ts[0].name);text($('.school',L),ts[0].school);
+    text($('.name',R),ts[1].name);text($('.school',R),ts[1].school);
+    fit($('.name',L),36,2);fit($('.name',R),36,2);
+    fit($('.school',L),18);fit($('.school',R),18);
+  }else{
+    text($('.name',C),one.name);text($('.school',C),one.school);
+    fit($('.name',C),36,2);fit($('.school',C),18);
+  }
+}
+
+/* ---- idle ---- */
+function renderIdle(card,m){
+  var t=str(m.title)||'โปรดรอสักครู่';
+  text($('.wait .th',card),t);
+  text($('.venue',card),m.sub);
+  fit($('.wait',card),36);
+}
+
+/* ---- break ---- */
+var clock={endsAt:0,timer:0};
+var WORDS={live:['การถ่ายทอดสด','จะเริ่มในอีก','ON AIR IN'],match:['การแข่งขัน','จะเริ่มในอีก','STARTING IN'],'break':['พักการแข่งขัน','จะกลับมาในอีก','BACK IN']};
+function fmt(ms){
+  var s=Math.max(0,Math.ceil(ms/1000)),h=Math.floor(s/3600),mi=Math.floor(s%3600/60),se=s%60,p=function(n){return (n<10?'0':'')+n};
+  return h>0?h+':'+p(mi)+':'+p(se):p(mi)+':'+p(se);
+}
+function tick(){
+  var el=$('#break .clock');
+  var v=fmt(clock.endsAt-Date.now());
+  if(el.textContent!==v){el.textContent=v;fit(el,96)}
+}
+function renderBreak(card,m){
+  var w=WORDS[str(m.mode)]||WORDS['break'];
+  text($('.title',card),w[0]);
+  text($('.back .th',card),w[1]);
+  text($('.back .en',card),w[2]);
+  text($('.foot .venue',card),m.sub);
+  var credit=str(m.credit);
+  text($('.foot .music',card),credit?'♪ '+credit:'');
+  show($('.foot',card),credit||str(m.sub));
+  var e=num(m.endsAt);
+  clock.endsAt=e!=null?e:Date.now();
+  if(!clock.timer)clock.timer=setInterval(tick,250);
+  tick();
+  fit($('.title',card),36);
+}
+function stopClock(){if(clock.timer){clearInterval(clock.timer);clock.timer=0}}
+
+/* ---- cam ---- */
+function renderCam(card,m){text($('.venue',card),m.sub)}
+
+/* ---- router ---- */
+var CARD={result:'result',next:'next',intro:'next',title:'next',idle:'idle','break':'break',cam:'cam',play:null};
+var cur={k:null,card:null},last=null;
+
+var enterTimer=0;
+function enter(card){
+  clearTimeout(enterTimer);
+  card.classList.remove('enter');
+  void card.offsetWidth;
+  card.classList.add('enter');
+  enterTimer=setTimeout(function(){card.classList.remove('enter')},1300);
+}
+
+window.show=function(m){
+  try{
+    m=(m&&typeof m==='object')?m:{};
+    var k=str(m.k);
+    if(!(k in CARD))return;
+    last=m;
+    var id=CARD[k],card=id?document.getElementById(id):null;
+    if(id!=='break')stopClock();
+    if(card){
+      if(id==='result')renderResult(card,m);
+      else if(id==='next')renderNext(card,m);
+      else if(id==='idle')renderIdle(card,m);
+      else if(id==='break')renderBreak(card,m);
+      else if(id==='cam')renderCam(card,m);
+    }
+    var same=(k===cur.k&&id===cur.card);
+    $$('.card').forEach(function(c){
+      var on=(c===card);
+      if(!on){c.classList.remove('on');c.classList.remove('enter')}
+    });
+    if(card){
+      card.classList.add('on');
+      if(!same)enter(card);
+    }
+    cur.k=k;cur.card=id;
+  }catch(e){
+    if(window.console)console.error('sports theme: show failed',e);
+  }
+};
+
+var faces=['400 26px Prompt','500 26px Prompt','600 26px Prompt','700 26px Prompt','800 26px Oxanium','600 26px Oxanium'];
+Promise.all(faces.map(function(f){return document.fonts.load(f).catch(function(){})}))
+  .then(function(){return document.fonts.ready})
+  .then(function(){window.THEME_READY=true;if(last)window.show(last)}, function(){window.THEME_READY=true});
+})();
+</script>
+</body>
+</html>

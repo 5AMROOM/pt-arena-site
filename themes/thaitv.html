@@ -1,0 +1,472 @@
+<!doctype html>
+<!-- Hallmark · pre-emit critique: P4 H5 E4 S4 R4 V3 -->
+<!-- Thai TV on-air theme: navy field, white panels, orange accent, logo top-left.
+     Loaded by overlay.html in an iframe and driven only by window.show(m); follows themes/CONTRACT.md. -->
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>Thai TV Theme</title>
+<style>
+@font-face{font-family:"Prompt";src:url("../font/Prompt-Regular.ttf") format("truetype");font-weight:400}
+@font-face{font-family:"Prompt";src:url("../font/Prompt-Medium.ttf") format("truetype");font-weight:500}
+@font-face{font-family:"Prompt";src:url("../font/Prompt-SemiBold.ttf") format("truetype");font-weight:600}
+@font-face{font-family:"Prompt";src:url("../font/Prompt-Bold.ttf") format("truetype");font-weight:700}
+@font-face{font-family:"Oxanium";src:url("../font/Oxanium.ttf") format("truetype");font-weight:200 800}
+
+:root{
+  --navy:#0B2B6E;
+  --navy-deep:#061B4A;
+  --navy-soft:#16397F;
+  --accent:#F28C28;
+  --paper:#F5F7FB;
+  --ink:#0D1B3A;
+  --mute:#5D6B86;
+  --on-navy:#F5F7FB;
+  --on-navy-dim:rgba(245,247,251,.62);
+  --hairline:rgba(245,247,251,.16);
+  --shadow:rgba(3,12,36,.35);
+
+  --font-th:"Prompt",sans-serif;
+  --font-num:"Oxanium","Bahnschrift",sans-serif;
+
+  --xxl:192px; --xl:128px; --l:64px; --s:28px;
+  --r:20px;
+  --ease:cubic-bezier(.2,.7,.1,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1920px;height:1080px;margin:0;overflow:hidden;background:transparent}
+body{position:relative;font-family:var(--font-th);color:var(--on-navy)}
+[hidden]{display:none!important}
+.card{position:absolute;inset:0;opacity:0;visibility:hidden;transition:opacity .4s ease,visibility 0s linear .4s}
+.card.on{opacity:1;visibility:visible;transition:opacity .4s ease}
+.field{position:absolute;inset:0;background:linear-gradient(180deg,var(--navy) 0%,var(--navy-deep) 100%)}
+.num{font-family:var(--font-num);font-variant-numeric:tabular-nums}
+
+/* logo home: top-left */
+.bug{position:absolute;left:96px;top:48px;height:176px}
+
+/* white panel */
+.panel{background:var(--paper);color:var(--ink);border-radius:var(--r);box-shadow:0 12px 32px var(--shadow)}
+
+/* header stack beside the logo */
+.head{position:absolute;left:336px;top:72px;width:1488px}
+.kicker{font:600 var(--s)/1.2 var(--font-th);color:var(--accent);letter-spacing:.01em}
+.title{font:700 var(--l)/1.15 var(--font-th);color:var(--on-navy);margin-top:4px;white-space:nowrap}
+.meta{font:500 var(--s)/1.3 var(--font-num);color:var(--on-navy-dim);letter-spacing:.06em;margin-top:6px}
+.meta b{color:var(--on-navy);font-weight:600;font-family:var(--font-th);letter-spacing:0}
+.meta .sep{margin:0 .55em}
+
+/* bottom strap */
+.strap{position:absolute;left:96px;right:96px;bottom:56px;height:72px;display:flex;align-items:center;border-radius:var(--r);overflow:hidden;background:var(--paper);color:var(--ink);box-shadow:0 12px 32px var(--shadow)}
+.strap .tab{height:100%;display:flex;align-items:center;padding:0 32px;background:var(--accent);color:var(--paper);font:700 var(--s)/1 var(--font-th);flex:none}
+.strap .txt.num{font-family:var(--font-num);letter-spacing:.06em;color:var(--mute)}
+.strap .txt{padding:0 32px;font:600 var(--s)/1.3 var(--font-th);display:flex;gap:20px;align-items:center;flex:1;min-width:0;white-space:nowrap;overflow:hidden}
+.strap .txt .vs{font:600 var(--s)/1 var(--font-num);color:var(--mute)}
+.strap .end.th{font-family:var(--font-th);letter-spacing:0;color:var(--ink)}
+.strap .end{padding:0 32px;font:600 var(--s)/1.3 var(--font-num);color:var(--mute);letter-spacing:.06em;margin-left:auto;white-space:nowrap;flex:none}
+
+/* ---------- RESULT ---------- */
+#result .win-window{position:absolute;left:864px;top:64px;width:960px;height:540px;border-radius:var(--r);overflow:hidden;box-shadow:0 12px 32px var(--shadow);background:var(--navy-deep);border:1px solid var(--hairline)}
+#result .win-window img{width:100%;height:100%;object-fit:cover;display:block}
+#result .head{left:96px;top:288px;width:744px}
+.row{position:absolute;left:96px;right:96px;display:flex;align-items:center;border-radius:var(--r)}
+.row .code{font:600 var(--s)/1.2 var(--font-num);letter-spacing:.06em;min-width:184px;padding-left:40px;padding-right:28px;flex:none;white-space:nowrap}
+.row .code[hidden]+.who{padding-left:40px}
+.row .who{flex:1;min-width:0;padding-right:24px}
+.row .name{font:700 var(--l)/1.1 var(--font-th);white-space:nowrap}
+.row .school{font:400 var(--s)/1.3 var(--font-th);margin-top:4px;white-space:nowrap}
+.row .time{font:500 var(--s)/1 var(--font-num);text-align:right;margin-right:40px;letter-spacing:.04em;flex:none}
+.row .time small{display:block;font:500 22px/1 var(--font-th);margin-bottom:8px;letter-spacing:0}
+.row .time small.en{font-family:var(--font-num);letter-spacing:.08em}
+.row .score{font:700 var(--xl)/1 var(--font-num);min-width:232px;text-align:right;padding-right:48px;flex:none;white-space:nowrap}
+.row .score .of{font-size:40px;color:var(--mute);margin-left:8px;letter-spacing:.02em}
+.row.w{top:628px;height:176px;background:var(--paper);color:var(--ink);box-shadow:0 12px 32px var(--shadow)}
+.row.w .code,.row.w .school,.row.w .time{color:var(--mute)}
+.badge{display:inline-flex;align-items:center;height:56px;padding:0 28px;border-radius:28px;background:var(--accent);color:var(--paper);font:700 var(--s)/1 var(--font-th);margin-right:40px;gap:12px;flex:none}
+.badge .num{font-weight:700;letter-spacing:.08em}
+.row.l{top:820px;height:104px;background:var(--navy-soft);color:var(--on-navy-dim)}
+.row.l .name{font-size:44px}
+.row.l .score{font-size:var(--l);color:var(--on-navy-dim)}
+/* single team: missions + rank on the lower row */
+.row.l .ms{flex:1;display:flex;gap:56px;padding-left:40px;min-width:0}
+.row.l .m small,.row.l .rank small{display:block;font:500 20px/1 var(--font-num);letter-spacing:.1em;margin-bottom:10px;text-transform:uppercase}
+.row.l .m b{font:600 40px/1 var(--font-num);color:var(--on-navy)}
+.row.l .rank{display:flex;align-items:center;gap:20px;padding-right:48px;margin-left:auto;flex:none}
+.row.l .rank small{font:500 var(--s)/1.2 var(--font-th);letter-spacing:0;margin:0;text-transform:none;text-align:right}
+.row.l .rank small i{display:block;font:500 20px/1 var(--font-num);font-style:normal;letter-spacing:.1em}
+.row.l .rank b{font:700 var(--l)/1 var(--font-num);color:var(--on-navy)}
+
+/* ---------- NEXT / INTRO / TITLE ---------- */
+#next .team{position:absolute;top:384px;width:800px;height:360px;padding:0 56px;display:flex;flex-direction:column;justify-content:center}
+#next .team.l{left:96px}
+#next .team.r{right:96px;text-align:right}
+#next.solo .team.l{width:1728px}
+#next .team .side{font:600 var(--s)/1.2 var(--font-th);color:var(--accent)}
+#next .team .name{font:700 var(--xl)/1.25 var(--font-th);margin-top:16px;white-space:nowrap}
+#next .team .school{font:400 var(--s)/1.3 var(--font-th);color:var(--mute);margin-top:6px;white-space:nowrap}
+#next .vs{position:absolute;left:900px;top:504px;width:120px;height:120px;border-radius:60px;background:var(--navy-deep);border:3px solid var(--accent);display:flex;align-items:center;justify-content:center;font:700 44px/1 var(--font-num);color:var(--on-navy);letter-spacing:.04em}
+
+/* ---------- IDLE ---------- */
+#idle .logo{position:absolute;left:50%;top:96px;height:600px;transform:translateX(-50%)}
+#idle .wait{position:absolute;left:50%;top:752px;transform:translateX(-50%);padding:0 64px;height:120px;display:flex;align-items:center;font:700 var(--l)/1.2 var(--font-th);white-space:nowrap}
+#idle .venue{position:absolute;left:0;right:0;top:912px;text-align:center;font:500 var(--s)/1.2 var(--font-th);color:var(--on-navy-dim)}
+#idle .venue i{font-style:normal;color:var(--accent);margin-right:12px}
+
+/* ---------- BREAK ---------- */
+/* the field skips x800 y200 w1040 h585: OBS plays the sponsor video there */
+#break .field{clip-path:path(evenodd,"M0 0H1920V1080H0Z M800 200H1840V785H800Z")}
+#break .hole-frame{position:absolute;left:794px;top:194px;width:1052px;height:597px;border:6px solid var(--paper);border-radius:10px}
+#break .hole-label{position:absolute;left:800px;top:146px;font:600 var(--s)/1 var(--font-th);color:var(--on-navy-dim)}
+#break .hole-label .en{font-family:var(--font-num);letter-spacing:.1em;font-size:22px;margin-left:14px}
+#break .head{left:96px;top:248px;width:656px}
+#break .cd{position:absolute;left:96px;top:417px;width:656px;height:368px;padding:40px 48px;display:flex;flex-direction:column;justify-content:center}
+#break .cd .lbl{font:600 var(--s)/1.2 var(--font-th);color:var(--mute)}
+#break .cd .t{font:700 var(--xxl)/1 var(--font-num);margin-top:28px;letter-spacing:.02em;white-space:nowrap}
+
+/* ---------- CAM ---------- */
+#cam .camlogo{position:absolute;left:72px;top:40px;height:144px}
+#cam .tag{position:absolute;left:264px;top:80px;height:64px;display:flex;align-items:center;border-radius:32px;overflow:hidden;background:var(--navy);color:var(--on-navy);box-shadow:0 8px 24px var(--shadow)}
+#cam .tag .live{height:100%;display:flex;align-items:center;gap:12px;padding:0 24px;background:var(--accent);color:var(--paper);font:700 var(--s)/1 var(--font-num);letter-spacing:.1em}
+#cam .tag .live::before{content:"";width:12px;height:12px;border-radius:6px;background:var(--paper)}
+#cam .tag .v{padding:0 32px;font:500 var(--s)/1 var(--font-th);white-space:nowrap}
+
+/* ---------- motion (runs when a card enters; same-k updates keep the card still) ---------- */
+@keyframes wipe{from{clip-path:inset(0 100% 0 0 round var(--r))}to{clip-path:inset(0 0 0 0 round var(--r))}}
+@keyframes wipeL{from{clip-path:inset(0 0 0 100% round var(--r))}to{clip-path:inset(0 0 0 0 round var(--r))}}
+@keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@keyframes pop{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}
+.card.in .a-wipe{animation:wipe .6s var(--ease) both}
+.card.in .a-wipeL{animation:wipeL .6s var(--ease) both}
+.card.in .a-rise{animation:rise .5s var(--ease) both}
+.card.in .a-fade{animation:fade .5s var(--ease) both}
+.card.in .a-pop{animation:pop .4s var(--ease) both}
+.card.in .d1{animation-delay:.08s}.card.in .d2{animation-delay:.16s}.card.in .d3{animation-delay:.24s}
+.card.in .d4{animation-delay:.36s}.card.in .d5{animation-delay:.5s}.card.in .d6{animation-delay:.64s}
+#idle .logo.a-fade,#idle .wait.a-rise{animation-name:fadeC}
+@keyframes fadeC{from{opacity:0}to{opacity:1}}
+</style>
+</head>
+<body>
+
+<!-- RESULT -->
+<section class="card" id="result">
+  <div class="field"></div>
+  <div class="win-window a-fade"><img id="r-frame" alt=""></div>
+  <img class="bug a-fade" src="../event-logo.webp" alt="">
+  <div class="head">
+    <div class="kicker a-rise d1">ผลการแข่งขัน</div>
+    <div class="title a-rise d2" id="r-title"></div>
+    <div class="meta a-rise d3" id="r-meta"></div>
+  </div>
+  <div class="row w a-wipe d3" id="r-w">
+    <div class="code num" id="r-w-code"></div>
+    <div class="who"><div class="name" id="r-w-name"></div><div class="school" id="r-w-school"></div></div>
+    <div class="time num" id="r-w-time"><small>เวลา</small><span></span></div>
+    <div class="time num" id="r-w-retry"><small class="en">RETRY</small><span></span></div>
+    <div class="badge a-pop d6" id="r-w-badge">ชนะ <span class="num">WINNER</span></div>
+    <div class="score num" id="r-w-score"><span class="v"></span><span class="of"></span></div>
+  </div>
+  <div class="row l a-wipe d4" id="r-l">
+    <div class="code num" id="r-l-code" hidden></div>
+    <div class="who" id="r-l-who"><div class="name" id="r-l-name"></div><div class="school" id="r-l-school"></div></div>
+    <div class="time num" id="r-l-time"><small>เวลา</small><span></span></div>
+    <div class="score num" id="r-l-score"><span class="v"></span></div>
+    <div class="ms" id="r-ms"></div>
+    <div class="rank" id="r-rank"><small>อันดับตอนนี้<i>RANK</i></small><b class="num"></b></div>
+  </div>
+  <div class="strap a-wipe d5" id="r-strap">
+    <div class="tab">ถัดไป</div>
+    <div class="txt" id="r-next"></div>
+  </div>
+</section>
+
+<!-- NEXT (also intro and title) -->
+<section class="card" id="next">
+  <div class="field"></div>
+  <img class="bug a-fade" src="../event-logo.webp" alt="">
+  <div class="head">
+    <div class="kicker a-rise d1" id="n-kicker"></div>
+    <div class="title a-rise d2" id="n-title"></div>
+  </div>
+  <div class="team l panel a-wipe d3">
+    <div class="side" id="n-l-side">ฝั่งซ้าย</div>
+    <div class="name" id="n-l-name"></div>
+    <div class="school" id="n-l-school"></div>
+  </div>
+  <div class="team r panel a-wipeL d3" id="n-r">
+    <div class="side">ฝั่งขวา</div>
+    <div class="name" id="n-r-name"></div>
+    <div class="school" id="n-r-school"></div>
+  </div>
+  <div class="vs a-pop d5" id="n-vs">VS</div>
+  <div class="strap a-wipe d4" id="n-strap">
+    <div class="tab" id="n-tab"></div>
+    <div class="txt num" id="n-meta"></div>
+  </div>
+</section>
+
+<!-- IDLE -->
+<section class="card" id="idle">
+  <div class="field"></div>
+  <img class="logo a-fade" src="../event-logo.webp" alt="">
+  <div class="wait panel a-rise d3" id="i-title"></div>
+  <div class="venue a-fade d5" id="i-venue"><i>●</i><span></span></div>
+</section>
+
+<!-- BREAK -->
+<section class="card" id="break">
+  <div class="field"></div>
+  <div class="hole-frame a-fade d2"></div>
+  <div class="hole-label a-fade d3">ผู้สนับสนุน<span class="en">SPONSOR</span></div>
+  <img class="bug a-fade" src="../event-logo.webp" alt="">
+  <div class="head">
+    <div class="kicker a-rise d1" id="b-en"></div>
+    <div class="title a-rise d2" id="b-title"></div>
+  </div>
+  <div class="cd panel a-wipe d3">
+    <div class="lbl" id="b-lbl"></div>
+    <div class="t num" id="b-t">--:--</div>
+  </div>
+  <div class="strap a-wipe d4" id="b-strap">
+    <div class="tab" id="b-note">♪</div>
+    <div class="txt" id="b-credit"></div>
+    <div class="end th" id="b-sub"></div>
+  </div>
+</section>
+
+<!-- CAM -->
+<section class="card" id="cam">
+  <img class="camlogo a-fade" src="../event-logo.webp" alt="">
+  <div class="tag a-wipe d2"><div class="live">LIVE</div><div class="v" id="c-sub"></div></div>
+</section>
+
+<script>
+(function(){
+  window.THEME = 'thaitv';
+  const $ = id => document.getElementById(id);
+  const str = v => (v === null || v === undefined) ? '' : String(v).trim();
+  const has = v => str(v) !== '';
+  const setText = (el, v) => { const s = str(v); el.textContent = s; el.hidden = !s; return !!s; };
+  const clear = el => { while (el.firstChild) el.removeChild(el.firstChild); };
+  const span = (txt, cls) => { const s = document.createElement('span'); if (cls) s.className = cls; s.textContent = txt; return s; };
+
+  // Shrink a one-line element until it fits its box; at the floor size let it wrap once instead of clipping.
+  function fit(el, max, min){
+    if (el.hidden) return;
+    el.style.whiteSpace = 'nowrap'; el.style.overflowWrap = '';
+    let size = max; el.style.fontSize = size + 'px';
+    while (el.scrollWidth > el.clientWidth + 1 && size > min){ size -= 2; el.style.fontSize = size + 'px'; }
+    if (el.scrollWidth > el.clientWidth + 1){ el.style.whiteSpace = 'normal'; el.style.overflowWrap = 'anywhere'; }
+  }
+
+  // "PT KidsBiT ภารกิจส่งด่วน · ประถม" -> title + level
+  function splitProg(p){
+    const s = str(p), i = s.lastIndexOf(' · ');
+    return i > 0 ? [s.slice(0, i), s.slice(i + 3)] : [s, ''];
+  }
+  const fieldOf = m => { const f = str(m.field); return f && f !== '-' ? f : ''; };
+  function metaBits(m){
+    const out = [];
+    if (has(m.matchNo)) out.push('MATCH ' + str(m.matchNo));
+    if (fieldOf(m)) out.push('FIELD ' + fieldOf(m));
+    if (has(m.round)) out.push('ROUND ' + str(m.round));
+    return out;
+  }
+
+  /* ---------- result ---------- */
+  function result(m){
+    const [t, lvl] = splitProg(m.prog);
+    setText($('r-title'), t); fit($('r-title'), 64, 40);
+    const meta = $('r-meta'); clear(meta);
+    const bits = metaBits(m);
+    if (lvl){ const b = document.createElement('b'); b.textContent = lvl; meta.appendChild(b); }
+    bits.forEach((x, i) => { if (i || lvl) meta.appendChild(span('·', 'sep')); meta.appendChild(span(x)); });
+    meta.hidden = !meta.firstChild;
+
+    const img = $('r-frame'), fr = str(m.frame);
+    if (fr.startsWith('data:image/')){ if (img.getAttribute('src') !== fr) img.src = fr; img.hidden = false; }
+    else { img.removeAttribute('src'); img.hidden = true; }
+
+    const timeCell = (el, v) => { const s = str(v); el.querySelector('span').textContent = s; el.hidden = !s; };
+    const solo = !m.h2h;
+    let w, l;
+    if (solo){
+      w = { name: m.team, school: m.school, time: m.time, score: m.total, code: m.teamId };
+    } else {
+      const ts = Array.isArray(m.teams) ? m.teams.filter(Boolean) : [];
+      w = ts.find(x => x.winner) || ts[0] || {};
+      l = ts.find(x => x !== w) || null;
+    }
+    setText($('r-w-code'), solo ? w.code : '');
+    setText($('r-w-name'), w.name); setText($('r-w-school'), w.school);
+    timeCell($('r-w-time'), w.time);
+    timeCell($('r-w-retry'), solo && has(m.retry) ? m.retry : '');
+    $('r-w-badge').hidden = solo || !w.winner;
+    const sc = $('r-w-score');
+    sc.querySelector('.v').textContent = str(w.score);
+    const mx = Number(m.max) || 0;
+    sc.querySelector('.of').textContent = solo && mx > 0 ? '/' + mx : '';
+    sc.hidden = !has(w.score);
+
+    const L = $('r-l');
+    ['r-l-who', 'r-l-time', 'r-l-score'].forEach(id => $(id).hidden = solo);
+    ['r-ms', 'r-rank'].forEach(id => $(id).hidden = !solo);
+    if (solo){
+      const ms = $('r-ms'); clear(ms);
+      const list = Array.isArray(m.missions) ? m.missions.filter(Boolean) : [];
+      if (list.length && list.length <= 4){
+        list.forEach(x => {
+          const d = document.createElement('div'); d.className = 'm';
+          const s = document.createElement('small'); s.textContent = str(x.label);
+          const b = document.createElement('b'); b.className = 'num';
+          b.textContent = str(x.n === undefined ? '' : x.n) + (Number(x.max) > 0 ? '/' + x.max : '');
+          d.appendChild(s); d.appendChild(b); ms.appendChild(d);
+        });
+      }
+      ms.hidden = !ms.firstChild;
+      const rk = Number(m.rank) || 0;
+      $('r-rank').querySelector('b').textContent = rk > 0 ? String(rk) : '';
+      $('r-rank').hidden = !(rk > 0);
+      L.hidden = ms.hidden && $('r-rank').hidden;
+    } else {
+      L.hidden = !l;
+      if (l){
+        setText($('r-l-name'), l.name); setText($('r-l-school'), l.school);
+        timeCell($('r-l-time'), l.time);
+        $('r-l-score').querySelector('.v').textContent = str(l.score);
+        $('r-l-score').hidden = !has(l.score);
+      }
+    }
+    fit($('r-w-name'), 64, 36); fit($('r-w-school'), 28, 22);
+    if (!L.hidden && !solo){ fit($('r-l-name'), 44, 28); fit($('r-l-school'), 28, 20); }
+
+    const nx = $('r-next'); clear(nx);
+    const parts = str(m.next).split(/\s+vs\.?\s+/i).filter(Boolean);
+    parts.forEach((p, i) => { if (i) nx.appendChild(span('VS', 'vs')); nx.appendChild(span(p)); });
+    $('r-strap').hidden = !parts.length;
+  }
+
+  /* ---------- next / intro / title ---------- */
+  function next(m, kind){
+    const card = $('next');
+    let a, b = null, kicker, head, sideA = 'ฝั่งซ้าย';
+    if (kind === 'title'){
+      a = { name: m.title, school: m.sub };
+      kicker = str(m.tag); head = str(m.prog); sideA = str(m.eyebrow);
+    } else {
+      const ts = Array.isArray(m.teams) ? m.teams.filter(Boolean) : [];
+      if (ts.length >= 2){ a = ts[0]; b = ts[1]; }
+      else if (ts.length === 1){ a = ts[0]; }
+      else { a = { name: m.team, school: m.school }; }
+      if (kind === 'intro') kicker = 'เตรียมความพร้อม · SETUP';
+      else kicker = (b ? 'คู่ถัดไป' : 'ทีมถัดไป') + ' · NEXT MATCH';
+      head = str(m.prog);
+      if (!b) sideA = '';
+    }
+    card.classList.toggle('solo', !b);
+    setText($('n-kicker'), kicker);
+    setText($('n-title'), head); fit($('n-title'), 64, 40);
+    setText($('n-l-side'), sideA);
+    setText($('n-l-name'), a.name || a.team); setText($('n-l-school'), a.school);
+    $('n-r').hidden = $('n-vs').hidden = !b;
+    if (b){ setText($('n-r-name'), b.name || b.team); setText($('n-r-school'), b.school); }
+    fit($('n-l-name'), 128, 48); fit($('n-l-school'), 28, 22);
+    if (b){ fit($('n-r-name'), 128, 48); fit($('n-r-school'), 28, 22); }
+
+    if (kind === 'title'){ $('n-strap').hidden = true; return; }
+    const mt = has(m.matchNo) ? 'MATCH ' + str(m.matchNo) : '';
+    const rest = metaBits({ field: m.field, round: m.round }).join(' · ');
+    setText($('n-tab'), mt); setText($('n-meta'), rest);
+    $('n-strap').hidden = !mt && !rest;
+  }
+
+  /* ---------- idle ---------- */
+  function idle(m){
+    $('i-title').textContent = str(m.title) || 'โปรดรอสักครู่';
+    const v = $('i-venue'); v.querySelector('span').textContent = str(m.sub); v.hidden = !has(m.sub);
+  }
+
+  /* ---------- break ---------- */
+  const MODES = {
+    live:  ['การถ่ายทอดสด', 'จะเริ่มในอีก', 'ON AIR IN'],
+    match: ['การแข่งขัน', 'จะเริ่มในอีก', 'STARTING IN'],
+    break: ['พักการแข่งขัน', 'จะกลับมาในอีก', 'BACK IN']
+  };
+  let endsAt = 0, timer = 0;
+  const pad = n => String(n).padStart(2, '0');
+  let lastLen = 0;
+  function tick(){
+    const left = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+    const h = Math.floor(left / 3600), mi = Math.floor(left % 3600 / 60), s = left % 60;
+    const t = endsAt ? (h ? h + ':' + pad(mi) + ':' + pad(s) : pad(mi) + ':' + pad(s)) : '--:--';
+    const el = $('b-t');
+    if (el.textContent !== t){
+      el.textContent = t;
+      if (t.length !== lastLen){ lastLen = t.length; fit(el, 192, 96); }
+    }
+  }
+  function brk(m){
+    const md = MODES[str(m.mode)] || MODES.break;
+    $('b-title').textContent = md[0]; $('b-lbl').textContent = md[1]; $('b-en').textContent = md[2];
+    const e = Number(m.endsAt) || 0;
+    endsAt = e;
+    lastLen = 0; tick();
+    if (!timer) timer = setInterval(tick, 250);
+    // no music credit: the venue moves into the text slot so the strap does not open with a gap
+    const hasCredit = has(m.credit);
+    setText($('b-credit'), hasCredit ? m.credit : m.sub);
+    $('b-note').hidden = !hasCredit;
+    setText($('b-sub'), hasCredit ? m.sub : '');
+    $('b-strap').hidden = !hasCredit && !has(m.sub);
+  }
+
+  /* ---------- cam ---------- */
+  function cam(m){ setText($('c-sub'), m.sub); }
+
+  /* ---------- switching ---------- */
+  const CARD = { result: 'result', next: 'next', intro: 'next', title: 'next', idle: 'idle', break: 'break', cam: 'cam' };
+  let curK = null;
+  function swap(id){
+    document.querySelectorAll('.card').forEach(c => { if (c.id !== id){ c.classList.remove('on'); } });
+    if (!id) return;
+    const c = $(id);
+    c.classList.remove('in'); void c.offsetWidth;
+    c.classList.add('on', 'in');
+  }
+
+  function render(k, m){
+    if (k === 'result') result(m);
+    else if (k === 'next' || k === 'intro' || k === 'title') next(m, k);
+    else if (k === 'idle') idle(m);
+    else if (k === 'break') brk(m);
+    else if (k === 'cam') cam(m);
+  }
+  let lastMsg = null;
+  window.show = function(m){
+    try {
+      if (!m || typeof m !== 'object') return;
+      const k = str(m.k);
+      if (CARD[k] || k === 'play') lastMsg = m;
+      if (k === 'play'){ curK = 'play'; swap(null); return; }
+      const id = CARD[k];
+      if (!id) return; // score, theme, hello and unknown kinds
+      if (k !== 'break' && timer){ clearInterval(timer); timer = 0; }
+      render(k, m);
+      if (k !== curK){ curK = k; swap(id); }
+    } catch (err){ if (window.console) console.error(err); }
+  };
+
+  // Ask for every face now (the cards start empty, so nothing would request them), then mark ready.
+  const faces = ['400 28px Prompt', '500 28px Prompt', '600 28px Prompt', '700 64px Prompt', '700 64px Oxanium', '500 28px Oxanium'];
+  const loads = document.fonts ? Promise.all(faces.map(f => document.fonts.load(f, 'ก0'))).catch(() => {}) : Promise.resolve();
+  loads.then(() => document.fonts ? document.fonts.ready : null).then(() => {
+    window.THEME_READY = true;
+    // sizes were measured with a fallback font if a message arrived first: render it again in place
+    if (lastMsg && curK && curK !== 'play' && curK !== 'break'){ try { render(curK, lastMsg); } catch (e){} }
+    if (curK === 'break'){ lastLen = 0; tick(); }
+  });
+})();
+</script>
+</body>
+</html>
