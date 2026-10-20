@@ -52,6 +52,12 @@ svg.ln path.won{stroke:var(--accent)}
 .fin .bo{text-align:center;font-family:Oxanium;font-size:12px;color:var(--mute);margin-top:8px;letter-spacing:.14em}
 .champ{margin-top:12px;text-align:center;font-weight:700;font-size:15px;color:var(--accent)}
 .empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--mute);font-size:18px}
+/* atmosphere: the clip fills the window, a small label in the corner */
+.br{position:fixed;inset:0;background:#000}
+.br video{width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .5s}
+.br video.on{opacity:1}
+.br .lab{position:absolute;left:20px;bottom:18px;display:flex;align-items:center;gap:8px;padding:6px 14px;border-radius:16px;background:rgba(0,0,0,.55);color:#fff;font-size:15px;font-weight:600}
+.br .lab i{width:8px;height:8px;border-radius:4px;background:var(--accent)}
 /* standings: rank · team and school · round 1 · round 2 · best · time */
 .rk{position:absolute;inset:0;display:flex;flex-direction:column}
 .rr{display:grid;grid-template-columns:52px 1fr 76px 76px 96px 112px;align-items:center;gap:0 12px;min-height:48px;padding:0 16px;border-bottom:1px solid var(--line)}
@@ -150,11 +156,26 @@ function drawLive(p,list){
 }
 setInterval(()=>{if(!data||data.mode!=='live')return;const gone=Date.now()-(data.t||Date.now());
   document.querySelectorAll('.clk[data-ms]').forEach(c=>{const d=+c.dataset.dur||Infinity;c.textContent=mmss(Math.min(d,+c.dataset.ms+gone))})},250);
+// atmosphere clips: one video element at a time, the next starts when one ends, fails, or has run 20 s
+let brIdx=0,brTimer=null;
+function drawBroll(p){
+  const list=data.broll||[];clearTimeout(brTimer);
+  if(!list.length){head(p,'บรรยากาศ',' ',[]).append(el('div','empty','ยังไม่มีคลิปบรรยากาศ'));return}
+  const box=el('div','br'),lab=el('div','lab');lab.append(el('i'),document.createTextNode('บรรยากาศในงาน'));
+  const play=()=>{clearTimeout(brTimer);const v=document.createElement('video');v.muted=true;v.playsInline=true;v.preload='auto';
+    v.src=list[brIdx%list.length];brIdx++;
+    const next=()=>{clearTimeout(brTimer);v.classList.remove('on');setTimeout(()=>{v.remove();if(data&&data.mode==='broll')play()},500)};
+    v.onended=next;v.onerror=next;v.oncanplay=()=>{v.classList.add('on');v.play().catch(next)};
+    brTimer=setTimeout(next,20000);box.prepend(v)};
+  box.append(lab);p.append(box);play();
+}
 function drawNow(p){{
     p.textContent='';
     const mode=data&&data.mode;
     if(mode==='rank'){drawRank(p,pages());p.classList.add('on');return}
     if(mode==='live'){drawLive(p,pages());p.classList.add('on');return}
+    clearTimeout(brTimer);
+    if(mode==='broll'){drawBroll(p);p.classList.add('on');return}
     const list=pages(),br=list[idx%Math.max(1,list.length)];
     const bd=head(p,'สายการแข่ง · BRACKET',br?br.title:'สายการแข่ง',list);
     if(!br){bd.append(el('div','empty',data&&data.error?'ยังดึงสายการแข่งไม่ได้':'ยังไม่มีสายการแข่ง'));p.classList.add('on');return}
@@ -184,10 +205,10 @@ function show(m){
   if(m.k==='theme'&&m.name){theme=m.name;paint(theme);return}
   if(m.k!=='board')return;
   if(m.theme&&m.theme!==theme){theme=m.theme;paint(theme)}
-  const key=x=>x?JSON.stringify([x.mode,x.brackets,x.rank,x.live]):'',same=key(data)===key(m),changed=!data||data.mode!==m.mode;data=m;
+  const key=x=>x?JSON.stringify([x.mode,x.brackets,x.rank,x.live,x.mode==='broll'?(x.broll||[]).length>0:0]):'',same=key(data)===key(m),changed=!data||data.mode!==m.mode;data=m;
   if(changed)idx=0;
   // more than one page (ประถม and มัธยม, several programmes, more than four fields): each gets the window in turn
-  clearInterval(turn);if(pages().length>1)turn=setInterval(()=>{idx++;draw()},12000);
+  clearInterval(turn);if(m.mode!=='broll'&&pages().length>1)turn=setInterval(()=>{idx++;draw()},12000);
   if(!same||!document.getElementById('p').childElementCount){
     // the live fields update in place every few seconds: no fade for that, only when the page itself changes
     if(m.mode==='live'&&!changed){const p=document.getElementById('p');try{p.textContent='';drawNow(p)}catch(e){draw()}}else draw()}

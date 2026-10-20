@@ -1549,7 +1549,7 @@ const OA_SCENE='PT รีเพลย์',OA_CAM='PT กล้องเดิน
 const OA_ADBOX={x:800,y:200,w:1040,h:585};
 // what the window beside the countdown shows (board.html, source "PT ตาราง"): the ads; the KidsBiT bracket from RoboArena;
 // the standings of the solo programmes from what we have aired; or the fields live right now from RoboArena
-const OA_BOARD='PT ตาราง',OA_SHOW={ads:'โฆษณา',bracket:'สายการแข่ง KidsBiT',rank:'อันดับ (ที่ออกอากาศแล้ว)',live:'สดจากสนาม ⚠️ บอกผลก่อนคลิป'};
+const OA_BOARD='PT ตาราง',OA_SHOW={ads:'โฆษณา',bracket:'สายการแข่ง KidsBiT',rank:'อันดับ (ที่ออกอากาศแล้ว)',live:'สดจากสนาม ⚠️ บอกผลก่อนคลิป',broll:'บรรยากาศในงาน (คลิปในโฟลเดอร์ broll)'};
 const OA_REGION={C:'central',S:'south',E:'east',N:'north',NE:'northeast'};
 // the sound folder holds three files with fixed names: the break bed (loops), the card sting, the show opener
 const OA_SND={loop:'pt_loop.wav',sting:'pt_sting.wav',open:'pt_open.wav'};
@@ -1915,8 +1915,10 @@ function oaBoardSay(force){
   // nothing is fixed here: the programmes, groups and rounds are whatever RoboArena's board holds right now (a venue may
   // run no KidsBiT, a draw may change on the day); a programme without a single match is left out
   const mode=OA.brkShow==='ads'?'bracket':OA.brkShow;
-  const list=mode==='rank'?oaRank():mode==='live'?oaLive():oaBracket().filter(b=>b.left.length||b.right.length||b.final),has=list.length>0;
-  const m={theme:OA.theme,mode,brackets:mode==='bracket'?list:[],rank:mode==='rank'?list:[],live:mode==='live'?list:[],error:mode==='rank'?'':OA.boardErr,sub:VENUES.find(v=>v[0]===S.venue)[1],t:Date.now()},
+  // atmosphere: the newest clips of the broll folder (at most 20), played by the window itself from the helper
+  const list=mode==='rank'?oaRank():mode==='live'?oaLive():mode==='broll'?(OA.H?.broll||[]).slice(0,20).map(f=>OA_HELPER+'/broll/'+encodeURIComponent(f))
+    :oaBracket().filter(b=>b.left.length||b.right.length||b.final),has=list.length>0;
+  const m={theme:OA.theme,mode,brackets:mode==='bracket'?list:[],rank:mode==='rank'?list:[],live:mode==='live'?list:[],broll:mode==='broll'?list:[],error:mode==='rank'||mode==='broll'?'':OA.boardErr,sub:VENUES.find(v=>v[0]===S.venue)[1],t:Date.now()},
     sig=JSON.stringify({...m,t:0});
   if(force||sig!==OA.boardSig){OA.boardSig=sig;OBS.say('board',m)}
   if(has!==OA.boardHas){OA.boardHas=has;oaBrkVis();oaDraw()}
@@ -1928,7 +1930,7 @@ async function oaBrkVis(){
   const en=async(n,on)=>{try{const{sceneItemId}=await OBS.req('GetSceneItemId',{sceneName:OA_BREAK,sourceName:n});await OBS.req('SetSceneItemEnabled',{sceneName:OA_BREAK,sceneItemId,sceneItemEnabled:on})}catch(e){}};
   await en(OA_ADS,ads);await en(OA_ADVID,ads&&!!oaAdvid());await en(OA_BOARD,!ads);
 }
-async function oaBrkShowApply(){OA.boardHas=false;OA.boardSig='';await oaBrkVis();if(OA.brkShow==='rank')oaBoardSay(true);else if(OA.brkShow!=='ads')oaBoard()}
+async function oaBrkShowApply(){OA.boardHas=false;OA.boardSig='';await oaBrkVis();if(OA.brkShow==='rank'||OA.brkShow==='broll')oaBoardSay(true);else if(OA.brkShow!=='ads')oaBoard()}
 async function oaBreak(){
   if(!OBS.ok)return toast('ยังไม่ได้ต่อ OBS');
   OA.brk={mode:OA.brkMode,endsAt:Date.now()+OA.brkMin*60000};
@@ -2002,7 +2004,7 @@ function oaClock(){
     if(Date.now()-(OA.statAt||0)>2000){OA.statAt=Date.now();obsStat()}
     if(Date.now()-(OA.helpAt||0)>3000){OA.helpAt=Date.now();oaHelper().then(()=>{if(!OBS.ok)oaAlerts()})}
     if((OA.brkShow==='bracket'&&Date.now()-OA.boardAt>10000)||(OA.brkShow==='live'&&Date.now()-OA.boardAt>3000))oaBoard();
-    if(OA.brkShow==='rank'&&Date.now()-OA.boardAt>5000){OA.boardAt=Date.now();oaBoardSay()}
+    if((OA.brkShow==='rank'||OA.brkShow==='broll')&&Date.now()-OA.boardAt>5000){OA.boardAt=Date.now();oaBoardSay()}
     if(OA.brkShow!=='bracket'&&OA.brkShow!=='live'&&Date.now()-(OA.advAt||0)>30000&&OA.list.some(x=>x.h2h&&x.matchId)){OA.advAt=Date.now();oaBoardFetch()}};
   try{OA_TICKS=new Worker(URL.createObjectURL(new Blob(['setInterval(()=>postMessage(0),250)'],{type:'text/javascript'})));OA_TICKS.onmessage=tick}
   catch(e){OA_TICKS=setInterval(tick,250)}
@@ -2252,7 +2254,7 @@ function vOnair(){
           ${on?`<div class="row"><button class="btn ${live?'bad':''}" data-act="oastream">${live?'■ หยุดไลฟ์':'● เริ่มไลฟ์'}</button><button class="btn" data-act="oarec">${rec?'■ หยุดอัด':'⏺ เริ่มอัด'}</button></div>`:''}</div>
         <div class="panel oabrkp ${OA.brk?'on':''}"><div class="oah"><i></i>BREAK · พักเบรก / นับถอยหลัง</div>
           ${OA.brk?`<div class="oabrkt"><span>${esc(OA_BRK[OA.brk.mode])}</span><b class="mono" id="oabrk">${fmtMs(Math.max(0,OA.brk.endsAt-Date.now())).split('.')[0]}</b></div>
-            <div class="row"><label class="cc"><span>ช่องข้างนับถอยหลัง</span><select id="oabrkshow">${Object.entries(OA_SHOW).map(([k,t])=>`<option value="${k}" ${OA.brkShow===k?'selected':''}>${t}</option>`).join('')}</select></label></div>${OA.brkShow!=='ads'&&((OA.brkShow!=='rank'&&OA.boardErr)||!OA.boardHas)?`<p class="small ${OA.brkShow!=='rank'&&OA.boardErr?'bad':'muted'}" style="margin:0">${esc((OA.brkShow!=='rank'&&OA.boardErr)||({bracket:'ยังไม่มีสายการแข่งที่นี่',rank:'ยังไม่มีอันดับ (ยังไม่ได้ออกอากาศแข่งเดี่ยว)',live:'ตอนนี้ไม่มีสนามไหนแข่งอยู่'}[OA.brkShow]||'')+' ช่องข้างจึงโชว์โฆษณาแทน')}</p>`:''}
+            <div class="row"><label class="cc"><span>ช่องข้างนับถอยหลัง</span><select id="oabrkshow">${Object.entries(OA_SHOW).map(([k,t])=>`<option value="${k}" ${OA.brkShow===k?'selected':''}>${t}</option>`).join('')}</select></label></div>${OA.brkShow!=='ads'&&((OA.brkShow!=='rank'&&OA.brkShow!=='broll'&&OA.boardErr)||!OA.boardHas)?`<p class="small ${OA.brkShow!=='rank'&&OA.brkShow!=='broll'&&OA.boardErr?'bad':'muted'}" style="margin:0">${esc((OA.brkShow!=='rank'&&OA.brkShow!=='broll'&&OA.boardErr)||({bracket:'ยังไม่มีสายการแข่งที่นี่',rank:'ยังไม่มีอันดับ (ยังไม่ได้ออกอากาศแข่งเดี่ยว)',live:'ตอนนี้ไม่มีสนามไหนแข่งอยู่',broll:'ยังไม่มีคลิปในโฟลเดอร์ stream\\broll'}[OA.brkShow]||'')+' ช่องข้างจึงโชว์โฆษณาแทน')}</p>`:''}
             <div class="row"><button class="btn sm" data-act="oabrkmore" data-v="-5">−5 นาที</button><button class="btn sm" data-act="oabrkmore" data-v="-1">−1 นาที</button><button class="btn sm" data-act="oabrkmore" data-v="1">+1 นาที</button><button class="btn sm" data-act="oabrkmore" data-v="5">+5 นาที</button><button class="btn pri" data-act="oabrkend">⏭ จบช่วงนี้ กลับรีเพลย์</button></div>`
           :`<div class="row"><label class="cc"><span>ช่วง</span><select id="oabrkmode">${Object.entries(OA_BRK).map(([k,t])=>`<option value="${k}" ${OA.brkMode===k?'selected':''}>${t}</option>`).join('')}</select></label>
             <label class="cc"><span>ช่องข้างนับถอยหลัง</span><select id="oabrkshow">${Object.entries(OA_SHOW).map(([k,t])=>`<option value="${k}" ${OA.brkShow===k?'selected':''}>${t}</option>`).join('')}</select></label>
