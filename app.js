@@ -1663,6 +1663,7 @@ function oaScan(){
   for(const m of out.values())m.synced=OA.stable.has(oaRel(m))||!!oaCopy(m);
   OA.list=[...out.values()].sort((a,b)=>a.at-b.at);
   let grew=false;for(const m of OA.list)if(!OA.order.includes(m.id)){OA.order.push(m.id);grew=true}
+  if(grew||!OA.newAt)OA.newAt=Date.now();
   if(grew)oaKeep();
   // the page is drawn again only when something about the matches changed, so a button is never swapped under the mouse
   const sig=OA.list.map(m=>m.id+m.ok+m.vok+m.synced+m.total+oaReady(m)).join();
@@ -1677,14 +1678,16 @@ const oaQueueRaw=()=>OA.order.map(id=>OA.list.find(m=>m.id===id)).filter(m=>m&&!
 // the block on air carries on while it has a clip ready; then the next programme in the desk's order that has at least
 // OA_BLOCK_MIN ready (else any that has one). Inside a block: round by round, in bracket order, then as queued.
 // Anything wrong in here and the queue falls back to the plain order: the show never stops for the sorting.
-const OA_BLOCK_MIN=3;
+const OA_BLOCK_MIN=3,OA_BLOCK_WAIT=15*60000;
 const oaProgs=()=>{const seen=[...new Set(OA.list.map(m=>m.prog).filter(Boolean))];
   return[...OA.progOrder.filter(p=>seen.includes(p)),...seen.filter(p=>!OA.progOrder.includes(p))]};
 function oaBlockPick(q){
   const ready=q.filter(oaReady),n=p=>ready.filter(m=>m.prog===p).length,order=oaProgs();
   if(OA.block&&n(OA.block)>0)return OA.block;
   const i=order.indexOf(OA.block),rot=i<0?order:[...order.slice(i+1),...order.slice(0,i+1)];
-  return rot.find(p=>n(p)>=OA_BLOCK_MIN)||rot.find(p=>n(p)>0)||OA.block||order[0]||'';
+  // a small programme (one or two teams) never waits for ever: once its oldest ready clip has waited OA_BLOCK_WAIT, it goes next
+  const waited=p=>ready.filter(m=>m.prog===p).some(m=>Date.now()-(m.at||0)>=OA_BLOCK_WAIT);
+  return rot.find(p=>n(p)>0&&waited(p))||rot.find(p=>n(p)>=OA_BLOCK_MIN)||rot.find(p=>n(p)>0)||OA.block||order[0]||'';
 }
 function oaBracketPos(){
   const pos={};let k=0;
@@ -1949,8 +1952,37 @@ async function oaBrkEnd(timeUp){
 async function obsStat(){
   if(!OBS.ok)return;
   try{const[s,r,g]=await Promise.all([OBS.req('GetStreamStatus'),OBS.req('GetRecordStatus'),OBS.req('GetStats')]);OA.stat={s,r,g}}catch(e){}
+  // the live outputs: OBS's own stream and any other RTMP output (the "Multiple output" plugin's targets)
+  try{const outs=(await OBS.req('GetOutputList')).outputs||[],net=outs.filter(o=>/rtmp|stream/i.test(o.outputKind||'')&&!/record|virtual|replay/i.test(o.outputName||''));
+    const st=await Promise.all(net.filter(o=>o.outputActive).map(o=>OBS.req('GetOutputStatus',{outputName:o.outputName}).then(x=>({name:o.outputName,...x})).catch(()=>null)));
+    OA.outs=st.filter(Boolean);
+    if(OA.outs.length){OA.wasLive=true;OA.liveAt=Date.now()}}catch(e){}
+  if(!OA.fps){try{const v=await OBS.req('GetVideoSettings');OA.fps=v.fpsNumerator/(v.fpsDenominator||1)}catch(e){}}
+  oaAlerts();
   const el=document.getElementById('oastat');if(el)el.innerHTML=oaStatHtml();
 }
+// warnings at the top of the desk, worst first, each with what to do; a warning can be put away for 10 minutes
+const OA_MUTE={};
+function oaAlerts(){
+  const a=[],now=Date.now(),H=OA.H||{},dr=H.drive||null,x=OA.stat;
+  const add=(key,lvl,text,todo)=>{if(!(OA_MUTE[key]>now))a.push({key,lvl,text,todo})};
+  try{
+    if(OA.obsWant&&!OBS.ok)add('obs','bad','OBS ไม่ได้ต่ออยู่','เปิด OBS แล้วกด "↻ ต่อใหม่" ในกล่อง OBS ด้านล่าง');
+    if(!OA.helperOk)add('helper','bad','ตัวช่วยห้องส่งไม่ตอบ: คลิปใหม่จะไม่เข้า','ดับเบิลคลิก open_Studio.cmd (ไม่ต้องปิด OBS)');
+    if(OBS.ok&&OA.wasLive&&!OA.outs?.length&&!x?.s?.outputActive)add('live','bad','ไลฟ์หยุดส่งภาพแล้ว (ทุกช่อง)','ถ้าไม่ได้ตั้งใจหยุด: เช็กเน็ต แล้วกด Start ใน OBS หรือ Start all ในกล่อง Multiple output');
+    const drops=[...(OA.outs||[]),...(x?.s?.outputActive?[{name:'stream',...x.s}]:[])].map(o=>o.outputTotalFrames>300?o.outputSkippedFrames/o.outputTotalFrames*100:0);
+    if(drops.some(d=>d>2))add('drop','warn',`ภาพไลฟ์กระตุก: เฟรมหลุด ${Math.max(...drops).toFixed(1)}%`,'เน็ตส่งไม่ทัน: ลด Bitrate ใน OBS (Settings → Output) เช่น 9000 → 6000');
+    if(x?.g&&x.g.cpuUsage>85)add('cpu','warn',`เครื่องทำงานหนัก CPU ${Math.round(x.g.cpuUsage)}%`,'ปิดโปรแกรมอื่นที่ไม่ใช้ (เบราว์เซอร์แท็บเยอะ, เกม)');
+    if(x?.g&&OA.fps&&x.g.activeFps<OA.fps*0.9)add('fps','warn',`OBS วาดภาพไม่ทัน ${Math.round(x.g.activeFps)}/${Math.round(OA.fps)} FPS`,'ลดความหนักใน OBS หรือเปลี่ยน FPS เป็น 30 (Settings → Video)');
+    if(dr&&dr.lastError&&(!dr.lastListAt||now-Date.parse(String(dr.lastListAt).replace(' ','T'))>60000))add('drive','warn','ดึงไฟล์จาก Google Drive ไม่ได้','เช็กเน็ต ถ้ายังไม่หาย ดูข้อความในหน้าต่างดำ "PT Arena · ห้องส่ง"');
+    if(OA.wantRun&&OA.newAt&&now-OA.newAt>20*60000&&!oaQueue().some(oaReady))add('quiet','warn','ไม่มีคลิปใหม่จาก RoboArena มา 20 นาทีแล้ว','ถามทีม RoboArena ว่าอัปคลิปปกติไหม ระหว่างรอ: พักเบรกโชว์ตารางสาย/อันดับ');
+    if(H.mediamtx===false)add('osmo','warn','ตัวรับภาพกล้อง Osmo (MediaMTX) ไม่ได้เปิด','ดับเบิลคลิก open_Studio.cmd ใหม่ จะเปิดให้เอง');
+    if(H.diskFree!=null&&H.diskFree<10e9)add('disk','warn',`ที่ว่างในเครื่องเหลือ ${(H.diskFree/1e9).toFixed(1)} GB`,'ลบคลิปเก่าใน C:\\work\\stream-tools\\cache หรือไฟล์อัดเก่าใน Videos');
+  }catch(e){console.warn('alerts',e)}
+  const sig=a.map(x=>x.key+x.text).join('|');OA.alerts=a;
+  if(sig!==OA.alertSig){OA.alertSig=sig;const el=document.getElementById('oaalerts');if(el)el.innerHTML=oaAlertHtml()}
+}
+const oaAlertHtml=()=>(OA.alerts||[]).map(x=>`<div class="oaal ${x.lvl}"><b>${x.lvl==='bad'?'●':'▲'} ${esc(x.text)}</b><span>${esc(x.todo)}</span><button class="btn sm" data-act="oamute" data-v="${x.key}">รับทราบ 10 นาที</button></div>`).join('');
 function oaStatHtml(){
   const x=OA.stat;if(!OBS.ok||!x)return'';
   const drop=x.s.outputTotalFrames?x.s.outputSkippedFrames/x.s.outputTotalFrames*100:0,tc=t=>esc((t||'00:00:00').split('.')[0]);
@@ -1968,7 +2000,7 @@ function oaClock(){
   const tick=()=>{oaTick();if(OA.phase==='hl')oaHlTick();if(OA.waitAt&&Date.now()>=OA.waitAt){const f=OA.waitFn;OA.waitAt=0;OA.waitFn=null;f?.()}
     if(OA.brk){const left=OA.brk.endsAt-Date.now(),el=document.getElementById('oabrk');if(el)el.textContent=fmtMs(Math.max(0,left)).split('.')[0];if(left<=0&&OA.brkAuto)oaBrkEnd(true)}
     if(Date.now()-(OA.statAt||0)>2000){OA.statAt=Date.now();obsStat()}
-    if(Date.now()-(OA.helpAt||0)>3000){OA.helpAt=Date.now();oaHelper()}
+    if(Date.now()-(OA.helpAt||0)>3000){OA.helpAt=Date.now();oaHelper().then(()=>{if(!OBS.ok)oaAlerts()})}
     if((OA.brkShow==='bracket'&&Date.now()-OA.boardAt>10000)||(OA.brkShow==='live'&&Date.now()-OA.boardAt>3000))oaBoard();
     if(OA.brkShow==='rank'&&Date.now()-OA.boardAt>5000){OA.boardAt=Date.now();oaBoardSay()}
     if(OA.brkShow!=='bracket'&&OA.brkShow!=='live'&&Date.now()-(OA.advAt||0)>30000&&OA.list.some(x=>x.h2h&&x.matchId)){OA.advAt=Date.now();oaBoardFetch()}};
@@ -2194,6 +2226,7 @@ function vOnair(){
       <div class="oabrand"><div class="oabm"><img src="logo-mark.png" alt="PT"></div><div>ROBOARENA<small>BROADCAST DESK · ห้องส่ง</small></div></div>
       <div class="oastat" id="oastat">${oaStatHtml()}</div>
     </header>
+    <div class="oaalerts" id="oaalerts">${oaAlertHtml()}</div>
     <div class="oahero">
       <div class="oahero-l">
         <div class="eyebrow2">${esc(state)}</div>
@@ -2447,6 +2480,7 @@ document.addEventListener('click',e=>{
     case'oabrkauto':OA.brkAuto=!OA.brkAuto;oaKeep();break;
     case'oasfx':OA.sfx=!OA.sfx;oaKeep();break;
     case'oablocks':OA.blocks=!OA.blocks;oaKeep();break;
+    case'oamute':OA_MUTE[b.dataset.v]=Date.now()+600000;if(b.dataset.v==='live')OA.wasLive=false;oaAlerts();return;
     case'oaprogup':case'oaprogdown':{const ps=oaProgs(),i=+b.dataset.v,j=i+(a==='oaprogup'?-1:1);if(j>=0&&j<ps.length){[ps[i],ps[j]]=[ps[j],ps[i]];OA.progOrder=ps;oaKeep()}break}
     case'oabrkhl':OA.brkHl=!OA.brkHl;oaKeep();break;
     case'oaauto':OA.auto=!OA.auto;oaKeep();break;

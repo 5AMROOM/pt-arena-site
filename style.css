@@ -865,4 +865,10 @@ body.rxonly .app,body.rxonly #toast,body.rxonly #net{display:none!important}
 .oaprow{align-items:center;gap:8px;padding:4px 8px;border:1px solid var(--line);border-radius:8px}
 .oaprow.on{border-color:var(--accent)}
 .oaprow .grow{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.oaalerts{display:flex;flex-direction:column;gap:8px}
+.oaalerts:empty{display:none}
+.oaal{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 14px;border-radius:10px;border:1px solid #b9452f;background:rgba(185,69,47,.16)}
+.oaal.warn{border-color:#c98a1b;background:rgba(201,138,27,.14)}
+.oaal b{font-weight:700}
+.oaal span{flex:1;min-width:220px;font-size:13px;opacity:.9}
 
