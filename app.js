@@ -1562,11 +1562,11 @@ const OA_OSMO='PT Osmo',OA_OSMO_URL='rtsp://127.0.0.1:8554/live/osmo';
 // the phone as the walking camera: our own camera page, no app (see #cam-ROAM / #rx-ROAM)
 const OA_PHONE='PT มือถือ',oaSite=()=>location.origin+location.pathname+location.search;
 const OA={H:null,hsig:'',files:[],webm:[],stable:new Set(),ipSeen:'',list:[],order:[],played:new Set(),bad:new Map(),auto:true,delay:0,prog:'all',skipSetup:true,cur:null,nextM:null,phase:'idle',err:'',
-  ws:'ws://127.0.0.1:4455',pw:'',theme:'sports',ads:'',advid:'',snd:'',credit:'',brk:null,cache:{},helperOk:false,hlGroup:'',hlRound:1,hl:null,brkMode:'break',brkMin:5,brkAuto:true,sfx:false,bgm:'pt_loop.wav',obsWant:false,obsState:'off',obsErr:'',scene:'',stat:null,hold:false,offAir:false,shown:0,cursor:0,dur:0,paused:false,gen:0,waitAt:0,waitFn:null};
+  ws:'ws://127.0.0.1:4455',pw:'',theme:'sports',ads:'',advid:'',snd:'',credit:'',brk:null,cache:{},helperOk:false,hlGroup:'',hlRound:1,hl:null,brkMode:'break',brkMin:5,brkAuto:true,brkHl:false,sfx:false,bgm:'pt_loop.wav',obsWant:false,obsState:'off',obsErr:'',scene:'',stat:null,hold:false,offAir:false,shown:0,cursor:0,dur:0,paused:false,gen:0,waitAt:0,waitFn:null};
 try{const k=JSON.parse(localStorage.getItem('ptarena:oa')||'{}');OA.order=k.order||[];OA.played=new Set(k.played||[]);OA.auto=k.auto!==false;OA.delay=k.delay||0;OA.prog=k.prog||'all';OA.skipSetup=k.skipSetup!==false;OA.tests=!!k.tests;
   OA.ws=k.ws||OA.ws;OA.pw=k.pw||'';OA.ipSeen=k.ipSeen||'';OA.obsWant=!!k.obsWant;
-  OA.ads=k.ads||'';OA.advid=k.advid||'';OA.snd=k.snd||'';OA.credit=k.credit||'';OA.brkMode=k.brkMode||'break';OA.brkMin=k.brkMin||5;OA.brkAuto=k.brkAuto!==false;OA.sfx=k.sfx===true;OA.bgm=k.bgm in OA_BGM?k.bgm:'pt_loop.wav';OA.theme=k.theme in OA_THEMES?k.theme:'sports'}catch(e){}
-const oaKeep=()=>{try{localStorage.setItem('ptarena:oa',JSON.stringify({order:OA.order,played:[...OA.played],auto:OA.auto,delay:OA.delay,prog:OA.prog,skipSetup:OA.skipSetup,tests:OA.tests,ws:OA.ws,pw:OA.pw,ipSeen:OA.ipSeen,obsWant:OA.obsWant,ads:OA.ads,advid:OA.advid,snd:OA.snd,credit:OA.credit,brkMode:OA.brkMode,brkMin:OA.brkMin,brkAuto:OA.brkAuto,sfx:OA.sfx,bgm:OA.bgm,theme:OA.theme}))}catch(e){}};
+  OA.ads=k.ads||'';OA.advid=k.advid||'';OA.snd=k.snd||'';OA.credit=k.credit||'';OA.brkMode=k.brkMode||'break';OA.brkMin=k.brkMin||5;OA.brkAuto=k.brkAuto!==false;OA.brkHl=k.brkHl===true;OA.sfx=k.sfx===true;OA.bgm=k.bgm in OA_BGM?k.bgm:'pt_loop.wav';OA.theme=k.theme in OA_THEMES?k.theme:'sports'}catch(e){}
+const oaKeep=()=>{try{localStorage.setItem('ptarena:oa',JSON.stringify({order:OA.order,played:[...OA.played],auto:OA.auto,delay:OA.delay,prog:OA.prog,skipSetup:OA.skipSetup,tests:OA.tests,ws:OA.ws,pw:OA.pw,ipSeen:OA.ipSeen,obsWant:OA.obsWant,ads:OA.ads,advid:OA.advid,snd:OA.snd,credit:OA.credit,brkMode:OA.brkMode,brkMin:OA.brkMin,brkAuto:OA.brkAuto,brkHl:OA.brkHl,sfx:OA.sfx,bgm:OA.bgm,theme:OA.theme}))}catch(e){}};
 const oaGroup=m=>`${m.prog} · สนาม ${m.field}`;
 const oaTime=v=>{const t=typeof v==='number'?v:new Date(v||0).getTime();return isFinite(t)?t:0};
 
@@ -1617,7 +1617,7 @@ function oaParseRec(d,rel){
   const clipAt={start:rec!=null&&go!=null?Math.max(0,go-rec):0,end:rec!=null&&stop!=null?Math.max(0,stop-rec):null};
   const ok=d.resultStatus==='confirmed'&&d.verified!==false&&!replaced,at=t(d.confirmedAt)||rec||0;
   const series=d.series&&d.series.bestOf>1?{game:num(d.series.game,1),bestOf:num(d.series.bestOf),wins:teams.map(x=>x.sw==null?0:x.sw),winner:(teams.find(x=>x.swin)||{}).name||''}:null;
-  const common={id:'rec:'+id,rec:true,replaced,field:str(d.fieldName||d.fieldId||'-'),round:d.round==null&&d.stage!=null?'':num(d.round,1),stage:d.stage==null?'':str(d.stage),series,
+  const common={id:'rec:'+id,rec:true,replaced,field:str(d.fieldName||d.fieldId||'-'),round:d.round==null&&d.stage!=null?'':num(d.round,1),stage:d.stage==null?'':str(d.stage),stageName:str(d.stageName),series,
     prog:str(d.competitionName||String(d.competition||'').toUpperCase()),comp:str(d.competition),matchNo:d.matchNo==null||d.matchNo===''?'':str(d.matchNo),
     missions:[],items:{},steps:[],ok,at,...clipAt,file:clip.split('/').pop(),vok:!!clip,rel};
   // kind "solo" (RoboArena's word): one team runs alone and is judged on its own score and time, no winner;
@@ -1718,7 +1718,7 @@ function oaBackOnAir(){
   if(OA.hold){OA.hold=false;if(OA.wantRun&&OA.phase==='idle')oaNext()}}
 const oaSeries=(m,after)=>{const s=m.series;if(!s)return '';const w=s.wins.map((n,i)=>after||!m.teams[i].winner?n:Math.max(0,n-1));
   return `เกม ${s.game}/${s.bestOf} · ซีรีส์ ${w.join('–')}`+(after&&s.winner?` · ${s.winner} ชนะซีรีส์`:'')};
-const oaSub=(m,after)=>[VENUES.find(v=>v[0]===S.venue)[1],oaSeries(m,after)].filter(Boolean).join(' · ');
+const oaSub=(m,after)=>[VENUES.find(v=>v[0]===S.venue)[1],m.stageName,oaSeries(m,after)].filter(Boolean).join(' · ');
 const oaInfo=m=>({team:m.team,teamId:m.teamId,school:m.school,field:m.field,round:m.round,prog:m.prog,matchNo:m.matchNo||'',sub:oaSub(m,false),...(m.h2h?{teams:m.teams.map(t=>({name:t.name,school:t.school||''}))}:{})});
 function oaRes(m){
   // two teams: who won, each team's score and time when the result file gives them
@@ -1819,6 +1819,7 @@ async function oaBrkEnd(timeUp){
   if(!OA.brk)return;const mode=OA.brk.mode;OA.brk=null;
   if(timeUp)oaIdle();else oaSay();if(mode!=='break')oaSound(OA_SND.open);
   try{await OBS.req('SetCurrentProgramScene',{sceneName:OA_SCENE})}catch(e){toast('สลับกลับฉากรีเพลย์ไม่ได้: '+e.message)}
+  if(timeUp&&OA.brkHl&&oaHlPick(OA_HL_ALL).length)oaHlStart(OA_HL_ALL);
   oaDraw();
 }
 async function obsStat(){
@@ -1935,28 +1936,41 @@ function oaDone(){
 }
 // highlights: the best runs of one programme and round, only the moments that matter (the last scoring moves to
 // the finish, at most 15 s each), each after a card with its rank. Needs the helper's copies, since it jumps.
+// the highlight reel: "*" = the latest matches of every programme (for viewers who join late, or after lunch), otherwise
+// one programme and round. Only matches already shown on air: a highlight never gives away a result viewers have not seen.
+const OA_HL_ALL='*',OA_HL_MAX=8;
+const oaHlCard=m=>{if(!m.h2h)return{title:m.team,sub:`${m.total} คะแนน · เวลา ${fmtMs(m.ms)}`};
+  const w=m.teams.find(t=>t.winner),l=m.teams.find(t=>!t.winner),sc=w&&l&&w.score!=null&&l.score!=null?` · ${w.score}–${l.score}`:'';
+  return{title:`${w.name} ชนะ ${l?l.name:''}`,sub:[sc.slice(3),m.series?oaSeries(m,true):''].filter(Boolean).join(' · ')}};
 function oaHlPick(group,round){
-  // only runs already shown on air: a highlight never gives away a score the viewers have not seen
-  const pool=OA.list.filter(m=>m.ok&&!m.h2h&&OA.played.has(m.id)&&oaGroup(m)===group&&m.round===round&&oaCopy(m)&&m.total>0);
-  const best=[...pool].sort((a,b)=>b.total-a.total||a.ms-b.ms).slice(0,3).map((m,i)=>({m,label:`อันดับ ${i+1}`}));
-  const fast=[...pool].sort((a,b)=>a.ms-b.ms)[0];
-  if(fast&&!best.some(x=>x.m===fast))best.push({m:fast,label:'ทำเวลาเร็วที่สุด'});
-  return best.map(x=>{const m=x.m,last=m.steps.length?m.steps[Math.max(0,m.steps.length-3)].v:m.start,to=(m.end??(m.steps.at(-1)?.v||m.start)+3000)+1500;
-    return{...x,from:Math.max(to-15000,last-3000,0),to}});
+  const aired=OA.list.filter(m=>m.ok&&!m.noResult&&!m.bare&&OA.played.has(m.id)&&oaCopy(m)&&(m.h2h||m.total>0));
+  // a pair match: its last 12 seconds, where it is decided; a solo run: its last scoring moments
+  const seg=x=>{const m=x.m;if(m.h2h){const to=(m.end??m.start+12000)+1500;return{...x,from:Math.max(to-13500,m.start,0),to}}
+    const last=m.steps.length?m.steps[Math.max(0,m.steps.length-3)].v:m.start,to=(m.end??(m.steps.at(-1)?.v||m.start)+3000)+1500;
+    return{...x,from:Math.max(to-15000,last-3000,0),to}};
+  if(group===OA_HL_ALL)return aired.slice(-OA_HL_MAX).map(m=>seg({m,label:m.prog,...oaHlCard(m)}));
+  const pool=aired.filter(m=>oaGroup(m)===group&&String(m.round)===String(round));
+  const pairs=pool.filter(m=>m.h2h).slice(-OA_HL_MAX).map(m=>({m,label:'ไฮไลต์',...oaHlCard(m)}));
+  const solo=pool.filter(m=>!m.h2h);
+  const best=[...solo].sort((a,b)=>b.total-a.total||a.ms-b.ms).slice(0,3).map((m,i)=>({m,label:`อันดับ ${i+1}`,...oaHlCard(m)}));
+  const fast=[...solo].sort((a,b)=>a.ms-b.ms)[0];
+  if(fast&&!best.some(x=>x.m===fast))best.push({m:fast,label:'ทำเวลาเร็วที่สุด',...oaHlCard(fast)});
+  return[...pairs,...best].map(seg);
 }
-function oaHlStart(){
+function oaHlStart(group=OA.hlGroup,round=OA.hlRound){
   if(OA.phase==='play'||OA.phase==='load')return toast('รอคลิปนี้จบก่อน หรือกด "จบคลิปนี้"');
   if(!OBS.ok)return toast('ยังไม่ได้ต่อ OBS');
-  const items=oaHlPick(OA.hlGroup,OA.hlRound);if(!items.length)return toast('ยังไม่มีแมตช์ที่ทำไฮไลต์ได้');
+  const items=oaHlPick(group,round);if(!items.length)return toast('ยังไม่มีแมตช์ที่ทำไฮไลต์ได้');
   oaStopWait();OA.gen++;OA.cur=null;OA.nextM=null;OA.phase='hl';OA.hl={items,i:-1};
-  OBS.say('title',{eyebrow:'HIGHLIGHT · ไฮไลต์',tag:'HIGHLIGHT',title:OA.hlGroup,sub:'รอบ '+OA.hlRound});oaSound(OA_SND.sting);oaDraw();
+  OBS.say('title',group===OA_HL_ALL?{eyebrow:'HIGHLIGHT · ไฮไลต์',tag:'HIGHLIGHT',title:'สรุปแมตช์ที่ผ่านมา',sub:`${items.length} แมตช์ล่าสุด`}
+    :{eyebrow:'HIGHLIGHT · ไฮไลต์',tag:'HIGHLIGHT',title:group,sub:round===''?(items[0].m.stageName||''):'รอบ '+round});oaSound(OA_SND.sting);oaDraw();
   oaWait(4000,oaHlNext);
 }
 function oaHlNext(){
   const h=OA.hl;if(!h||OA.phase!=='hl')return;
   h.i++;const x=h.items[h.i];
   if(!x){OA.hl=null;oaToIdle();if(OA.auto&&OA.wantRun)oaWait(1500,oaNext);return}
-  oaMedia('PAUSE');OBS.say('title',{eyebrow:x.label,tag:'HIGHLIGHT',title:x.m.team,sub:`${x.m.total} คะแนน · เวลา ${fmtMs(x.m.ms)}`});oaDraw();
+  oaMedia('PAUSE');OBS.say('title',{eyebrow:x.label,tag:'HIGHLIGHT',title:x.title,sub:x.sub});oaDraw();
   oaWait(3000,async()=>{
     if(OA.hl!==h)return;
     try{await OBS.req('SetInputSettings',{inputName:OA_CLIP,inputSettings:{is_local_file:true,local_file:oaCopy(x.m)}});await oaMedia('RESTART')}catch(e){return oaHlNext()}
@@ -2037,14 +2051,16 @@ function vOnair(){
           :`<div class="row"><label class="cc"><span>ช่วง</span><select id="oabrkmode">${Object.entries(OA_BRK).map(([k,t])=>`<option value="${k}" ${OA.brkMode===k?'selected':''}>${t}</option>`).join('')}</select></label>
             <label class="cc"><span>เพลง</span><select id="oabgm">${Object.entries(OA_BGM).map(([f,t])=>`<option value="${f}" ${OA.bgm===f?'selected':''}>${t}</option>`).join('')}</select></label>
             <label class="cc"><span>นาน</span><select id="oabrkmin">${[1,2,3,5,10,15,20,30].map(n=>`<option value="${n}" ${OA.brkMin===n?'selected':''}>${n} นาที</option>`).join('')}</select></label>
-            <button class="btn sm" data-act="oabrkauto" aria-pressed="${OA.brkAuto}">${OA.brkAuto?'✓':'✕'} ครบเวลาไปหน้าพักเอง</button></div>
+            <button class="btn sm" data-act="oabrkauto" aria-pressed="${OA.brkAuto}">${OA.brkAuto?'✓':'✕'} ครบเวลาไปหน้าพักเอง</button>
+            <button class="btn sm" data-act="oabrkhl" aria-pressed="${OA.brkHl}" ${OA.brkAuto?'':'disabled'}>${OA.brkHl?'✓':'✕'} ครบเวลาเล่นไฮไลต์ก่อน</button></div>
             <button class="btn pri" data-act="oabrk" ${on?'':'disabled'}>☕ เริ่ม${esc(OA_BRK[OA.brkMode])}</button>`}
         </div>
         <div class="panel oahl"><div class="oah"><i></i>HIGHLIGHT · ไฮไลต์</div>
-          ${OA.helperOk?(()=>{if(!groups.includes(OA.hlGroup))OA.hlGroup=groups[0]||'';const rounds=[...new Set(OA.list.filter(m=>oaGroup(m)===OA.hlGroup).map(m=>m.round))].sort((a,b)=>a-b);if(!rounds.includes(OA.hlRound))OA.hlRound=rounds[0]||1;const n=oaHlPick(OA.hlGroup,OA.hlRound).length;
-            return`<div class="row"><label class="cc"><span>รายการ</span><select id="oahlg">${groups.map(g=>`<option ${OA.hlGroup===g?'selected':''}>${esc(g)}</option>`).join('')}</select></label>
-            <label class="cc"><span>รอบ</span><select id="oahlr">${rounds.map(r=>`<option value="${r}" ${OA.hlRound===r?'selected':''}>รอบ ${r}</option>`).join('')}</select></label></div>
-            ${OA.phase==='hl'?`<button class="btn" data-act="oaidle">■ หยุดไฮไลต์</button>`:`<button class="btn pri" data-act="oahl" ${n&&on?'':'disabled'}>▶ เล่นไฮไลต์ · ${n} ทีม</button>`}`})()
+          ${OA.helperOk?(()=>{if(OA.hlGroup!==OA_HL_ALL&&!groups.includes(OA.hlGroup))OA.hlGroup=OA_HL_ALL;const all=OA.hlGroup===OA_HL_ALL;
+            const rounds=[...new Set(OA.list.filter(m=>oaGroup(m)===OA.hlGroup).map(m=>String(m.round)))].sort((a,b)=>(+a||99)-(+b||99));if(!all&&!rounds.includes(String(OA.hlRound)))OA.hlRound=rounds[0]===''?'':+(rounds[0]||1);const n=oaHlPick(OA.hlGroup,OA.hlRound).length;
+            return`<div class="row"><label class="cc"><span>รายการ</span><select id="oahlg"><option value="${OA_HL_ALL}" ${all?'selected':''}>สรุปล่าสุด (ทุกรายการ)</option>${groups.map(g=>`<option ${OA.hlGroup===g?'selected':''}>${esc(g)}</option>`).join('')}</select></label>
+            ${all?'':`<label class="cc"><span>รอบ</span><select id="oahlr">${rounds.map(r=>`<option value="${esc(r)}" ${String(OA.hlRound)===r?'selected':''}>${r===''?esc(OA.list.find(m=>oaGroup(m)===OA.hlGroup&&m.round===''&&m.stageName)?.stageName||'รอบพิเศษ'):'รอบ '+esc(r)}</option>`).join('')}</select></label>`}</div>
+            ${OA.phase==='hl'?`<button class="btn" data-act="oaidle">■ หยุดไฮไลต์</button>`:`<button class="btn pri" data-act="oahl" ${n&&on?'':'disabled'}>▶ เล่นไฮไลต์ · ${n} แมตช์</button>`}`})()
           :`<p class="small muted" style="margin:0">ต้องเปิดตัวช่วยห้องส่งก่อน</p>`}
         </div>
         <div class="panel oaset"><div class="oah" style="width:100%"><i></i>RUNDOWN · ตั้งคิว</div>
@@ -2247,11 +2263,12 @@ document.addEventListener('click',e=>{
     case'oaagain':OA.played.delete(b.dataset.v);oaKeep();break;
     case'oaretry':OA.bad.delete(b.dataset.v);break;
     case'oabrk':oaBreak();return;
-    case'oahl':oaHlStart();return;
+    case'oahl':oaHlStart(OA.hlGroup,OA.hlRound);return;
     case'oabrkend':oaBrkEnd();return;
     case'oabrkmore':oaBrkMore(+b.dataset.v);return;
     case'oabrkauto':OA.brkAuto=!OA.brkAuto;oaKeep();break;
     case'oasfx':OA.sfx=!OA.sfx;oaKeep();break;
+    case'oabrkhl':OA.brkHl=!OA.brkHl;oaKeep();break;
     case'oaauto':OA.auto=!OA.auto;oaKeep();break;
     case'oaskipset':OA.skipSetup=!OA.skipSetup;oaKeep();break;
     case'oatests':OA.tests=!OA.tests;oaKeep();oaScan();break;
@@ -2371,7 +2388,7 @@ document.addEventListener('change',e=>{
   // Explorer's "Copy as path" wraps the path in quotes
   if(['oaws','oapw','oaads','oaadvid','oasnd','oacredit'].includes(el.id)){OA[el.id.slice(2)]=/^oa(ads|advid|snd)$/.test(el.id)?el.value.trim().replace(/^"|"$/g,''):el.value.trim();oaKeep();return}
   if(el.id==='oahlg'){OA.hlGroup=el.value;render();return}
-  if(el.id==='oahlr'){OA.hlRound=+el.value;render();return}
+  if(el.id==='oahlr'){OA.hlRound=el.value===''?'':+el.value;render();return}
   if(el.id==='oabrkmode'){OA.brkMode=el.value;oaKeep();render();return}
   if(el.id==='oabgm'){OA.bgm=el.value;oaKeep();return}
   if(el.id==='oatheme'){OA.theme=el.value;oaKeep();OBS.say('theme',{name:OA.theme});return}

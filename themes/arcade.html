@@ -96,6 +96,9 @@ body{font-family:var(--font-th);color:var(--ink);position:relative}
 .team .tag span{font-family:var(--font-num);font-weight:800;font-size:18px;letter-spacing:.14em}
 .team .name{width:100%;font-size:var(--t-l);font-weight:700;line-height:1.15;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
 .team .name.long{font-size:48px}
+/* the title card (highlight reel) carries a whole line, "ทีม ก ชนะ ทีม ข": wider than one team's plate */
+#title .team.a{width:1440px}
+#title .team .name,#title .team .school{-webkit-line-clamp:3}
 .team .school{width:100%;font-size:var(--t-s);color:var(--mute);font-weight:500;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
 .team .score{font-size:var(--t-xl);font-weight:800;line-height:.95;margin-top:24px;display:flex;align-items:baseline;gap:8px}
 .team .score .max{font-size:var(--t-l);font-weight:700;color:var(--mute)}
