@@ -1562,11 +1562,11 @@ const OA_OSMO='PT Osmo',OA_OSMO_URL='rtsp://127.0.0.1:8554/live/osmo';
 // the phone as the walking camera: our own camera page, no app (see #cam-ROAM / #rx-ROAM)
 const OA_PHONE='PT มือถือ',oaSite=()=>location.origin+location.pathname+location.search;
 const OA={H:null,hsig:'',files:[],webm:[],stable:new Set(),ipSeen:'',list:[],order:[],played:new Set(),bad:new Map(),auto:true,delay:0,prog:'all',skipSetup:true,cur:null,nextM:null,phase:'idle',err:'',
-  ws:'ws://127.0.0.1:4455',pw:'',theme:'sports',ads:'',advid:'',snd:'',credit:'',brk:null,cache:{},helperOk:false,hlGroup:'',hlRound:1,hl:null,brkMode:'break',brkMin:5,brkAuto:true,bgm:'pt_loop.wav',obsWant:false,obsState:'off',obsErr:'',scene:'',stat:null,hold:false,offAir:false,shown:0,cursor:0,dur:0,paused:false,gen:0,waitAt:0,waitFn:null};
+  ws:'ws://127.0.0.1:4455',pw:'',theme:'sports',ads:'',advid:'',snd:'',credit:'',brk:null,cache:{},helperOk:false,hlGroup:'',hlRound:1,hl:null,brkMode:'break',brkMin:5,brkAuto:true,sfx:false,bgm:'pt_loop.wav',obsWant:false,obsState:'off',obsErr:'',scene:'',stat:null,hold:false,offAir:false,shown:0,cursor:0,dur:0,paused:false,gen:0,waitAt:0,waitFn:null};
 try{const k=JSON.parse(localStorage.getItem('ptarena:oa')||'{}');OA.order=k.order||[];OA.played=new Set(k.played||[]);OA.auto=k.auto!==false;OA.delay=k.delay||0;OA.prog=k.prog||'all';OA.skipSetup=k.skipSetup!==false;OA.tests=!!k.tests;
   OA.ws=k.ws||OA.ws;OA.pw=k.pw||'';OA.ipSeen=k.ipSeen||'';OA.obsWant=!!k.obsWant;
-  OA.ads=k.ads||'';OA.advid=k.advid||'';OA.snd=k.snd||'';OA.credit=k.credit||'';OA.brkMode=k.brkMode||'break';OA.brkMin=k.brkMin||5;OA.brkAuto=k.brkAuto!==false;OA.bgm=k.bgm in OA_BGM?k.bgm:'pt_loop.wav';OA.theme=k.theme in OA_THEMES?k.theme:'sports'}catch(e){}
-const oaKeep=()=>{try{localStorage.setItem('ptarena:oa',JSON.stringify({order:OA.order,played:[...OA.played],auto:OA.auto,delay:OA.delay,prog:OA.prog,skipSetup:OA.skipSetup,tests:OA.tests,ws:OA.ws,pw:OA.pw,ipSeen:OA.ipSeen,obsWant:OA.obsWant,ads:OA.ads,advid:OA.advid,snd:OA.snd,credit:OA.credit,brkMode:OA.brkMode,brkMin:OA.brkMin,brkAuto:OA.brkAuto,bgm:OA.bgm,theme:OA.theme}))}catch(e){}};
+  OA.ads=k.ads||'';OA.advid=k.advid||'';OA.snd=k.snd||'';OA.credit=k.credit||'';OA.brkMode=k.brkMode||'break';OA.brkMin=k.brkMin||5;OA.brkAuto=k.brkAuto!==false;OA.sfx=k.sfx===true;OA.bgm=k.bgm in OA_BGM?k.bgm:'pt_loop.wav';OA.theme=k.theme in OA_THEMES?k.theme:'sports'}catch(e){}
+const oaKeep=()=>{try{localStorage.setItem('ptarena:oa',JSON.stringify({order:OA.order,played:[...OA.played],auto:OA.auto,delay:OA.delay,prog:OA.prog,skipSetup:OA.skipSetup,tests:OA.tests,ws:OA.ws,pw:OA.pw,ipSeen:OA.ipSeen,obsWant:OA.obsWant,ads:OA.ads,advid:OA.advid,snd:OA.snd,credit:OA.credit,brkMode:OA.brkMode,brkMin:OA.brkMin,brkAuto:OA.brkAuto,sfx:OA.sfx,bgm:OA.bgm,theme:OA.theme}))}catch(e){}};
 const oaGroup=m=>`${m.prog} · สนาม ${m.field}`;
 const oaTime=v=>{const t=typeof v==='number'?v:new Date(v||0).getTime();return isFinite(t)?t:0};
 
@@ -1638,7 +1638,7 @@ function oaBare(path){
   const parts=path.split('/'),file=parts.pop(),n=oaClipName(file);if(!n)return null;
   return{id:oaKey(file),h2h:true,bare:true,teams:[{teamId:n.a,name:n.a,winner:false},{teamId:n.b,name:n.b,winner:false}],team:n.a+' vs '+n.b,teamId:n.a+' vs '+n.b,
     school:'',field:'-',round:n.round,prog:n.comp,comp:'',missions:[],items:{},retry:0,total:'',ms:0,ok:true,at:n.at,start:0,end:null,steps:[],file,vok:true,rel:parts}}
-// tools/studio_helper.py (started by เปิดห้องส่ง.cmd) reads the match folder for the desk and hands over every result
+// tools/studio_helper.py (started by open_Studio.cmd) reads the match folder for the desk and hands over every result
 // file, as it is, and which files have stopped growing. The match folder is set only there.
 function oaScan(){
   const out=new Map();
@@ -1791,7 +1791,7 @@ async function obsSetup(){
   oaDraw();
 }
 // a short sound when a card comes up, and the opener when a countdown to the start runs out
-function oaSound(f){if(!oaSnd()||!OBS.ok)return;OBS.req('SetInputSettings',{inputName:OA_STING,inputSettings:{local_file:oaPath(oaSnd(),f)}}).then(()=>oaMedia('RESTART',OA_STING)).catch(()=>{})}
+function oaSound(f){if(!OA.sfx||!oaSnd()||!OBS.ok)return;OBS.req('SetInputSettings',{inputName:OA_STING,inputSettings:{local_file:oaPath(oaSnd(),f)}}).then(()=>oaMedia('RESTART',OA_STING)).catch(()=>{})}
 
 // break: the break scene with the ads and music, and a countdown; when it runs out the replay comes back by itself
 const oaBrkMsg=()=>({mode:OA.brk.mode,endsAt:OA.brk.endsAt,credit:OA.credit,sub:VENUES.find(v=>v[0]===S.venue)[1]});
@@ -1805,10 +1805,12 @@ async function oaBreak(){
   try{await OBS.req('SetCurrentProgramScene',{sceneName:OA_BREAK})}catch(e){toast('สลับไปฉากพักเบรกไม่ได้: '+e.message+' · กด "ตั้งฉากให้ใน OBS" ก่อน');OA.brk=null;oaSay()}
   oaDraw();
 }
-function oaBrkMore(min){if(!OA.brk)return;OA.brk.endsAt=Math.max(Date.now(),OA.brk.endsAt)+min*60000;OBS.say('break',oaBrkMsg());oaDraw()}
-async function oaBrkEnd(){
+function oaBrkMore(min){if(!OA.brk)return;OA.brk.endsAt=Math.max(Date.now(),Math.max(Date.now(),OA.brk.endsAt)+min*60000);OBS.say('break',oaBrkMsg());oaDraw()}
+// the button goes straight back to the replay; a countdown that runs out lands on the stand-by card instead,
+// so no clip starts before the host is ready ("▶ เริ่มเล่นคิว" starts it)
+async function oaBrkEnd(timeUp){
   if(!OA.brk)return;const mode=OA.brk.mode;OA.brk=null;
-  oaSay();if(mode!=='break')oaSound(OA_SND.open);
+  if(timeUp)oaIdle();else oaSay();if(mode!=='break')oaSound(OA_SND.open);
   try{await OBS.req('SetCurrentProgramScene',{sceneName:OA_SCENE})}catch(e){toast('สลับกลับฉากรีเพลย์ไม่ได้: '+e.message)}
   oaDraw();
 }
@@ -1832,7 +1834,7 @@ let OA_TICKS=null;
 function oaClock(){
   if(OA_TICKS)return;
   const tick=()=>{oaTick();if(OA.phase==='hl')oaHlTick();if(OA.waitAt&&Date.now()>=OA.waitAt){const f=OA.waitFn;OA.waitAt=0;OA.waitFn=null;f?.()}
-    if(OA.brk){const left=OA.brk.endsAt-Date.now(),el=document.getElementById('oabrk');if(el)el.textContent=fmtMs(Math.max(0,left)).split('.')[0];if(left<=0&&OA.brkAuto)oaBrkEnd()}
+    if(OA.brk){const left=OA.brk.endsAt-Date.now(),el=document.getElementById('oabrk');if(el)el.textContent=fmtMs(Math.max(0,left)).split('.')[0];if(left<=0&&OA.brkAuto)oaBrkEnd(true)}
     if(Date.now()-(OA.statAt||0)>2000){OA.statAt=Date.now();obsStat()}
     if(Date.now()-(OA.helpAt||0)>3000){OA.helpAt=Date.now();oaHelper()}};
   try{OA_TICKS=new Worker(URL.createObjectURL(new Blob(['setInterval(()=>postMessage(0),250)'],{type:'text/javascript'})));OA_TICKS.onmessage=tick}
@@ -1866,7 +1868,7 @@ function oaFail(m,why){
 async function oaPlay(m){
   if(!m)return oaToIdle();
   if(!OBS.ok){toast('ยังไม่ได้ต่อ OBS');return oaToIdle()}
-  if(!oaSrc()){toast('ยังไม่ได้เปิดตัวช่วยห้องส่ง: ดับเบิลคลิก เปิดห้องส่ง.cmd');return oaToIdle()}
+  if(!oaSrc()){toast('ยังไม่ได้เปิดตัวช่วยห้องส่ง: ดับเบิลคลิก open_Studio.cmd');return oaToIdle()}
   // the walking camera is on air: the clip waits until the replay scene is back
   if(OA.scene&&OA.scene!==OA_SCENE){OA.hold=true;OA.wantRun=true;return oaToIdle()}
   oaStopWait();
@@ -2008,8 +2010,8 @@ function vOnair(){
       ${cur?`<div class="oascore"><span>SCORE</span><b class="mono" id="oascore">${esc(OA.shown)}</b></div>`:''}
       <div class="oaline"><i id="oaprog" style="width:0"></i></div>
     </div>
-    ${OA.helperOk?'':`<div class="callout bad small"><b>ตัวช่วยห้องส่งยังไม่ทำงาน</b> ไม่มีรายชื่อแมตช์และคลิป<br>1. ดับเบิลคลิก <b>เปิดห้องส่ง.cmd</b> ในโฟลเดอร์ pt-arena<br>2. หน้าต่างดำที่ขึ้นมาห้ามปิดระหว่างไลฟ์</div>`}
-    ${H.error?`<div class="callout bad small">${esc(H.error)}<br>แก้บรรทัด MATCHES ใน เปิดห้องส่ง.cmd แล้วเปิดใหม่</div>`:''}
+    ${OA.helperOk?'':`<div class="callout bad small"><b>ตัวช่วยห้องส่งยังไม่ทำงาน</b> ไม่มีรายชื่อแมตช์และคลิป<br>1. ดับเบิลคลิก <b>open_Studio.cmd</b> ในโฟลเดอร์ pt-arena<br>2. หน้าต่างดำที่ขึ้นมาห้ามปิดระหว่างไลฟ์</div>`}
+    ${H.error?`<div class="callout bad small">${esc(H.error)}<br>แก้บรรทัด MATCHES ใน open_Studio.cmd แล้วเปิดใหม่</div>`:''}
     <div class="oagrid">
       <div class="oacol">
         <div class="panel"><div class="oah"><i></i>PLAYOUT · คุมการเล่น <span class="oakeys">Space เริ่ม/หยุด · B พักเบรก · 1 2 3 ฉาก</span></div>
@@ -2018,17 +2020,17 @@ function vOnair(){
               :`<button class="btn pri" data-act="oago" ${ready.length&&on?'':'disabled'}>▶ เริ่มเล่นคิว</button>`}
             <button class="btn" data-act="oaidle" ${OA.phase==='idle'&&!OA.wantRun?'disabled':''}>☕ หน้าพัก</button>
           </div></div>
-        <div class="panel"><div class="oah"><i></i>PROGRAM · ฉากที่ออกอากาศ <label class="cc oatheme"><span>ธีมกราฟิก</span><select id="oatheme">${Object.entries(OA_THEMES).map(([k,t])=>`<option value="${k}" ${OA.theme===k?'selected':''}>${t}</option>`).join('')}</select></label></div>
+        <div class="panel"><div class="oah"><i></i>PROGRAM · ฉากที่ออกอากาศ <button class="btn sm oasfx" data-act="oasfx" aria-pressed="${OA.sfx}">${OA.sfx?'🔊':'🔇'} เสียง SFX</button><label class="cc oatheme"><span>ธีมกราฟิก</span><select id="oatheme">${Object.entries(OA_THEMES).map(([k,t])=>`<option value="${k}" ${OA.theme===k?'selected':''}>${t}</option>`).join('')}</select></label></div>
           <div class="row">${[[OA_SCENE,'🎞 รีเพลย์'],[OA_BREAK,'☕ พักเบรก'],[OA_CAM,'🎥 กล้องเดิน']].map(([s,t])=>`<button class="btn oascb" data-act="oascene" data-v="${esc(s)}" aria-pressed="${OA.scene===s}" ${on?'':'disabled'}>${t}</button>`).join('')}</div>
           ${on&&OA.scene&&OA.scene!==OA_SCENE&&OA.scene!==OA_CAM&&OA.scene!==OA_BREAK?`<p class="small muted" style="margin:0">ตอนนี้ OBS อยู่ฉาก "${esc(OA.scene)}"</p>`:''}
           ${on?`<div class="row"><button class="btn ${live?'bad':''}" data-act="oastream">${live?'■ หยุดไลฟ์':'● เริ่มไลฟ์'}</button><button class="btn" data-act="oarec">${rec?'■ หยุดอัด':'⏺ เริ่มอัด'}</button></div>`:''}</div>
         <div class="panel oabrkp ${OA.brk?'on':''}"><div class="oah"><i></i>BREAK · พักเบรก / นับถอยหลัง</div>
           ${OA.brk?`<div class="oabrkt"><span>${esc(OA_BRK[OA.brk.mode])}</span><b class="mono" id="oabrk">${fmtMs(Math.max(0,OA.brk.endsAt-Date.now())).split('.')[0]}</b></div>
-            <div class="row"><button class="btn sm" data-act="oabrkmore" data-v="1">+1 นาที</button><button class="btn sm" data-act="oabrkmore" data-v="5">+5 นาที</button><button class="btn pri" data-act="oabrkend">⏭ จบช่วงนี้ กลับรีเพลย์</button></div>`
+            <div class="row"><button class="btn sm" data-act="oabrkmore" data-v="-5">−5 นาที</button><button class="btn sm" data-act="oabrkmore" data-v="-1">−1 นาที</button><button class="btn sm" data-act="oabrkmore" data-v="1">+1 นาที</button><button class="btn sm" data-act="oabrkmore" data-v="5">+5 นาที</button><button class="btn pri" data-act="oabrkend">⏭ จบช่วงนี้ กลับรีเพลย์</button></div>`
           :`<div class="row"><label class="cc"><span>ช่วง</span><select id="oabrkmode">${Object.entries(OA_BRK).map(([k,t])=>`<option value="${k}" ${OA.brkMode===k?'selected':''}>${t}</option>`).join('')}</select></label>
             <label class="cc"><span>เพลง</span><select id="oabgm">${Object.entries(OA_BGM).map(([f,t])=>`<option value="${f}" ${OA.bgm===f?'selected':''}>${t}</option>`).join('')}</select></label>
             <label class="cc"><span>นาน</span><select id="oabrkmin">${[1,2,3,5,10,15,20,30].map(n=>`<option value="${n}" ${OA.brkMin===n?'selected':''}>${n} นาที</option>`).join('')}</select></label>
-            <button class="btn sm" data-act="oabrkauto" aria-pressed="${OA.brkAuto}">${OA.brkAuto?'✓':'✕'} ครบเวลากลับรีเพลย์เอง</button></div>
+            <button class="btn sm" data-act="oabrkauto" aria-pressed="${OA.brkAuto}">${OA.brkAuto?'✓':'✕'} ครบเวลาไปหน้าพักเอง</button></div>
             <button class="btn pri" data-act="oabrk" ${on?'':'disabled'}>☕ เริ่ม${esc(OA_BRK[OA.brkMode])}</button>`}
         </div>
         <div class="panel oahl"><div class="oah"><i></i>HIGHLIGHT · ไฮไลต์</div>
@@ -2051,7 +2053,7 @@ function vOnair(){
         <div class="panel oacam"><div class="oah"><i></i>CAMERA · กล้องเดิน</div>
           ${ip&&OA.ipSeen&&ip!==OA.ipSeen?`<div class="callout warn small">เลขเครื่องเปลี่ยนจาก ${esc(OA.ipSeen)} เป็น ${esc(ip)} ตั้งลิงก์ใน Mimo ใหม่ <button class="btn sm" data-act="oaipok">ตั้งแล้ว</button></div>`:''}
           <div class="oacamr"><span class="tagx ${H.mediamtx?'good':'bad'}">OSMO</span><div>${(H.ips||[]).map((x,i)=>`<b class="mono">rtmp://${esc(x)}:1935/live/osmo</b>${i?'':' <small class="muted">ใช้อันนี้ก่อน</small>'}`).join('<br>')||'<span class="muted">ยังไม่ได้ต่อเน็ต</span>'}
-            ${H.mediamtx===false?'<br><small class="muted">ตัวรับภาพ MediaMTX ยังไม่เปิด (เปิดห้องส่ง.cmd เปิดให้)</small>':''}</div></div>
+            ${H.mediamtx===false?'<br><small class="muted">ตัวรับภาพ MediaMTX ยังไม่เปิด (open_Studio.cmd เปิดให้)</small>':''}</div></div>
           <div class="oacamr"><span class="tagx">PHONE</span><div><b class="mono">${esc(oaSite()+'#cam-'+ROAM)}</b><br><small class="muted">มือถือเปิดลิงก์นี้ ใส่รหัสเจ้าหน้าที่ แล้วกดเริ่มส่งภาพ · ครั้งแรกใน OBS คลิกขวา "PT มือถือ" → Interact ใส่รหัส 1 ครั้ง</small></div></div>
         </div>
         ${setup}
@@ -2242,6 +2244,7 @@ document.addEventListener('click',e=>{
     case'oabrkend':oaBrkEnd();return;
     case'oabrkmore':oaBrkMore(+b.dataset.v);return;
     case'oabrkauto':OA.brkAuto=!OA.brkAuto;oaKeep();break;
+    case'oasfx':OA.sfx=!OA.sfx;oaKeep();break;
     case'oaauto':OA.auto=!OA.auto;oaKeep();break;
     case'oaskipset':OA.skipSetup=!OA.skipSetup;oaKeep();break;
     case'oatests':OA.tests=!OA.tests;oaKeep();oaScan();break;

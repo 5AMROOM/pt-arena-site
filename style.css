@@ -857,6 +857,8 @@ body.rxonly .app,body.rxonly #toast,body.rxonly #net{display:none!important}
 .oacamr>div{min-width:0;overflow-wrap:anywhere;line-height:1.5}
 .oacamr b.mono{font-size:14px;color:#d6e6ff}
 .oabm img{width:68%;height:auto;display:block}
+.oah .oasfx{margin-left:auto;min-height:30px;letter-spacing:0}
+.oah .oasfx+.oatheme{margin-left:8px}
 .oah .oatheme{margin-left:auto;flex-direction:row;align-items:center;gap:8px;font-size:11px;letter-spacing:0;font-weight:600}
 .oah .oatheme select{min-height:30px;font-size:13px}
 
