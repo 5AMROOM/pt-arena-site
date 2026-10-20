@@ -1751,6 +1751,7 @@ function oaSay(){const m=OA.cur;
   else if(OA.phase==='play'&&m)OBS.say(OA.cover?'intro':'play',oaInfo(m));
   else if(OA.phase==='result'&&m&&!m.bare&&!m.noResult)OBS.say('result',oaRes(m));
   else if(OA.phase==='next'&&OA.nextM)OBS.say('next',oaInfo(OA.nextM));
+  else if(OA.phase==='adv'&&OA.adv)OBS.say('title',OA.adv);
   else OBS.say('idle',oaIdleMsg())}
 
 const oaPath=(dir,f)=>dir.replace(/[\\/]+$/,'')+'\\'+f;
@@ -1808,13 +1809,13 @@ function oaSound(f){if(!OA.sfx||!oaSnd()||!OBS.ok)return;OBS.req('SetInputSettin
 
 // break: the break scene with the ads and music, and a countdown; when it runs out the replay comes back by itself
 const oaBrkMsg=()=>({mode:OA.brk.mode,endsAt:OA.brk.endsAt,credit:OA.credit,sub:VENUES.find(v=>v[0]===S.venue)[1]});
-async function oaBoard(){
+async function oaBoardFetch(){
   OA.boardAt=Date.now();
   try{const d=await(await fetch(OA_HELPER+'/board?region='+(OA_REGION[S.venue]||'central'))).json();
     if(d.ok)OA.board=d;OA.boardErr=d.ok?'':'ดึงสายการแข่งจาก RoboArena ไม่ได้ ('+(d.error||'')+')'}
   catch(e){OA.boardErr='ตัวช่วยห้องส่งไม่ตอบ: เปิด open_Studio.cmd ใหม่'}
-  oaBoardSay();
 }
+async function oaBoard(){await oaBoardFetch();oaBoardSay()}
 function oaBracket(){
   const b=OA.board;if(!b)return[];
   const aired=new Set(OA.list.filter(m=>m.matchId&&OA.played.has(m.id)).map(m=>m.matchId));
@@ -1938,7 +1939,8 @@ function oaClock(){
     if(Date.now()-(OA.statAt||0)>2000){OA.statAt=Date.now();obsStat()}
     if(Date.now()-(OA.helpAt||0)>3000){OA.helpAt=Date.now();oaHelper()}
     if((OA.brkShow==='bracket'&&Date.now()-OA.boardAt>10000)||(OA.brkShow==='live'&&Date.now()-OA.boardAt>3000))oaBoard();
-    if(OA.brkShow==='rank'&&Date.now()-OA.boardAt>5000){OA.boardAt=Date.now();oaBoardSay()}};
+    if(OA.brkShow==='rank'&&Date.now()-OA.boardAt>5000){OA.boardAt=Date.now();oaBoardSay()}
+    if(OA.brkShow!=='bracket'&&OA.brkShow!=='live'&&Date.now()-(OA.advAt||0)>30000&&OA.list.some(x=>x.h2h&&x.matchId)){OA.advAt=Date.now();oaBoardFetch()}};
   try{OA_TICKS=new Worker(URL.createObjectURL(new Blob(['setInterval(()=>postMessage(0),250)'],{type:'text/javascript'})));OA_TICKS.onmessage=tick}
   catch(e){OA_TICKS=setInterval(tick,250)}
 }
@@ -2021,12 +2023,42 @@ function oaDone(){
     .then(r=>{OA.frame=r.imageData||''},()=>{}).then(()=>{if(OA.gen===shown&&OA.phase==='result'&&OA.cur===m)OBS.say('result',oaRes(m))});
   if(!OA.brk&&!quiet)oaSound(OA_SND.sting);oaDraw();
   oaWait(quiet?1500:10000,()=>{
+    // a knockout match: where the winner goes now, or the title, on a short card of its own before what comes next
+    const adv=!quiet&&oaAdvance(m);
+    if(adv&&OA.gen===shown&&OA.phase==='result'){OA.phase='adv';OA.adv=adv;OBS.say('title',adv);oaDraw();return oaWait(3500,()=>oaAfter(m))}
+    oaAfter(m)});
+}
+function oaAfter(m){{
     const n=OA.auto&&oaQueue().find(oaReady);
     if(!n)return oaToIdle();
     if(OA.scene&&OA.scene!==OA_SCENE){OA.hold=true;return oaToIdle()}
     OA.phase='next';OA.nextM=n;OBS.say('next',oaInfo(n));if(!OA.brk)oaSound(OA_SND.sting);oaDraw();
     // dropped or played while its card was up: take whatever is next now
-    oaWait(5000,()=>oaPlay(OA.played.has(n.id)||OA.bad.has(n.id)?oaQueue().find(oaReady):n))});
+    oaWait(5000,()=>oaPlay(OA.played.has(n.id)||OA.bad.has(n.id)?oaQueue().find(oaReady):n))}
+}
+// from RoboArena's bracket: the round the winner of this match plays next and against whom (a name only when that
+// result has been on air too), or the title when this game wins the final series. Nothing when the board is not there.
+function oaAdvance(m){
+  try{
+    if(!m.h2h||!m.matchId||!OA.board)return null;
+    const w=m.teams.find(t=>t.winner);if(!w)return null;
+    const aired=new Set(OA.list.filter(x=>x.matchId&&OA.played.has(x.id)).map(x=>x.matchId));
+    for(const[comp,br]of Object.entries(OA.board.brackets||{})){
+      const rounds=[...(br.groups||[]).flatMap(g=>g.rounds||[]),...(br.finals||[])],all={},roundOf={};
+      rounds.forEach(r=>(r.matches||[]).forEach(x=>{all[x.id]=x;roundOf[x.id]=r.label||''}));
+      const me=all[m.matchId];if(!me)continue;
+      const prog=(OA.board.competitions||{})[comp]||m.prog;
+      // the final: a series; the card comes only with the game that wins it
+      if(me.series){const s=m.series;return s&&s.winner?{eyebrow:'แชมป์',tag:'CHAMPION',title:s.winner,sub:`คว้าแชมป์ ${prog} · ซีรีส์ ${s.wins.join('–')}`}:null}
+      const nx=rounds.flatMap(r=>r.matches||[]).find(x=>(x.slots||[]).some(sl=>sl.fromMatchId===me.id));if(!nx)return null;
+      const other=(nx.slots||[]).find(sl=>sl.fromMatchId!==me.id)||{},team=id=>(br.teams||[]).find(t=>t.teamId===id)?.team||id;
+      const src=other.fromMatchId&&all[other.fromMatchId],ow=src&&src.winnerTeamId&&aired.has(src.id)?src.winnerTeamId:null;
+      const top=new Set((br.groups||[]).flatMap(g=>{const rs=g.rounds||[];return(rs[rs.length-1]?.matches||[]).map(x=>x.id)}));
+      const vs=other.teamId?team(other.teamId):ow?team(ow):src?(top.has(src.id)?`แชมป์สาย ${src.group}`:src.group?`ผู้ชนะคู่ ${src.number} สาย ${src.group}`:`ผู้ชนะ${(roundOf[src.id]||'').replace(/^รอบ/,'')} คู่ ${src.number}`):'';
+      return{eyebrow:'เข้ารอบ',tag:'ADVANCES',title:w.name,sub:['→ '+(roundOf[nx.id]||'รอบต่อไป'),vs?'พบ '+vs:''].filter(Boolean).join(' · ')};
+    }
+  }catch(e){console.warn('advance',e)}
+  return null;
 }
 // highlights: the best runs of one programme and round, only the moments that matter (the last scoring moves to
 // the finish, at most 15 s each), each after a card with its rank. Needs the helper's copies, since it jumps.
