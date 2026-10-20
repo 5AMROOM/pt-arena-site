@@ -162,6 +162,8 @@ body{position:relative;font-family:var(--f-th);color:var(--c-white);font-size:va
 #cam .live{display:inline-flex;align-items:center;gap:10px;background:var(--c-red);font-family:var(--f-num);font-weight:800;font-size:var(--t-s);letter-spacing:0.12em;line-height:1;padding:7px 12px 6px 10px}
 #cam .live i{width:10px;height:10px;border-radius:50%;background:var(--c-white)}
 #cam .venue{margin-top:var(--sp-1);font-size:var(--t-s);font-weight:500;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* text that wraps breaks into even lines: a name never leaves one word ("B") alone on the next line */
+body{text-wrap:balance}
 </style>
 </head>
 <body>

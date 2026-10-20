@@ -1547,6 +1547,9 @@ function vDevices(){
 const OA_SCENE='PT รีเพลย์',OA_CAM='PT กล้องเดิน',OA_BREAK='PT พักเบรก',OA_CLIP='PT คลิป',OA_GFX='PT กราฟิก',OA_ADS='PT โฆษณา',OA_MUSIC='PT เพลง',OA_STING='PT เสียงคั่น',OA_ADVID='PT วิดีโอโฆษณา';
 // the ads sit in this window of the 1920×1080 break screen; overlay.html leaves the same window see-through
 const OA_ADBOX={x:800,y:200,w:1040,h:585};
+// what the window beside the countdown shows: the ads, or the KidsBiT bracket from RoboArena (board.html, source "PT ตาราง")
+const OA_BOARD='PT ตาราง',OA_SHOW={ads:'โฆษณา',bracket:'สายการแข่ง KidsBiT'};
+const OA_REGION={C:'central',S:'south',E:'east',N:'north',NE:'northeast'};
 // the sound folder holds three files with fixed names: the break bed (loops), the card sting, the show opener
 const OA_SND={loop:'pt_loop.wav',sting:'pt_sting.wav',open:'pt_open.wav'};
 const OA_BRK={break:'พักการแข่งขัน',match:'ก่อนเริ่มแข่ง',live:'ก่อนเริ่มไลฟ์'};
@@ -1562,11 +1565,11 @@ const OA_OSMO='PT Osmo',OA_OSMO_URL='rtsp://127.0.0.1:8554/live/osmo';
 // the phone as the walking camera: our own camera page, no app (see #cam-ROAM / #rx-ROAM)
 const OA_PHONE='PT มือถือ',oaSite=()=>location.origin+location.pathname+location.search;
 const OA={H:null,hsig:'',files:[],webm:[],stable:new Set(),ipSeen:'',list:[],order:[],played:new Set(),bad:new Map(),auto:true,delay:0,prog:'all',skipSetup:true,cur:null,nextM:null,phase:'idle',err:'',
-  ws:'ws://127.0.0.1:4455',pw:'',theme:'sports',ads:'',advid:'',snd:'',credit:'',brk:null,cache:{},helperOk:false,hlGroup:'',hlRound:1,hl:null,brkMode:'break',brkMin:5,brkAuto:true,brkHl:false,sfx:false,bgm:'pt_loop.wav',obsWant:false,obsState:'off',obsErr:'',scene:'',stat:null,hold:false,offAir:false,shown:0,cursor:0,dur:0,paused:false,gen:0,waitAt:0,waitFn:null};
+  ws:'ws://127.0.0.1:4455',pw:'',theme:'sports',ads:'',advid:'',snd:'',credit:'',brk:null,cache:{},helperOk:false,hlGroup:'',hlRound:1,hl:null,brkMode:'break',brkMin:5,brkAuto:true,brkHl:false,brkShow:'ads',board:null,boardHas:false,boardErr:'',boardAt:0,boardSig:'',sfx:false,bgm:'pt_loop.wav',obsWant:false,obsState:'off',obsErr:'',scene:'',stat:null,hold:false,offAir:false,shown:0,cursor:0,dur:0,paused:false,gen:0,waitAt:0,waitFn:null};
 try{const k=JSON.parse(localStorage.getItem('ptarena:oa')||'{}');OA.order=k.order||[];OA.played=new Set(k.played||[]);OA.auto=k.auto!==false;OA.delay=k.delay||0;OA.prog=k.prog||'all';OA.skipSetup=k.skipSetup!==false;OA.tests=!!k.tests;
   OA.ws=k.ws||OA.ws;OA.pw=k.pw||'';OA.ipSeen=k.ipSeen||'';OA.obsWant=!!k.obsWant;
-  OA.ads=k.ads||'';OA.advid=k.advid||'';OA.snd=k.snd||'';OA.credit=k.credit||'';OA.brkMode=k.brkMode||'break';OA.brkMin=k.brkMin||5;OA.brkAuto=k.brkAuto!==false;OA.brkHl=k.brkHl===true;OA.sfx=k.sfx===true;OA.bgm=k.bgm in OA_BGM?k.bgm:'pt_loop.wav';OA.theme=k.theme in OA_THEMES?k.theme:'sports'}catch(e){}
-const oaKeep=()=>{try{localStorage.setItem('ptarena:oa',JSON.stringify({order:OA.order,played:[...OA.played],auto:OA.auto,delay:OA.delay,prog:OA.prog,skipSetup:OA.skipSetup,tests:OA.tests,ws:OA.ws,pw:OA.pw,ipSeen:OA.ipSeen,obsWant:OA.obsWant,ads:OA.ads,advid:OA.advid,snd:OA.snd,credit:OA.credit,brkMode:OA.brkMode,brkMin:OA.brkMin,brkAuto:OA.brkAuto,brkHl:OA.brkHl,sfx:OA.sfx,bgm:OA.bgm,theme:OA.theme}))}catch(e){}};
+  OA.ads=k.ads||'';OA.advid=k.advid||'';OA.snd=k.snd||'';OA.credit=k.credit||'';OA.brkMode=k.brkMode||'break';OA.brkMin=k.brkMin||5;OA.brkAuto=k.brkAuto!==false;OA.brkHl=k.brkHl===true;OA.brkShow=k.brkShow in OA_SHOW?k.brkShow:'ads';OA.sfx=k.sfx===true;OA.bgm=k.bgm in OA_BGM?k.bgm:'pt_loop.wav';OA.theme=k.theme in OA_THEMES?k.theme:'sports'}catch(e){}
+const oaKeep=()=>{try{localStorage.setItem('ptarena:oa',JSON.stringify({order:OA.order,played:[...OA.played],auto:OA.auto,delay:OA.delay,prog:OA.prog,skipSetup:OA.skipSetup,tests:OA.tests,ws:OA.ws,pw:OA.pw,ipSeen:OA.ipSeen,obsWant:OA.obsWant,ads:OA.ads,advid:OA.advid,snd:OA.snd,credit:OA.credit,brkMode:OA.brkMode,brkMin:OA.brkMin,brkAuto:OA.brkAuto,brkHl:OA.brkHl,brkShow:OA.brkShow,sfx:OA.sfx,bgm:OA.bgm,theme:OA.theme}))}catch(e){}};
 const oaGroup=m=>`${m.prog} · สนาม ${m.field}`;
 const oaTime=v=>{const t=typeof v==='number'?v:new Date(v||0).getTime();return isFinite(t)?t:0};
 
@@ -1617,7 +1620,7 @@ function oaParseRec(d,rel){
   const clipAt={start:rec!=null&&go!=null?Math.max(0,go-rec):0,end:rec!=null&&stop!=null?Math.max(0,stop-rec):null};
   const ok=d.resultStatus==='confirmed'&&d.verified!==false&&!replaced,at=t(d.confirmedAt)||rec||0;
   const series=d.series&&d.series.bestOf>1?{game:num(d.series.game,1),bestOf:num(d.series.bestOf),wins:teams.map(x=>x.sw==null?0:x.sw),winner:(teams.find(x=>x.swin)||{}).name||''}:null;
-  const common={id:'rec:'+id,rec:true,replaced,field:str(d.fieldName||d.fieldId||'-'),round:d.round==null&&d.stage!=null?'':num(d.round,1),stage:d.stage==null?'':str(d.stage),stageName:str(d.stageName),series,
+  const common={id:'rec:'+id,rec:true,replaced,matchId:str(d.matchId),field:str(d.fieldName||d.fieldId||'-'),round:d.round==null&&d.stage!=null?'':num(d.round,1),stage:d.stage==null?'':str(d.stage),stageName:str(d.stageName),series,
     prog:str(d.competitionName||String(d.competition||'').toUpperCase()),comp:str(d.competition),matchNo:d.matchNo==null||d.matchNo===''?'':str(d.matchNo),
     missions:[],items:{},steps:[],ok,at,...clipAt,file:clip.split('/').pop(),vok:!!clip,rel};
   // kind "solo" (RoboArena's word): one team runs alone and is judged on its own score and time, no winner;
@@ -1697,7 +1700,7 @@ const OBS={ws:null,ok:false,n:0,wait:new Map(),
     this.ws.send(JSON.stringify({op:6,d:{requestType:type,requestId:id,requestData:data||{}}}));
     setTimeout(()=>{if(this.wait.has(id)){this.wait.delete(id);no(new Error('OBS ไม่ตอบ'))}},5000)})},
   // what the graphics show: a message every PT Arena graphics page connected to the same OBS hears
-  say(k,data){if(OA.brk&&k!=='break'&&k!=='theme')return Promise.resolve();return this.req('BroadcastCustomEvent',{eventData:{pt:1,k,...data}}).catch(()=>{})}
+  say(k,data){if(OA.brk&&k!=='break'&&k!=='theme'&&k!=='board')return Promise.resolve();return this.req('BroadcastCustomEvent',{eventData:{pt:1,k,...data}}).catch(()=>{})}
 };
 async function obsReady(){
   try{OA.scene=(await OBS.req('GetSceneList')).currentProgramSceneName}catch(e){}
@@ -1741,7 +1744,7 @@ const oaNextName=m=>{const n=OA.auto&&oaQueue().find(x=>oaReady(x)&&x.id!==m.id)
 const oaIdleMsg=()=>({sub:VENUES.find(v=>v[0]===S.venue)[1]});
 // a graphics page that has just loaded asks what is on; this answers with the present state
 function oaSay(){const m=OA.cur;
-  OBS.say('theme',{name:OA.theme});
+  OBS.say('theme',{name:OA.theme});if(OA.brkShow!=='ads')oaBoardSay(true);
   if(OA.brk)OBS.say('break',oaBrkMsg());
   else if(OA.scene===OA_CAM)OBS.say('cam',oaIdleMsg());
   else if(OA.phase==='play'&&m)OBS.say(OA.cover?'intro':'play',oaInfo(m));
@@ -1781,8 +1784,10 @@ async function obsSetup(){
     await place(OA_BREAK,OA_GFX,'browser_source',{url:url.href,width:1920,height:1080,css:'',shutdown:false,restart_when_active:false});
     // a video ad, when one is set, plays in the same window over the slideshow (the slideshow cannot play video)
     await place(OA_BREAK,OA_ADVID,'ffmpeg_source',{is_local_file:true,local_file:oaAdvid(),looping:true,restart_on_activate:true,close_when_inactive:true,hw_decode:true});
-    await fit(OA_BREAK,OA_ADS,OA_ADBOX);await fit(OA_BREAK,OA_ADVID,OA_ADBOX,true);await fit(OA_BREAK,OA_GFX,full,true);
-    {const{sceneItemId}=await OBS.req('GetSceneItemId',{sceneName:OA_BREAK,sourceName:OA_ADVID});await OBS.req('SetSceneItemEnabled',{sceneName:OA_BREAK,sceneItemId,sceneItemEnabled:!!oaAdvid()})}
+    const burl=new URL('board.html',location.href);burl.search='?v='+Date.now();burl.hash=new URLSearchParams({ws:OA.ws,pw:OA.pw,v:String(Date.now())}).toString();
+    await place(OA_BREAK,OA_BOARD,'browser_source',{url:burl.href,width:OA_ADBOX.w,height:OA_ADBOX.h,css:'',shutdown:false,restart_when_active:false});
+    await fit(OA_BREAK,OA_ADS,OA_ADBOX);await fit(OA_BREAK,OA_ADVID,OA_ADBOX,true);await fit(OA_BREAK,OA_BOARD,OA_ADBOX,true);await fit(OA_BREAK,OA_GFX,full,true);
+    await oaBrkShowApply();
     // walking camera: picks the picture up again by itself when the camera reconnects
     await place(OA_CAM,OA_OSMO,'ffmpeg_source',{is_local_file:false,input:OA_OSMO_URL,input_format:'',reconnect_delay_sec:2,buffering_mb:1,restart_on_activate:false,close_when_inactive:false,hw_decode:true,rtsp_transport:'tcp'});
     await fit(OA_CAM,OA_OSMO,full);
@@ -1802,13 +1807,73 @@ function oaSound(f){if(!OA.sfx||!oaSnd()||!OBS.ok)return;OBS.req('SetInputSettin
 
 // break: the break scene with the ads and music, and a countdown; when it runs out the replay comes back by itself
 const oaBrkMsg=()=>({mode:OA.brk.mode,endsAt:OA.brk.endsAt,credit:OA.credit,sub:VENUES.find(v=>v[0]===S.venue)[1]});
+async function oaBoard(){
+  OA.boardAt=Date.now();
+  try{const d=await(await fetch(OA_HELPER+'/board?region='+(OA_REGION[S.venue]||'central'))).json();
+    if(d.ok)OA.board=d;OA.boardErr=d.ok?'':'ดึงสายการแข่งจาก RoboArena ไม่ได้ ('+(d.error||'')+')'}
+  catch(e){OA.boardErr='ตัวช่วยห้องส่งไม่ตอบ: เปิด open_Studio.cmd ใหม่'}
+  oaBoardSay();
+}
+function oaBracket(){
+  const b=OA.board;if(!b)return[];
+  const aired=new Set(OA.list.filter(m=>m.matchId&&OA.played.has(m.id)).map(m=>m.matchId));
+  // one programme whose data does not read (RoboArena changed its format, a half-made draw) is skipped, never the desk
+  return Object.entries(b.brackets||{}).map(([comp,br])=>{try{
+    const team=Object.fromEntries((br.teams||[]).map(t=>[t.teamId,t])),all={},next={};
+    const fin=br.finals||[],last=fin[fin.length-1],games=last?.matches||[],gameIds=new Set(games.map(m=>m.id));
+    [...(br.groups||[]).flatMap(g=>g.rounds||[]),...fin].forEach(r=>(r.matches||[]).forEach(m=>{all[m.id]=m;
+      (m.slots||[]).forEach(s=>{if(s.fromMatchId)next[s.fromMatchId]=gameIds.has(m.id)?'final':m.id})}));
+    // a winner counts only once its clip has been on air; until then the next round shows where the team will come from
+    const shown=m=>m&&m.winnerTeamId&&aired.has(m.id)?m.winnerTeamId:null;
+    // the match that decides a group: its winner is "แชมป์สาย X"
+    const roundOf={};fin.forEach(r=>(r.matches||[]).forEach(m=>{roundOf[m.id]=r.label||''}));
+    const groupTop=new Set((br.groups||[]).flatMap(g=>{const rs=g.rounds||[];return(rs[rs.length-1]?.matches||[]).map(m=>m.id)}));
+    const slot=s=>{if(s.teamId)return{id:s.teamId};if(s.bye)return{id:null,bye:true};const src=all[s.fromMatchId],w=shown(src);
+      return w?{id:w}:{id:null,from:!src?'':groupTop.has(src.id)?`แชมป์สาย ${src.group}`:src.group?`ผู้ชนะคู่ ${src.number} สาย ${src.group}`:`ผู้ชนะ${(roundOf[src.id]||'').replace(/^รอบ/,'')} คู่ ${src.number}`}};
+    const side=(s,w)=>({name:s.id?(team[s.id]?.team||s.id):'',from:s.bye?'BYE':(s.from||''),win:w&&s.id?w===s.id:null});
+    const match=m=>{const sl=(m.slots||[]).map(slot),bye=sl.find(x=>x.bye),walk=bye&&sl.find(x=>x.id);
+      // a bye is no match: the team goes through, which gives nothing away
+      const w=walk?walk.id:shown(m);
+      return{id:m.id,next:next[m.id]||'',done:!!w,wait:!walk&&!!m.winnerTeamId&&!w,a:side(sl[0]||{},w),b:side(sl[1]||{},w)}};
+    // the bracket in two halves facing each other, the final between them: each half is columns from the outside in
+    const G=br.groups||[],half=Math.ceil(G.length/2),depth=Math.max(0,...G.map(g=>(g.rounds||[]).length));
+    const cols=gs=>Array.from({length:depth},(_,i)=>{const rs=gs.map(g=>(g.rounds||[])[i]).filter(Boolean);
+      return{label:rs.length===1?rs[0].label||'':gs.map(g=>g.label).join(' · '),matches:rs.flatMap(r=>(r.matches||[]).map(match))}}).filter(c=>c.matches.length);
+    const left=cols(G.slice(0,half)),right=cols(G.slice(half));
+    fin.slice(0,-1).forEach(r=>{const ms=(r.matches||[]).map(match),h=Math.ceil(ms.length/2);
+      left.push({label:r.label||'',matches:ms.slice(0,h)});if(ms.length>h)right.push({label:r.label||'',matches:ms.slice(h)})});
+    // the final: one box; a best-of series counts each side's wins from the games already on air
+    let final=null;
+    if(games.length){const g0=games[0],sl=(g0.slots||[]).map(slot),best=g0.series?.bestOf||1;
+      const wins=sl.map(x=>games.filter(g=>x.id&&shown(g)===x.id).length),need=Math.floor(best/2)+1,champ=sl.find((x,i)=>x.id&&wins[i]>=need);
+      const cnt=i=>best>1&&sl[i]?.id?wins[i]:null;
+      final={label:last.label||'รอบชิงชนะเลิศ',bestOf:best,champion:champ?(team[champ.id]?.team||champ.id):'',
+        wait:games.some(g=>g.winnerTeamId&&!aired.has(g.id)),a:{...side(sl[0]||{},champ?.id),wins:cnt(0)},b:{...side(sl[1]||{},champ?.id),wins:cnt(1)}}}
+    return{comp,title:(b.competitions||{})[comp]||comp.toUpperCase(),left,right,final}}catch(e){console.warn('bracket',comp,e);return null}}).filter(Boolean);
+}
+function oaBoardSay(force){
+  // nothing is fixed here: the programmes, groups and rounds are whatever RoboArena's board holds right now (a venue may
+  // run no KidsBiT, a draw may change on the day); a programme without a single match is left out
+  const list=oaBracket().filter(b=>b.left.length||b.right.length||b.final),has=list.length>0;
+  const m={theme:OA.theme,brackets:list,error:OA.boardErr},sig=JSON.stringify(m);
+  if(force||sig!==OA.boardSig){OA.boardSig=sig;OBS.say('board',m)}
+  if(has!==OA.boardHas){OA.boardHas=has;oaBrkVis();oaDraw()}
+}
+// the window beside the countdown: the ads, or the board in their place
+// with no bracket to show (none at this venue, or RoboArena not reached yet) the ads stay up: the window is never empty
+async function oaBrkVis(){
+  if(!OBS.ok)return;const ads=OA.brkShow==='ads'||!OA.boardHas;
+  const en=async(n,on)=>{try{const{sceneItemId}=await OBS.req('GetSceneItemId',{sceneName:OA_BREAK,sourceName:n});await OBS.req('SetSceneItemEnabled',{sceneName:OA_BREAK,sceneItemId,sceneItemEnabled:on})}catch(e){}};
+  await en(OA_ADS,ads);await en(OA_ADVID,ads&&!!oaAdvid());await en(OA_BOARD,!ads);
+}
+async function oaBrkShowApply(){await oaBrkVis();if(OA.brkShow!=='ads')oaBoard()}
 async function oaBreak(){
   if(!OBS.ok)return toast('ยังไม่ได้ต่อ OBS');
   OA.brk={mode:OA.brkMode,endsAt:Date.now()+OA.brkMin*60000};
   // the chosen music is set before the scene comes up, which starts it from the top
   if(oaSnd()&&OA.bgm)await OBS.req('SetInputSettings',{inputName:OA_MUSIC,inputSettings:{local_file:oaPath(oaSnd(),OA.bgm)}}).catch(()=>{});
   await OBS.req('SetInputMute',{inputName:OA_MUSIC,inputMuted:!OA.bgm}).catch(()=>{});
-  OBS.say('break',oaBrkMsg());
+  OBS.say('break',oaBrkMsg());await oaBrkShowApply();
   try{await OBS.req('SetCurrentProgramScene',{sceneName:OA_BREAK})}catch(e){toast('สลับไปฉากพักเบรกไม่ได้: '+e.message+' · กด "ตั้งฉากให้ใน OBS" ก่อน');OA.brk=null;oaSay()}
   oaDraw();
 }
@@ -1844,7 +1909,8 @@ function oaClock(){
   const tick=()=>{oaTick();if(OA.phase==='hl')oaHlTick();if(OA.waitAt&&Date.now()>=OA.waitAt){const f=OA.waitFn;OA.waitAt=0;OA.waitFn=null;f?.()}
     if(OA.brk){const left=OA.brk.endsAt-Date.now(),el=document.getElementById('oabrk');if(el)el.textContent=fmtMs(Math.max(0,left)).split('.')[0];if(left<=0&&OA.brkAuto)oaBrkEnd(true)}
     if(Date.now()-(OA.statAt||0)>2000){OA.statAt=Date.now();obsStat()}
-    if(Date.now()-(OA.helpAt||0)>3000){OA.helpAt=Date.now();oaHelper()}};
+    if(Date.now()-(OA.helpAt||0)>3000){OA.helpAt=Date.now();oaHelper()}
+    if(OA.brkShow==='bracket'&&Date.now()-OA.boardAt>10000)oaBoard()};
   try{OA_TICKS=new Worker(URL.createObjectURL(new Blob(['setInterval(()=>postMessage(0),250)'],{type:'text/javascript'})));OA_TICKS.onmessage=tick}
   catch(e){OA_TICKS=setInterval(tick,250)}
 }
@@ -2047,8 +2113,10 @@ function vOnair(){
           ${on?`<div class="row"><button class="btn ${live?'bad':''}" data-act="oastream">${live?'■ หยุดไลฟ์':'● เริ่มไลฟ์'}</button><button class="btn" data-act="oarec">${rec?'■ หยุดอัด':'⏺ เริ่มอัด'}</button></div>`:''}</div>
         <div class="panel oabrkp ${OA.brk?'on':''}"><div class="oah"><i></i>BREAK · พักเบรก / นับถอยหลัง</div>
           ${OA.brk?`<div class="oabrkt"><span>${esc(OA_BRK[OA.brk.mode])}</span><b class="mono" id="oabrk">${fmtMs(Math.max(0,OA.brk.endsAt-Date.now())).split('.')[0]}</b></div>
+            <div class="row"><label class="cc"><span>ช่องข้างนับถอยหลัง</span><select id="oabrkshow">${Object.entries(OA_SHOW).map(([k,t])=>`<option value="${k}" ${OA.brkShow===k?'selected':''}>${t}</option>`).join('')}</select></label></div>${OA.brkShow!=='ads'&&(OA.boardErr||!OA.boardHas)?`<p class="small ${OA.boardErr?'bad':'muted'}" style="margin:0">${esc(OA.boardErr||'ยังไม่มีสายการแข่งที่นี่ ช่องข้างจึงโชว์โฆษณาแทน')}</p>`:''}
             <div class="row"><button class="btn sm" data-act="oabrkmore" data-v="-5">−5 นาที</button><button class="btn sm" data-act="oabrkmore" data-v="-1">−1 นาที</button><button class="btn sm" data-act="oabrkmore" data-v="1">+1 นาที</button><button class="btn sm" data-act="oabrkmore" data-v="5">+5 นาที</button><button class="btn pri" data-act="oabrkend">⏭ จบช่วงนี้ กลับรีเพลย์</button></div>`
           :`<div class="row"><label class="cc"><span>ช่วง</span><select id="oabrkmode">${Object.entries(OA_BRK).map(([k,t])=>`<option value="${k}" ${OA.brkMode===k?'selected':''}>${t}</option>`).join('')}</select></label>
+            <label class="cc"><span>ช่องข้างนับถอยหลัง</span><select id="oabrkshow">${Object.entries(OA_SHOW).map(([k,t])=>`<option value="${k}" ${OA.brkShow===k?'selected':''}>${t}</option>`).join('')}</select></label>
             <label class="cc"><span>เพลง</span><select id="oabgm">${Object.entries(OA_BGM).map(([f,t])=>`<option value="${f}" ${OA.bgm===f?'selected':''}>${t}</option>`).join('')}</select></label>
             <label class="cc"><span>นาน</span><select id="oabrkmin">${[1,2,3,5,10,15,20,30].map(n=>`<option value="${n}" ${OA.brkMin===n?'selected':''}>${n} นาที</option>`).join('')}</select></label>
             <button class="btn sm" data-act="oabrkauto" aria-pressed="${OA.brkAuto}">${OA.brkAuto?'✓':'✕'} ครบเวลาไปหน้าพักเอง</button>
@@ -2391,6 +2459,7 @@ document.addEventListener('change',e=>{
   if(el.id==='oahlr'){OA.hlRound=el.value===''?'':+el.value;render();return}
   if(el.id==='oabrkmode'){OA.brkMode=el.value;oaKeep();render();return}
   if(el.id==='oabgm'){OA.bgm=el.value;oaKeep();return}
+  if(el.id==='oabrkshow'){OA.brkShow=el.value;oaKeep();oaBrkShowApply();render();return}
   if(el.id==='oatheme'){OA.theme=el.value;oaKeep();OBS.say('theme',{name:OA.theme});return}
   if(el.id==='oabrkmin'){OA.brkMin=+el.value;oaKeep();return}
   if(el.id==='oadelay'){OA.delay=+el.value;oaKeep();render();return}

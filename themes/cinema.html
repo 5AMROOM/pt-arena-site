@@ -155,6 +155,8 @@ body{position:relative;font-family:var(--th);color:var(--paper)}
 #cam .live{display:flex;align-items:center;gap:12px;font-weight:600;font-size:var(--t-label);letter-spacing:.34em;color:var(--paper)}
 #cam .live i{width:11px;height:11px;border-radius:50%;background:var(--live);display:block}
 #cam .where{margin-top:8px;font-size:26px;letter-spacing:.04em;color:var(--paper);max-width:720px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* text that wraps breaks into even lines: a name never leaves one word ("B") alone on the next line */
+body{text-wrap:balance}
 </style>
 </head>
 <body>
