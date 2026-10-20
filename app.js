@@ -1662,6 +1662,9 @@ function oaScan(){
   // Drive brings the small result file long before the clip: a clip counts only once it is on disk and has stopped growing
   for(const m of out.values())m.synced=OA.stable.has(oaRel(m))||!!oaCopy(m);
   OA.list=[...out.values()].sort((a,b)=>a.at-b.at);
+  // a programme lock left over from other matches (a rehearsal, another venue) would hide the whole queue while the
+  // dropdown shows "ทุกรายการ": a lock on a programme that is not in the list any more is let go
+  if(OA.prog!=='all'&&OA.list.length&&!OA.list.some(m=>oaGroup(m)===OA.prog)){OA.prog='all';oaKeep()}
   let grew=false;for(const m of OA.list)if(!OA.order.includes(m.id)){OA.order.push(m.id);grew=true}
   if(grew||!OA.newAt)OA.newAt=Date.now();
   if(grew)oaKeep();
