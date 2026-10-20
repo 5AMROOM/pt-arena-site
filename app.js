@@ -1566,11 +1566,11 @@ const OA_OSMO='PT Osmo',OA_OSMO_URL='rtsp://127.0.0.1:8554/live/osmo';
 // the phone as the walking camera: our own camera page, no app (see #cam-ROAM / #rx-ROAM)
 const OA_PHONE='PT มือถือ',oaSite=()=>location.origin+location.pathname+location.search;
 const OA={H:null,hsig:'',files:[],webm:[],stable:new Set(),ipSeen:'',list:[],order:[],played:new Set(),bad:new Map(),auto:true,delay:0,prog:'all',skipSetup:true,cur:null,nextM:null,phase:'idle',err:'',
-  ws:'ws://127.0.0.1:4455',pw:'',theme:'sports',ads:'',advid:'',snd:'',credit:'',brk:null,cache:{},helperOk:false,hlGroup:'',hlRound:1,hl:null,brkMode:'break',brkMin:5,brkAuto:true,brkHl:false,brkShow:'ads',board:null,boardHas:false,boardErr:'',boardAt:0,boardSig:'',sfx:false,bgm:'pt_loop.wav',obsWant:false,obsState:'off',obsErr:'',scene:'',stat:null,hold:false,offAir:false,shown:0,cursor:0,dur:0,paused:false,gen:0,waitAt:0,waitFn:null};
+  ws:'ws://127.0.0.1:4455',pw:'',theme:'sports',ads:'',advid:'',snd:'',credit:'',brk:null,cache:{},helperOk:false,hlGroup:'',hlRound:1,hl:null,brkMode:'break',brkMin:5,brkAuto:true,brkHl:false,blocks:true,progOrder:[],block:'',blockShown:'',brkShow:'ads',board:null,boardHas:false,boardErr:'',boardAt:0,boardSig:'',sfx:false,bgm:'pt_loop.wav',obsWant:false,obsState:'off',obsErr:'',scene:'',stat:null,hold:false,offAir:false,shown:0,cursor:0,dur:0,paused:false,gen:0,waitAt:0,waitFn:null};
 try{const k=JSON.parse(localStorage.getItem('ptarena:oa')||'{}');OA.order=k.order||[];OA.played=new Set(k.played||[]);OA.auto=k.auto!==false;OA.delay=k.delay||0;OA.prog=k.prog||'all';OA.skipSetup=k.skipSetup!==false;OA.tests=!!k.tests;
   OA.ws=k.ws||OA.ws;OA.pw=k.pw||'';OA.ipSeen=k.ipSeen||'';OA.obsWant=!!k.obsWant;
-  OA.ads=k.ads||'';OA.advid=k.advid||'';OA.snd=k.snd||'';OA.credit=k.credit||'';OA.brkMode=k.brkMode||'break';OA.brkMin=k.brkMin||5;OA.brkAuto=k.brkAuto!==false;OA.brkHl=k.brkHl===true;OA.brkShow=k.brkShow in OA_SHOW?k.brkShow:'ads';OA.sfx=k.sfx===true;OA.bgm=k.bgm in OA_BGM?k.bgm:'pt_loop.wav';OA.theme=k.theme in OA_THEMES?k.theme:'sports'}catch(e){}
-const oaKeep=()=>{try{localStorage.setItem('ptarena:oa',JSON.stringify({order:OA.order,played:[...OA.played],auto:OA.auto,delay:OA.delay,prog:OA.prog,skipSetup:OA.skipSetup,tests:OA.tests,ws:OA.ws,pw:OA.pw,ipSeen:OA.ipSeen,obsWant:OA.obsWant,ads:OA.ads,advid:OA.advid,snd:OA.snd,credit:OA.credit,brkMode:OA.brkMode,brkMin:OA.brkMin,brkAuto:OA.brkAuto,brkHl:OA.brkHl,brkShow:OA.brkShow,sfx:OA.sfx,bgm:OA.bgm,theme:OA.theme}))}catch(e){}};
+  OA.ads=k.ads||'';OA.advid=k.advid||'';OA.snd=k.snd||'';OA.credit=k.credit||'';OA.brkMode=k.brkMode||'break';OA.brkMin=k.brkMin||5;OA.brkAuto=k.brkAuto!==false;OA.brkHl=k.brkHl===true;OA.blocks=k.blocks!==false;OA.progOrder=Array.isArray(k.progOrder)?k.progOrder.filter(x=>typeof x==='string'):[];OA.brkShow=k.brkShow in OA_SHOW?k.brkShow:'ads';OA.sfx=k.sfx===true;OA.bgm=k.bgm in OA_BGM?k.bgm:'pt_loop.wav';OA.theme=k.theme in OA_THEMES?k.theme:'sports'}catch(e){}
+const oaKeep=()=>{try{localStorage.setItem('ptarena:oa',JSON.stringify({order:OA.order,played:[...OA.played],auto:OA.auto,delay:OA.delay,prog:OA.prog,skipSetup:OA.skipSetup,tests:OA.tests,ws:OA.ws,pw:OA.pw,ipSeen:OA.ipSeen,obsWant:OA.obsWant,ads:OA.ads,advid:OA.advid,snd:OA.snd,credit:OA.credit,brkMode:OA.brkMode,brkMin:OA.brkMin,brkAuto:OA.brkAuto,brkHl:OA.brkHl,blocks:OA.blocks,progOrder:OA.progOrder,brkShow:OA.brkShow,sfx:OA.sfx,bgm:OA.bgm,theme:OA.theme}))}catch(e){}};
 const oaGroup=m=>`${m.prog} · สนาม ${m.field}`;
 const oaTime=v=>{const t=typeof v==='number'?v:new Date(v||0).getTime();return isFinite(t)?t:0};
 
@@ -1672,7 +1672,37 @@ function oaScan(){
 }
 // what goes out next: confirmed, clip on disk, old enough for the hold-back, not played, did not fail, in the chosen programme
 const oaReady=m=>m.ok&&m.vok&&m.synced&&!OA.bad.has(m.id)&&Date.now()-m.at>=OA.delay*60000;
-const oaQueue=()=>OA.order.map(id=>OA.list.find(m=>m.id===id)).filter(m=>m&&!OA.played.has(m.id)&&(OA.prog==='all'||oaGroup(m)===OA.prog));
+const oaQueueRaw=()=>OA.order.map(id=>OA.list.find(m=>m.id===id)).filter(m=>m&&!OA.played.has(m.id)&&(OA.prog==='all'||oaGroup(m)===OA.prog));
+// Several fields race at once, so clips arrive mixed. On air they go out in blocks, one programme at a time:
+// the block on air carries on while it has a clip ready; then the next programme in the desk's order that has at least
+// OA_BLOCK_MIN ready (else any that has one). Inside a block: round by round, in bracket order, then as queued.
+// Anything wrong in here and the queue falls back to the plain order: the show never stops for the sorting.
+const OA_BLOCK_MIN=3;
+const oaProgs=()=>{const seen=[...new Set(OA.list.map(m=>m.prog).filter(Boolean))];
+  return[...OA.progOrder.filter(p=>seen.includes(p)),...seen.filter(p=>!OA.progOrder.includes(p))]};
+function oaBlockPick(q){
+  const ready=q.filter(oaReady),n=p=>ready.filter(m=>m.prog===p).length,order=oaProgs();
+  if(OA.block&&n(OA.block)>0)return OA.block;
+  const i=order.indexOf(OA.block),rot=i<0?order:[...order.slice(i+1),...order.slice(0,i+1)];
+  return rot.find(p=>n(p)>=OA_BLOCK_MIN)||rot.find(p=>n(p)>0)||OA.block||order[0]||'';
+}
+function oaBracketPos(){
+  const pos={};let k=0;
+  try{Object.values(OA.board?.brackets||{}).forEach(br=>[...(br.groups||[]).flatMap(g=>g.rounds||[]).sort((a,b)=>(a.round||0)-(b.round||0)),...(br.finals||[])]
+    .forEach(r=>(r.matches||[]).forEach(m=>{pos[m.id]=k++})))}catch(e){}
+  return pos;
+}
+function oaQueue(){
+  const q=oaQueueRaw();if(!OA.blocks||q.length<2)return q;
+  try{
+    const at=Object.fromEntries(OA.order.map((id,i)=>[id,i])),bp=oaBracketPos(),rnd=m=>m.round===''?99:+m.round||0;
+    const inBlock=(a,b)=>rnd(a)-rnd(b)||(bp[a.matchId]??1e6)-(bp[b.matchId]??1e6)||at[a.id]-at[b.id];
+    const order=oaProgs(),first=oaBlockPick(q),i=order.indexOf(first),rot=i<0?order:[...order.slice(i),...order.slice(0,i)];
+    // a match without a programme name still plays, after the blocks
+    const out=[...rot.flatMap(p=>q.filter(m=>m.prog===p).sort(inBlock)),...q.filter(m=>!m.prog||!order.includes(m.prog))];
+    return out.length===q.length?out:q;
+  }catch(e){console.warn('queue blocks',e);return q}
+}
 const oaDraw=()=>{if(S.ui.view==='onair'&&!document.activeElement?.closest?.('.oa input,.oa select'))render()};
 // where things are on this computer: what the helper says, unless a path was typed in the settings
 const oaSrc=()=>OA.H?.src||'',oaAds=()=>OA.ads||OA.H?.ads||'',oaAdvid=()=>OA.advid||OA.H?.advid||'',oaSnd=()=>OA.snd||OA.H?.music||'';
@@ -1752,6 +1782,7 @@ function oaSay(){const m=OA.cur;
   else if(OA.phase==='result'&&m&&!m.bare&&!m.noResult)OBS.say('result',oaRes(m));
   else if(OA.phase==='next'&&OA.nextM)OBS.say('next',oaInfo(OA.nextM));
   else if(OA.phase==='adv'&&OA.adv)OBS.say('title',OA.adv);
+  else if(OA.phase==='blk'&&OA.blk)OBS.say('title',OA.blk);
   else OBS.say('idle',oaIdleMsg())}
 
 const oaPath=(dir,f)=>dir.replace(/[\\/]+$/,'')+'\\'+f;
@@ -1971,6 +2002,7 @@ function oaFail(m,why){
 }
 async function oaPlay(m){
   if(!m)return oaToIdle();
+  if(m.prog){OA.block=m.prog;OA.blockShown=m.prog}
   if(!OBS.ok){toast('ยังไม่ได้ต่อ OBS');return oaToIdle()}
   if(!oaSrc()){toast('ยังไม่ได้เปิดตัวช่วยห้องส่ง: ดับเบิลคลิก open_Studio.cmd');return oaToIdle()}
   // the walking camera is on air: the clip waits until the replay scene is back
@@ -2032,9 +2064,10 @@ function oaAfter(m){{
     const n=OA.auto&&oaQueue().find(oaReady);
     if(!n)return oaToIdle();
     if(OA.scene&&OA.scene!==OA_SCENE){OA.hold=true;return oaToIdle()}
-    OA.phase='next';OA.nextM=n;OBS.say('next',oaInfo(n));if(!OA.brk)oaSound(OA_SND.sting);oaDraw();
-    // dropped or played while its card was up: take whatever is next now
-    oaWait(5000,()=>oaPlay(OA.played.has(n.id)||OA.bad.has(n.id)?oaQueue().find(oaReady):n))}
+    oaBlockOpen(n,()=>{
+      OA.phase='next';OA.nextM=n;OBS.say('next',oaInfo(n));if(!OA.brk)oaSound(OA_SND.sting);oaDraw();
+      // dropped or played while its card was up: take whatever is next now
+      oaWait(5000,()=>oaPlay(OA.played.has(n.id)||OA.bad.has(n.id)?oaQueue().find(oaReady):n))})}
 }
 // from RoboArena's bracket: the round the winner of this match plays next and against whom (a name only when that
 // result has been on air too), or the title when this game wins the final series. Nothing when the board is not there.
@@ -2115,7 +2148,18 @@ async function oaHlTick(){
   }catch(e){}finally{OA.ticking=false}
 }
 function oaToIdle(){OA.gen++;OA.phase='idle';OA.cur=null;OA.nextM=null;OA.cover=false;OBS.say('idle',oaIdleMsg());oaDraw()}
-function oaNext(){const n=oaQueue().find(oaReady);if(n)return oaPlay(n);oaToIdle()}
+function oaNext(){const n=oaQueue().find(oaReady);if(n)return oaBlockOpen(n,()=>oaPlay(n));oaToIdle()}
+// before the first clip of a new block: "ช่วงต่อไป · <programme> · N แมตช์" for 4 s; the same block again needs no card
+function oaBlockOpen(n,go){
+  try{
+    if(!OA.blocks||!n.prog||n.prog===OA.blockShown){OA.block=n.prog||OA.block;return go()}
+    const cnt=oaQueue().filter(m=>m.prog===n.prog&&oaReady(m)).length;
+    OA.block=OA.blockShown=n.prog;OA.gen++;OA.phase='blk';
+    OA.blk={eyebrow:'ช่วงต่อไป',tag:'NEXT UP',title:n.prog,sub:cnt>1?`${cnt} แมตช์`:''};
+    OBS.say('title',OA.blk);if(!OA.brk)oaSound(OA_SND.sting);oaDraw();
+    oaWait(4000,go);
+  }catch(e){console.warn('block card',e);go()}
+}
 function oaIdle(){oaStopWait();OA.hl=null;oaMedia('STOP');OA.wantRun=false;OA.hold=false;OA.offAir=false;oaToIdle()}
 function oaMove(id,d){const i=OA.order.indexOf(id),j=i+d;if(i<0||j<0||j>=OA.order.length)return;[OA.order[i],OA.order[j]]=[OA.order[j],OA.order[i]];oaKeep()}
 
@@ -2197,6 +2241,10 @@ function vOnair(){
           <label class="cc"><span>รายการ</span><select id="oaprogsel"><option value="all">ทุกรายการ</option>${groups.map(g=>`<option ${OA.prog===g?'selected':''}>${esc(g)}</option>`).join('')}</select></label>
           <label class="cc"><span>หน่วงก่อนปล่อย</span><select id="oadelay">${[0,5,10,15,30,60].map(n=>`<option value="${n}" ${OA.delay===n?'selected':''}>${n?n+' นาทีหลังยืนยันผล':'ไม่หน่วง'}</option>`).join('')}</select></label>
           <button class="btn sm" data-act="oaauto" aria-pressed="${OA.auto}">${OA.auto?'✓':'✕'} เล่นต่ออัตโนมัติ</button>
+          <button class="btn sm" data-act="oablocks" aria-pressed="${OA.blocks}">${OA.blocks?'✓':'✕'} เล่นเป็นช่วง ทีละรายการ</button>
+          ${OA.blocks?(()=>{const ps=oaProgs(),q=oaQueueRaw();if(!ps.length)return'';
+            return`<div class="oaprogs" style="width:100%"><span class="small muted">ลำดับรายการ (เล่นทีละช่วงตามนี้ วนกลับเมื่อครบ)</span>${ps.map((p,i)=>{const n=q.filter(m=>m.prog===p&&oaReady(m)).length;
+              return`<div class="row oaprow ${p===OA.block?'on':''}"><span class="mono">${i+1}</span><span class="grow">${esc(p)}${p===OA.block?' · กำลังเล่น':''}</span><span class="tagx">${n} พร้อม</span><button class="btn sm" data-act="oaprogup" data-v="${i}" ${i?'':'disabled'}>↑</button><button class="btn sm" data-act="oaprogdown" data-v="${i}" ${i<ps.length-1?'':'disabled'}>↓</button></div>`}).join('')}</div>`})():''}
           <button class="btn sm" data-act="oaskipset" aria-pressed="${OA.skipSetup}">${OA.skipSetup?'✓':'✕'} บังช่วงเตรียมหุ่น</button>
           <button class="btn sm" data-act="oatests" aria-pressed="${OA.tests}">${OA.tests?'✓':'✕'} รวมคลิปทดสอบ (ซ้อม)</button>
         </div>
@@ -2398,6 +2446,8 @@ document.addEventListener('click',e=>{
     case'oabrkmore':oaBrkMore(+b.dataset.v);return;
     case'oabrkauto':OA.brkAuto=!OA.brkAuto;oaKeep();break;
     case'oasfx':OA.sfx=!OA.sfx;oaKeep();break;
+    case'oablocks':OA.blocks=!OA.blocks;oaKeep();break;
+    case'oaprogup':case'oaprogdown':{const ps=oaProgs(),i=+b.dataset.v,j=i+(a==='oaprogup'?-1:1);if(j>=0&&j<ps.length){[ps[i],ps[j]]=[ps[j],ps[i]];OA.progOrder=ps;oaKeep()}break}
     case'oabrkhl':OA.brkHl=!OA.brkHl;oaKeep();break;
     case'oaauto':OA.auto=!OA.auto;oaKeep();break;
     case'oaskipset':OA.skipSetup=!OA.skipSetup;oaKeep();break;

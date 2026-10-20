@@ -861,4 +861,8 @@ body.rxonly .app,body.rxonly #toast,body.rxonly #net{display:none!important}
 .oah .oasfx+.oatheme{margin-left:8px}
 .oah .oatheme{margin-left:auto;flex-direction:row;align-items:center;gap:8px;font-size:11px;letter-spacing:0;font-weight:600}
 .oah .oatheme select{min-height:30px;font-size:13px}
+.oaprogs{display:flex;flex-direction:column;gap:6px;margin-top:4px}
+.oaprow{align-items:center;gap:8px;padding:4px 8px;border:1px solid var(--line);border-radius:8px}
+.oaprow.on{border-color:var(--accent)}
+.oaprow .grow{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
