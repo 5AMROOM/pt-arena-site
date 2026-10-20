@@ -52,6 +52,35 @@ svg.ln path.won{stroke:var(--accent)}
 .fin .bo{text-align:center;font-family:Oxanium;font-size:12px;color:var(--mute);margin-top:8px;letter-spacing:.14em}
 .champ{margin-top:12px;text-align:center;font-weight:700;font-size:15px;color:var(--accent)}
 .empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--mute);font-size:18px}
+/* standings: rank · team and school · round 1 · round 2 · best · time */
+.rk{position:absolute;inset:0;display:flex;flex-direction:column}
+.rr{display:grid;grid-template-columns:52px 1fr 76px 76px 96px 112px;align-items:center;gap:0 12px;min-height:48px;padding:0 16px;border-bottom:1px solid var(--line)}
+.rr.h{min-height:28px;font-size:12px;font-weight:600;color:var(--mute);border-bottom-color:var(--line)}
+.rr .no{font-family:Oxanium;font-weight:800;font-size:22px;color:var(--mute)}
+.rr.top .no{color:var(--accent)}
+.rr .nm{min-width:0}
+.rr .nm b{display:block;font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rr .nm small{display:block;font-size:12px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rr .v{font-family:Oxanium;font-weight:600;font-size:18px;text-align:right;color:var(--mute)}
+.rr .v.b{font-weight:800;font-size:24px;color:var(--ink)}
+.rr.h .v{font-family:Prompt;font-size:12px;font-weight:600}
+/* live: one card per field, two across */
+.lv{position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:minmax(0,1fr);gap:16px}
+.lv.one{grid-template-columns:1fr}
+.fc{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px 18px;display:flex;flex-direction:column;gap:10px;min-height:0;overflow:hidden}
+.fc.run{border-color:var(--accent)}
+.fc .top{display:flex;align-items:center;gap:10px}
+.fc .fn{font-family:Oxanium;font-weight:800;font-size:15px;letter-spacing:.08em}
+.fc .pg{flex:1;min-width:0;font-size:12px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fc .st{font-size:12px;font-weight:600;padding:3px 10px;border-radius:10px;background:var(--line);white-space:nowrap}
+.fc.run .st{background:var(--accent);color:var(--on)}
+.fc .clk{font-family:Oxanium;font-weight:700;font-size:34px;line-height:1}
+.fc .tm{display:flex;align-items:center;gap:12px}
+.fc .tm .n{flex:1;min-width:0}
+.fc .tm .n b{display:block;font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fc .tm .n small{display:block;font-size:12px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fc .tm .sc{font-family:Oxanium;font-weight:800;font-size:30px}
+.fc .tm .sc small{font-size:14px;color:var(--mute);font-weight:600}
 </style>
 </head>
 <body>
@@ -88,12 +117,46 @@ function draw(){
   const p=document.getElementById('p');p.classList.remove('on');
   setTimeout(()=>{try{drawNow(p)}catch(e){console.warn('board',e);p.textContent='';p.append(el('div','empty','ยังไม่มีสายการแข่ง'));p.classList.add('on')}},data?250:0);
 }
+const pages=()=>{const m=data&&data.mode;if(m==='rank')return data.rank||[];if(m==='live'){const l=data.live||[],out=[];for(let i=0;i<l.length;i+=4)out.push(l.slice(i,i+4));return out}return(data&&data.brackets)||[]};
+function head(p,ey,tt,list){
+  const hd=el('div','hd'),l=el('div');l.append(el('div','ey',ey),el('div','tt',tt));hd.append(l);
+  if(list.length>1){const d=el('div','dots');list.forEach((x,i)=>d.append(el('i',i===idx%list.length?'on':'')));hd.append(d)}
+  const bd=el('div','bd');p.append(hd,bd);return bd;
+}
+// standings: the best of each team's two rounds, ties by time
+function drawRank(p,list){
+  const it=list[idx%Math.max(1,list.length)],bd=head(p,'อันดับ · STANDINGS',it?it.title:'อันดับ',list);
+  if(!it){bd.append(el('div','empty','ยังไม่มีอันดับ'));return}
+  const t=el('div','rk'),row=(cls,cells)=>{const r=el('div','rr '+cls);cells.forEach(c=>r.append(c));t.append(r)};
+  row('h',[el('span','',''),el('span','','ทีม'),el('span','v','รอบ 1'),el('span','v','รอบ 2'),el('span','v','ดีที่สุด'),el('span','v','เวลา')]);
+  it.rows.forEach(x=>{const nm=el('span','nm');nm.append(el('b','',x.team),el('small','',x.school));
+    row(x.rank<=3?'top':'',[el('span','no',x.rank),nm,el('span','v',x.r1===''?'–':x.r1),el('span','v',x.r2===''?'–':x.r2),el('span','v b',x.best),el('span','v',x.time)])});
+  bd.append(t);
+}
+// live: each field with its clock (running on here between updates) and the scores as they stand
+const mmss=ms=>{const s=Math.max(0,Math.floor(ms/1000));return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')};
+function drawLive(p,list){
+  const it=list[idx%Math.max(1,list.length)]||[],bd=head(p,'สดจากสนาม · LIVE',data.sub||'ตอนนี้ในสนาม',list);
+  if(!it.length){bd.append(el('div','empty','ตอนนี้ไม่มีสนามไหนแข่งอยู่'));return}
+  const g=el('div','lv'+(it.length===1?' one':''));
+  it.forEach(f=>{const c=el('div','fc'+(f.state==='run'?' run':'')),top=el('div','top');
+    top.append(el('span','fn',f.field),el('span','pg',f.prog),el('span','st',f.state==='run'?'● กำลังแข่ง':f.state==='idle'?'รอเริ่ม':'จบรอบ'));
+    const clk=el('div','clk',mmss(f.ms));if(f.state==='run'){clk.dataset.ms=f.ms;clk.dataset.dur=f.dur||''}
+    c.append(top,clk);
+    (f.teams||[]).forEach(t=>{const r=el('div','tm'),n=el('span','n');n.append(el('b','',t.name),el('small','',t.school||''));
+      const sc=el('span','sc',t.score);if(t.max)sc.append(el('small','','/'+t.max));r.append(n,sc);c.append(r)});
+    g.append(c)});
+  bd.append(g);
+}
+setInterval(()=>{if(!data||data.mode!=='live')return;const gone=Date.now()-(data.t||Date.now());
+  document.querySelectorAll('.clk[data-ms]').forEach(c=>{const d=+c.dataset.dur||Infinity;c.textContent=mmss(Math.min(d,+c.dataset.ms+gone))})},250);
 function drawNow(p){{
     p.textContent='';
-    const list=(data&&data.brackets)||[],br=list[idx%Math.max(1,list.length)];
-    const hd=el('div','hd'),l=el('div');l.append(el('div','ey','สายการแข่ง · BRACKET'),el('div','tt',br?br.title:'สายการแข่ง'));hd.append(l);
-    if(list.length>1){const d=el('div','dots');list.forEach((x,i)=>d.append(el('i',i===idx%list.length?'on':'')));hd.append(d)}
-    const bd=el('div','bd');p.append(hd,bd);
+    const mode=data&&data.mode;
+    if(mode==='rank'){drawRank(p,pages());p.classList.add('on');return}
+    if(mode==='live'){drawLive(p,pages());p.classList.add('on');return}
+    const list=pages(),br=list[idx%Math.max(1,list.length)];
+    const bd=head(p,'สายการแข่ง · BRACKET',br?br.title:'สายการแข่ง',list);
     if(!br){bd.append(el('div','empty',data&&data.error?'ยังดึงสายการแข่งไม่ได้':'ยังไม่มีสายการแข่ง'));p.classList.add('on');return}
     // the two halves of the bracket face each other, the final between them (columns come from the outside in)
     const cols=el('div','cols'),mk=col=>{const c=el('div','col');c.dataset.label=col.label||'';col.matches.forEach(m=>{const x=box(m);x.dataset.id=m.id;x.dataset.next=m.next||'';x.dataset.won=m.done?'1':'';c.append(x)});return c};
@@ -121,10 +184,13 @@ function show(m){
   if(m.k==='theme'&&m.name){theme=m.name;paint(theme);return}
   if(m.k!=='board')return;
   if(m.theme&&m.theme!==theme){theme=m.theme;paint(theme)}
-  const same=data&&JSON.stringify(data.brackets)===JSON.stringify(m.brackets);data=m;
-  // more than one programme (ประถม, มัธยม): each gets the window in turn
-  clearInterval(turn);if((m.brackets||[]).length>1)turn=setInterval(()=>{idx++;draw()},12000);
-  if(!same||!document.getElementById('p').childElementCount)draw();
+  const key=x=>x?JSON.stringify([x.mode,x.brackets,x.rank,x.live]):'',same=key(data)===key(m),changed=!data||data.mode!==m.mode;data=m;
+  if(changed)idx=0;
+  // more than one page (ประถม and มัธยม, several programmes, more than four fields): each gets the window in turn
+  clearInterval(turn);if(pages().length>1)turn=setInterval(()=>{idx++;draw()},12000);
+  if(!same||!document.getElementById('p').childElementCount){
+    // the live fields update in place every few seconds: no fade for that, only when the page itself changes
+    if(m.mode==='live'&&!changed){const p=document.getElementById('p');try{p.textContent='';drawNow(p)}catch(e){draw()}}else draw()}
 }
 paint(theme);document.fonts.ready.then(()=>{if(!data)draw()});
 // obs-websocket 5, as in overlay.html: hello → identify → the desk's custom events

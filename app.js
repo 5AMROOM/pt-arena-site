@@ -1547,8 +1547,9 @@ function vDevices(){
 const OA_SCENE='PT รีเพลย์',OA_CAM='PT กล้องเดิน',OA_BREAK='PT พักเบรก',OA_CLIP='PT คลิป',OA_GFX='PT กราฟิก',OA_ADS='PT โฆษณา',OA_MUSIC='PT เพลง',OA_STING='PT เสียงคั่น',OA_ADVID='PT วิดีโอโฆษณา';
 // the ads sit in this window of the 1920×1080 break screen; overlay.html leaves the same window see-through
 const OA_ADBOX={x:800,y:200,w:1040,h:585};
-// what the window beside the countdown shows: the ads, or the KidsBiT bracket from RoboArena (board.html, source "PT ตาราง")
-const OA_BOARD='PT ตาราง',OA_SHOW={ads:'โฆษณา',bracket:'สายการแข่ง KidsBiT'};
+// what the window beside the countdown shows (board.html, source "PT ตาราง"): the ads; the KidsBiT bracket from RoboArena;
+// the standings of the solo programmes from what we have aired; or the fields live right now from RoboArena
+const OA_BOARD='PT ตาราง',OA_SHOW={ads:'โฆษณา',bracket:'สายการแข่ง KidsBiT',rank:'อันดับ (ที่ออกอากาศแล้ว)',live:'สดจากสนาม ⚠️ บอกผลก่อนคลิป'};
 const OA_REGION={C:'central',S:'south',E:'east',N:'north',NE:'northeast'};
 // the sound folder holds three files with fixed names: the break bed (loops), the card sting, the show opener
 const OA_SND={loop:'pt_loop.wav',sting:'pt_sting.wav',open:'pt_open.wav'};
@@ -1851,11 +1852,37 @@ function oaBracket(){
         wait:games.some(g=>g.winnerTeamId&&!aired.has(g.id)),a:{...side(sl[0]||{},champ?.id),wins:cnt(0)},b:{...side(sl[1]||{},champ?.id),wins:cnt(1)}}}
     return{comp,title:(b.competitions||{})[comp]||comp.toUpperCase(),left,right,final}}catch(e){console.warn('bracket',comp,e);return null}}).filter(Boolean);
 }
+// the solo programmes (rescue, delivery): each team's two rounds and its best, from the runs already on air only
+function oaRank(){
+  const runs=OA.list.filter(m=>!m.h2h&&m.ok&&!m.noResult&&!m.bare&&OA.played.has(m.id)&&m.total!=='');
+  const progs=[...new Set(runs.map(m=>m.prog))];
+  return progs.map(prog=>{const teams={};
+    runs.filter(m=>m.prog===prog).forEach(m=>{const k=m.teamId||m.team,t=teams[k]=teams[k]||{team:m.team,school:m.school,r:{},best:null};
+      t.r[m.round]=m;if(!t.best||m.total>t.best.total||(m.total===t.best.total&&(m.ms<t.best.ms||(m.ms===t.best.ms&&m.retry<t.best.retry))))t.best=m});
+    const rows=Object.values(teams).sort((a,b)=>b.best.total-a.best.total||a.best.ms-b.best.ms||a.best.retry-b.best.retry).slice(0,8)
+      .map((t,i)=>({rank:i+1,team:t.team,school:t.school||'',r1:t.r[1]?t.r[1].total:'',r2:t.r[2]?t.r[2].total:'',best:t.best.total,time:fmtMs(t.best.ms)}));
+    return{title:prog,rows}}).filter(x=>x.rows.length);
+}
+// the fields right now, from RoboArena: who is on, the clock and the score; a field that is offline and idle is left out
+function oaLive(){
+  const b=OA.board;if(!b)return[];
+  const names=Object.fromEntries((b.fields||[]).map(f=>[f.fieldId,f.name])),comp=b.competitions||{},now=b.serverTime||0;
+  const run=x=>/run|start|live|play/i.test(String(x.state||'')),clock=x=>{const ms=+x.ms||0;return run(x)&&now&&x.sampledAt?Math.min(+x.durationMs||Infinity,ms+Math.max(0,now-x.sampledAt)):ms};
+  const state=x=>run(x)?'run':/idle|ready|wait/i.test(String(x.state||''))?'idle':'stop';
+  const one=x=>({field:names[x.field]||'',prog:comp[x.competition]||String(x.competition||'').toUpperCase(),state:state(x),ms:clock(x),dur:+x.durationMs||0});
+  try{
+    return[...(b.pairedLive||[]).map(x=>({...one(x),teams:(x.participants||[]).map(p=>({name:p.team||p.teamId||'',school:p.school||'',score:p.score??0}))})),
+      ...(b.live||[]).map(x=>({...one(x),teams:[{name:x.team||x.teamId||'',school:x.school||'',score:x.total??0,max:x.maxScore||''}],round:x.round||''}))]
+      .filter(x=>x.state!=='idle'||(b.live||[]).concat(b.pairedLive||[]).some(y=>y.online&&names[y.field]===x.field)).sort((a,b)=>a.field.localeCompare(b.field));
+  }catch(e){console.warn('live',e);return[]}
+}
 function oaBoardSay(force){
   // nothing is fixed here: the programmes, groups and rounds are whatever RoboArena's board holds right now (a venue may
   // run no KidsBiT, a draw may change on the day); a programme without a single match is left out
-  const list=oaBracket().filter(b=>b.left.length||b.right.length||b.final),has=list.length>0;
-  const m={theme:OA.theme,brackets:list,error:OA.boardErr},sig=JSON.stringify(m);
+  const mode=OA.brkShow==='ads'?'bracket':OA.brkShow;
+  const list=mode==='rank'?oaRank():mode==='live'?oaLive():oaBracket().filter(b=>b.left.length||b.right.length||b.final),has=list.length>0;
+  const m={theme:OA.theme,mode,brackets:mode==='bracket'?list:[],rank:mode==='rank'?list:[],live:mode==='live'?list:[],error:mode==='rank'?'':OA.boardErr,sub:VENUES.find(v=>v[0]===S.venue)[1],t:Date.now()},
+    sig=JSON.stringify({...m,t:0});
   if(force||sig!==OA.boardSig){OA.boardSig=sig;OBS.say('board',m)}
   if(has!==OA.boardHas){OA.boardHas=has;oaBrkVis();oaDraw()}
 }
@@ -1866,7 +1893,7 @@ async function oaBrkVis(){
   const en=async(n,on)=>{try{const{sceneItemId}=await OBS.req('GetSceneItemId',{sceneName:OA_BREAK,sourceName:n});await OBS.req('SetSceneItemEnabled',{sceneName:OA_BREAK,sceneItemId,sceneItemEnabled:on})}catch(e){}};
   await en(OA_ADS,ads);await en(OA_ADVID,ads&&!!oaAdvid());await en(OA_BOARD,!ads);
 }
-async function oaBrkShowApply(){await oaBrkVis();if(OA.brkShow!=='ads')oaBoard()}
+async function oaBrkShowApply(){OA.boardHas=false;OA.boardSig='';await oaBrkVis();if(OA.brkShow==='rank')oaBoardSay(true);else if(OA.brkShow!=='ads')oaBoard()}
 async function oaBreak(){
   if(!OBS.ok)return toast('ยังไม่ได้ต่อ OBS');
   OA.brk={mode:OA.brkMode,endsAt:Date.now()+OA.brkMin*60000};
@@ -1910,7 +1937,8 @@ function oaClock(){
     if(OA.brk){const left=OA.brk.endsAt-Date.now(),el=document.getElementById('oabrk');if(el)el.textContent=fmtMs(Math.max(0,left)).split('.')[0];if(left<=0&&OA.brkAuto)oaBrkEnd(true)}
     if(Date.now()-(OA.statAt||0)>2000){OA.statAt=Date.now();obsStat()}
     if(Date.now()-(OA.helpAt||0)>3000){OA.helpAt=Date.now();oaHelper()}
-    if(OA.brkShow==='bracket'&&Date.now()-OA.boardAt>10000)oaBoard()};
+    if((OA.brkShow==='bracket'&&Date.now()-OA.boardAt>10000)||(OA.brkShow==='live'&&Date.now()-OA.boardAt>3000))oaBoard();
+    if(OA.brkShow==='rank'&&Date.now()-OA.boardAt>5000){OA.boardAt=Date.now();oaBoardSay()}};
   try{OA_TICKS=new Worker(URL.createObjectURL(new Blob(['setInterval(()=>postMessage(0),250)'],{type:'text/javascript'})));OA_TICKS.onmessage=tick}
   catch(e){OA_TICKS=setInterval(tick,250)}
 }
@@ -2007,7 +2035,9 @@ function oaDone(){
 const OA_HL_ALL='*',OA_HL_MAX=8;
 const oaHlCard=m=>{if(!m.h2h)return{title:m.team,sub:`${m.total} คะแนน · เวลา ${fmtMs(m.ms)}`};
   const w=m.teams.find(t=>t.winner),l=m.teams.find(t=>!t.winner),sc=w&&l&&w.score!=null&&l.score!=null?` · ${w.score}–${l.score}`:'';
-  return{title:`${w.name} ชนะ ${l?l.name:''}`,sub:[sc.slice(3),m.series?oaSeries(m,true):''].filter(Boolean).join(' · ')}};
+  // the winner alone is the big line (one team name, as long as the result card's), the rest goes underneath
+  const ser=m.series?`ซีรีส์ ${m.series.wins.join('–')}`+(m.series.winner===w.name?' · คว้าแชมป์':''):'';
+  return{title:w.name,sub:[l?'ชนะ '+l.name:'',sc.slice(3),ser].filter(Boolean).join(' · ')}};
 function oaHlPick(group,round){
   const aired=OA.list.filter(m=>m.ok&&!m.noResult&&!m.bare&&OA.played.has(m.id)&&oaCopy(m)&&(m.h2h||m.total>0));
   // a pair match: its last 12 seconds, where it is decided; a solo run: its last scoring moments
@@ -2113,7 +2143,7 @@ function vOnair(){
           ${on?`<div class="row"><button class="btn ${live?'bad':''}" data-act="oastream">${live?'■ หยุดไลฟ์':'● เริ่มไลฟ์'}</button><button class="btn" data-act="oarec">${rec?'■ หยุดอัด':'⏺ เริ่มอัด'}</button></div>`:''}</div>
         <div class="panel oabrkp ${OA.brk?'on':''}"><div class="oah"><i></i>BREAK · พักเบรก / นับถอยหลัง</div>
           ${OA.brk?`<div class="oabrkt"><span>${esc(OA_BRK[OA.brk.mode])}</span><b class="mono" id="oabrk">${fmtMs(Math.max(0,OA.brk.endsAt-Date.now())).split('.')[0]}</b></div>
-            <div class="row"><label class="cc"><span>ช่องข้างนับถอยหลัง</span><select id="oabrkshow">${Object.entries(OA_SHOW).map(([k,t])=>`<option value="${k}" ${OA.brkShow===k?'selected':''}>${t}</option>`).join('')}</select></label></div>${OA.brkShow!=='ads'&&(OA.boardErr||!OA.boardHas)?`<p class="small ${OA.boardErr?'bad':'muted'}" style="margin:0">${esc(OA.boardErr||'ยังไม่มีสายการแข่งที่นี่ ช่องข้างจึงโชว์โฆษณาแทน')}</p>`:''}
+            <div class="row"><label class="cc"><span>ช่องข้างนับถอยหลัง</span><select id="oabrkshow">${Object.entries(OA_SHOW).map(([k,t])=>`<option value="${k}" ${OA.brkShow===k?'selected':''}>${t}</option>`).join('')}</select></label></div>${OA.brkShow!=='ads'&&((OA.brkShow!=='rank'&&OA.boardErr)||!OA.boardHas)?`<p class="small ${OA.brkShow!=='rank'&&OA.boardErr?'bad':'muted'}" style="margin:0">${esc((OA.brkShow!=='rank'&&OA.boardErr)||({bracket:'ยังไม่มีสายการแข่งที่นี่',rank:'ยังไม่มีอันดับ (ยังไม่ได้ออกอากาศแข่งเดี่ยว)',live:'ตอนนี้ไม่มีสนามไหนแข่งอยู่'}[OA.brkShow]||'')+' ช่องข้างจึงโชว์โฆษณาแทน')}</p>`:''}
             <div class="row"><button class="btn sm" data-act="oabrkmore" data-v="-5">−5 นาที</button><button class="btn sm" data-act="oabrkmore" data-v="-1">−1 นาที</button><button class="btn sm" data-act="oabrkmore" data-v="1">+1 นาที</button><button class="btn sm" data-act="oabrkmore" data-v="5">+5 นาที</button><button class="btn pri" data-act="oabrkend">⏭ จบช่วงนี้ กลับรีเพลย์</button></div>`
           :`<div class="row"><label class="cc"><span>ช่วง</span><select id="oabrkmode">${Object.entries(OA_BRK).map(([k,t])=>`<option value="${k}" ${OA.brkMode===k?'selected':''}>${t}</option>`).join('')}</select></label>
             <label class="cc"><span>ช่องข้างนับถอยหลัง</span><select id="oabrkshow">${Object.entries(OA_SHOW).map(([k,t])=>`<option value="${k}" ${OA.brkShow===k?'selected':''}>${t}</option>`).join('')}</select></label>
