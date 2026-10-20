@@ -1605,17 +1605,19 @@ function oaParseH2H(d,rel){
 // when the file carries it; without it there is no result card, only the clip.
 function oaParseRec(d,rel){
   const num=(v,f=0)=>isFinite(+v)&&v!==null&&v!==''?+v:f,str=v=>v==null?'':String(v),t=v=>{const x=Date.parse(v);return isFinite(x)?x:null};
-  const id=str(d.recordingId),tail=('__'+id+'.webm').toLowerCase(),dir=rel.join('/');
+  const id=str(d.recordingId),tail=('_'+id+'.webm').toLowerCase(),dir=rel.join('/');
   const clip=OA.webm.find(x=>x.toLowerCase().endsWith(tail)&&x.slice(0,x.lastIndexOf('/')+1)===(dir?dir+'/':''))||'';
   const replaced=!!d.supersededByAttemptId||!!(d.currentAttemptId&&d.attemptId&&d.currentAttemptId!==d.attemptId);
   const teams=d.participants.map(p=>({teamId:str(p.teamId),name:str(p.team||p.teamId),school:str(p.school),side:str(p.side),
-    score:p.score==null||p.score===''?null:num(p.score),timeMs:p.timeMs==null?null:num(p.timeMs),winner:p.winner===true}));
+    score:p.score==null||p.score===''?null:num(p.score),timeMs:p.timeMs==null?null:num(p.timeMs),winner:p.winner===true,vside:str(p.videoSide),
+    sw:p.seriesWins==null?null:num(p.seriesWins),swin:p.seriesWinner===true}));
   // left of the picture first, so the names sit on the side each robot runs
-  const sideAt=x=>/^(left|a)$/i.test(x.side)?0:/^(right|b)$/i.test(x.side)?1:0.5;teams.sort((a,b)=>sideAt(a)-sideAt(b));
+  const sideAt=x=>/^left$/i.test(x.vside)?0:/^right$/i.test(x.vside)?1:/^(left|a)$/i.test(x.side)?0:/^(right|b)$/i.test(x.side)?1:0.5;teams.sort((a,b)=>sideAt(a)-sideAt(b));
   const rec=t(d.recordingCreatedAt),go=t(d.matchStartedAt),stop=t(d.matchStoppedAt);
   const clipAt={start:rec!=null&&go!=null?Math.max(0,go-rec):0,end:rec!=null&&stop!=null?Math.max(0,stop-rec):null};
   const ok=d.resultStatus==='confirmed'&&d.verified!==false&&!replaced,at=t(d.confirmedAt)||rec||0;
-  const common={id:'rec:'+id,rec:true,replaced,field:str(d.fieldName||d.fieldId||'-'),round:num(d.round,1),
+  const series=d.series&&d.series.bestOf>1?{game:num(d.series.game,1),bestOf:num(d.series.bestOf),wins:teams.map(x=>x.sw==null?0:x.sw),winner:(teams.find(x=>x.swin)||{}).name||''}:null;
+  const common={id:'rec:'+id,rec:true,replaced,field:str(d.fieldName||d.fieldId||'-'),round:d.round==null&&d.stage!=null?'':num(d.round,1),stage:d.stage==null?'':str(d.stage),series,
     prog:str(d.competitionName||String(d.competition||'').toUpperCase()),comp:str(d.competition),matchNo:d.matchNo==null||d.matchNo===''?'':str(d.matchNo),
     missions:[],items:{},steps:[],ok,at,...clipAt,file:clip.split('/').pop(),vok:!!clip,rel};
   // kind "solo" (RoboArena's word): one team runs alone and is judged on its own score and time, no winner;
@@ -1645,12 +1647,14 @@ function oaScan(){
   // RoboArena uploads its trial recordings into folders named for tests ("RoboArena LAB - isolated test recordings",
   // "Integration Tests"); the real ones sit at the top. Those stay off the queue unless the desk asks for them, for a rehearsal.
   const test=r=>/test|lab/i.test(r[0]||'');
-  for(const f of OA.files){if(test(f.rel)&&!OA.tests)continue;try{const m=oaParse(JSON.parse(f.text),f.rel);if(m.id&&(m.file||m.rec)&&!m.replaced&&!out.has(m.id))out.set(m.id,m)}catch(e){}}
+  for(const f of OA.files){if(test(f.rel)&&!OA.tests)continue;try{const m=oaParse(JSON.parse(f.text),f.rel);m.src=String(f.name||'');const o=out.get(m.id);
+    if(m.id&&(m.file||m.rec)&&!m.replaced&&(!o||(/\.recording\.json$/i.test(m.src)&&!/\.recording\.json$/i.test(o.src))))out.set(m.id,m)}catch(e){}}
   // a result file whose clip has not arrived yet waits; a clip whose result file has not arrived plays on its own
   const clips=new Set(OA.webm);
   for(const m of out.values())if(m.h2h)m.vok=!!m.file&&clips.has(oaRel(m));
   const mine=new Set([...out.values()].filter(m=>m.file).map(oaRel));
-  for(const p of OA.webm){if(test(p.split('/').slice(0,-1))&&!OA.tests)continue;const b=oaBare(p);if(b&&!mine.has(p)&&!out.has(b.id))out.set(b.id,b)}
+  const recIds=[...out.values()].filter(m=>m.rec).map(m=>m.id.slice(4).toLowerCase());
+  for(const p of OA.webm){if(test(p.split('/').slice(0,-1))&&!OA.tests)continue;const low=p.toLowerCase();if(recIds.some(i=>low.includes(i)))continue;const b=oaBare(p);if(b&&!mine.has(p)&&!out.has(b.id))out.set(b.id,b)}
   // Drive brings the small result file long before the clip: a clip counts only once it is on disk and has stopped growing
   for(const m of out.values())m.synced=OA.stable.has(oaRel(m))||!!oaCopy(m);
   OA.list=[...out.values()].sort((a,b)=>a.at-b.at);
@@ -1712,10 +1716,13 @@ function oaOffAir(){if(OA.phase==='play'&&!OA.paused&&!OA.offAir){OA.offAir=true
 function oaBackOnAir(){
   if(OA.offAir){OA.offAir=false;if(OA.phase==='play')oaMedia('PLAY')}
   if(OA.hold){OA.hold=false;if(OA.wantRun&&OA.phase==='idle')oaNext()}}
-const oaInfo=m=>({team:m.team,teamId:m.teamId,school:m.school,field:m.field,round:m.round,prog:m.prog,matchNo:m.matchNo||'',...(m.h2h?{teams:m.teams.map(t=>({name:t.name,school:t.school||''}))}:{})});
+const oaSeries=(m,after)=>{const s=m.series;if(!s)return '';const w=s.wins.map((n,i)=>after||!m.teams[i].winner?n:Math.max(0,n-1));
+  return `เกม ${s.game}/${s.bestOf} · ซีรีส์ ${w.join('–')}`+(after&&s.winner?` · ${s.winner} ชนะซีรีส์`:'')};
+const oaSub=(m,after)=>[VENUES.find(v=>v[0]===S.venue)[1],oaSeries(m,after)].filter(Boolean).join(' · ');
+const oaInfo=m=>({team:m.team,teamId:m.teamId,school:m.school,field:m.field,round:m.round,prog:m.prog,matchNo:m.matchNo||'',sub:oaSub(m,false),...(m.h2h?{teams:m.teams.map(t=>({name:t.name,school:t.school||''}))}:{})});
 function oaRes(m){
   // two teams: who won, each team's score and time when the result file gives them
-  if(m.h2h)return{...oaInfo(m),h2h:true,teams:m.teams.map(t=>({name:t.name,school:t.school||'',score:t.score,time:t.timeMs==null?'':fmtMs(t.timeMs),winner:t.winner})),next:oaNextName(m),frame:OA.frame||''};
+  if(m.h2h)return{...oaInfo(m),sub:oaSub(m,true),h2h:true,teams:m.teams.map(t=>({name:t.name,school:t.school||'',score:t.score,time:t.timeMs==null?'':fmtMs(t.timeMs),winner:t.winner})),next:oaNextName(m),frame:OA.frame||''};
   const lab=id=>S.comps[m.comp]?.missions?.find(x=>x.id===id)?.label||m.missions.find(x=>x.id===id)?.label||id;
   return{...oaInfo(m),total:m.total,max:m.missions.reduce((a,x)=>a+x.pts*x.max,0),time:fmtMs(m.ms),retry:m.retry,
     missions:m.missions.map(x=>({label:lab(x.id),n:+m.items[x.id]||0,max:x.max,pts:x.pts})),...oaStand(m),frame:OA.frame||''}}
