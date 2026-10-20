@@ -2330,7 +2330,10 @@ function vOnair(){
         ${setup}
       </div>
       <div class="oacol">
-        <div class="panel"><div class="oah"><i></i>QUEUE · คิว <span class="mono">${ready.length}</span></div>${ready.length?ready.map((m,i)=>row(m,i,'ready')).join(''):'<p class="small muted" style="margin:0">ว่าง · แมตช์ที่ยืนยันผลแล้วจะเข้ามาเอง</p>'}</div>
+        <div class="panel"><div class="oah"><i></i>QUEUE · คิว <span class="mono">${ready.length}</span></div>${(()=>{
+          // a programme lock is never silent: what it hides, and one click to show everything again
+          if(OA.prog==='all')return'';const hid=OA.list.filter(m=>!OA.played.has(m.id)&&oaGroup(m)!==OA.prog).length;
+          return`<div class="oaal warn"><b>▲ ล็อกคิวไว้เฉพาะ ${esc(OA.prog)}</b><span>${hid?`ซ่อนอยู่ ${hid} แมตช์จากรายการอื่น`:'ไม่มีแมตช์รายการอื่นรออยู่'}</span><button class="btn sm" data-act="oaprogall">แสดงทุกรายการ</button></div>`})()}${ready.length?ready.map((m,i)=>row(m,i,'ready')).join(''):'<p class="small muted" style="margin:0">ว่าง · แมตช์ที่ยืนยันผลแล้วจะเข้ามาเอง</p>'}</div>
         ${wait.length?`<div class="panel"><div class="oah"><i></i>WAITING · รอ <span class="mono">${wait.length}</span></div>${wait.map((m,i)=>row(m,i,'wait')).join('')}</div>`:''}
         ${done.length?`<details class="panel"><summary class="oah"><i></i>PLAYED · เล่นแล้ว <span class="mono">${done.length}</span></summary>${done.map((m,i)=>row(m,i,'done')).join('')}</details>`:''}
       </div>
@@ -2513,6 +2516,7 @@ document.addEventListener('click',e=>{
     case'oabrk':oaBreak();return;
     case'oahl':oaHlStart(OA.hlGroup,OA.hlRound);return;
     case'oarecap':oaRecap();return;
+    case'oaprogall':OA.prog='all';oaKeep();break;
     case'oabrkend':oaBrkEnd();return;
     case'oabrkmore':oaBrkMore(+b.dataset.v);return;
     case'oabrkauto':OA.brkAuto=!OA.brkAuto;oaKeep();break;
