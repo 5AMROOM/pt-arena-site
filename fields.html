@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>PT Arena · ภาพสนามสด</title>
+<!-- OBS Browser Source "PT ภาพสนาม", 1920×1080, under the graphics in the scene "PT สนามสด". It receives the field
+     cameras from RoboArena's Live Hub (through our helper, which holds the room code and passes the line on) and shows
+     the field the desk picks: alone, or big with the other fields beside it.
+     Desk → page: {pt:'field',k:'pick',main,layout}. Page → desk: {pt:'field',k:'list',hub,stations,main,layout}.
+     Address: fields.html#ws=ws://127.0.0.1:4455&pw=<websocket password>&v=<build> -->
+<style>
+@font-face{font-family:"Prompt";src:url("font/Prompt-Medium.ttf") format("truetype");font-weight:500}
+@font-face{font-family:"Prompt";src:url("font/Prompt-SemiBold.ttf") format("truetype");font-weight:600}
+@font-face{font-family:"Oxanium";src:url("font/Oxanium.ttf") format("truetype");font-weight:200 800}
+:root{
+  --bg:oklch(14% 0.03 265);
+  --tile:oklch(19% 0.04 265);
+  --line:oklch(98% 0.005 260 / 0.14);
+  --ink:oklch(98% 0.005 260);
+  --ink-2:oklch(76% 0.02 260);
+  --red:oklch(56% 0.215 27);
+  --scrim:oklch(14% 0.03 265 / 0.78);
+  --f-th:"Prompt",sans-serif;
+  --f-num:"Oxanium","Prompt",sans-serif;
+  --ease:cubic-bezier(0.16,1,0.3,1);
+}
+html,body{width:1920px;height:1080px;margin:0;overflow:hidden;background:var(--bg);color:var(--ink);font-family:var(--f-th)}
+.tile{position:absolute;overflow:hidden;background:var(--tile);transition:left .5s var(--ease),top .5s var(--ease),width .5s var(--ease),height .5s var(--ease),opacity .3s}
+.tile video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .4s}
+.tile.live video{opacity:1}
+.tile .tag{position:absolute;left:20px;bottom:18px;display:flex;align-items:center;gap:10px;background:var(--scrim);padding:6px 14px 6px 12px;font-size:24px;font-weight:600;line-height:1.2}
+.tile .tag i{width:10px;height:10px;border-radius:50%;background:var(--ink-2)}
+.tile.live .tag i{background:var(--red)}
+.tile .wait{position:absolute;inset:0;display:grid;place-items:center;font-size:26px;font-weight:500;color:var(--ink-2)}
+.tile.live .wait{display:none}
+.tile.side{border-left:2px solid var(--bg);border-top:2px solid var(--bg)}
+.tile.main .tag{display:none}
+.tile.off{opacity:0;pointer-events:none}
+body.swap .tile.side{opacity:0;transition:opacity .3s}
+/* the band under the big picture: which field is on, in the room's own words */
+#band{position:absolute;left:0;top:810px;width:1440px;height:270px;display:flex;align-items:center;gap:32px;padding:0 96px;box-sizing:border-box;border-top:2px solid var(--bg);transition:opacity .4s}
+#band .dot{width:18px;height:18px;border-radius:50%;background:var(--red);flex:none}
+#band .name{font-size:72px;font-weight:600;line-height:1}
+#band .en{font-family:var(--f-num);font-weight:600;font-size:26px;letter-spacing:0.14em;color:var(--ink-2);margin-top:12px}
+body[data-layout="one"] #band,body.empty #band{opacity:0}
+/* nothing to show: a quiet card, never a black hole */
+#slate{position:absolute;inset:0;background:var(--bg);display:grid;place-content:center;justify-items:center;gap:20px;opacity:0;transition:opacity .5s}
+body.empty #slate{opacity:1}
+#slate img{width:220px;height:auto;opacity:.9}
+#slate .th{font-size:52px;font-weight:600}
+#slate .en{font-family:var(--f-num);font-weight:600;font-size:24px;letter-spacing:0.16em;color:var(--ink-2)}
+</style>
+</head>
+<body class="empty" data-layout="big">
+<div id="band"><span class="dot"></span><div><div class="name"></div><div class="en">LIVE FROM THE FIELD</div></div></div>
+<div id="slate"><img src="themes/robot.webp" alt=""><div class="th">รอภาพจากสนาม</div><div class="en">FIELD CAMERAS COMING UP</div></div>
+<script>
+const opt=Object.fromEntries(new URLSearchParams(location.hash.slice(1)));
+const HELPER='http://127.0.0.1:8788',NO_FRAME=10000,SIDE=4,ROTATE=8000;
+const tiles=new Map();        // stationId → {pc, node, video, label, ice, queue, frames, lastFrame, available, retry}
+let stations=[],sig=null,hub='off',want={main:'',layout:'big'},main='',told='',shown=0;
+const send=m=>{if(sig?.readyState===WebSocket.OPEN)sig.send(JSON.stringify(m))};
+const live=t=>t.available&&Date.now()-t.lastFrame<3000;
+
+function tile(st){
+  const node=document.createElement('section');node.className='tile';
+  const video=document.createElement('video');video.autoplay=true;video.muted=true;video.playsInline=true;
+  const tag=document.createElement('div');tag.className='tag';tag.innerHTML='<i></i><span></span>';tag.lastChild.textContent=st.label;
+  const wait=document.createElement('div');wait.className='wait';wait.textContent='รอภาพ '+st.label;
+  node.append(video,wait,tag);document.body.insertBefore(node,document.getElementById('band'));
+  const pc=new RTCPeerConnection({iceServers:[]}),t={pc,node,video,label:st.label,ice:[],queue:Promise.resolve(),frames:0,lastFrame:0,available:true,retry:0};
+  tiles.set(st.stationId,t);
+  pc.onicecandidate=e=>{if(e.candidate&&tiles.get(st.stationId)===t)send({type:'ice',stationId:st.stationId,candidate:e.candidate.toJSON()})};
+  pc.ontrack=e=>{video.srcObject=e.streams[0]||new MediaStream([e.track]);video.play().catch(()=>{})};
+  // a field whose line breaks is asked for again; the camera's side starts a fresh offer
+  pc.onconnectionstatechange=()=>{if(['failed','disconnected'].includes(pc.connectionState)&&tiles.get(st.stationId)===t){clearTimeout(t.retry);t.retry=setTimeout(()=>again(st.stationId),3000)}};
+  send({type:'subscribe',stationId:st.stationId});
+}
+function remove(id){const t=tiles.get(id);if(!t)return;tiles.delete(id);clearTimeout(t.retry);t.pc.close();t.node.remove()}
+function again(id){const st=stations.find(s=>s.stationId===id);if(!st||!tiles.has(id))return;send({type:'unsubscribe',stationId:id});remove(id);tile(st);draw(true)}
+
+// where each field sits: the picked one big (or alone), the rest down the right in the room's order
+function draw(refocus){
+  const ids=stations.map(s=>s.stationId).filter(id=>tiles.has(id));
+  const now=ids.includes(want.main)?want.main:ids[0]||'';
+  if(now!==main||refocus){main=now;send({type:'focus',stationId:main||null})}
+  const one=want.layout==='one';document.body.dataset.layout=one?'one':'big';
+  // more fields than side slots: the slots move on through all of them every ROTATE, so every field gets its turn.
+  // A new turn fades the side column out, moves the fields while nobody sees, and fades it back in
+  const rest=ids.filter(id=>id!==main),turn=rest.length>SIDE?Math.floor(Date.now()/ROTATE):0,cl=document.body.classList;
+  if(turn!==shown&&!cl.contains('swap')){cl.add('swap');setTimeout(()=>{shown=turn;draw();void document.body.offsetWidth;cl.remove('swap')},350)}
+  const slot=id=>{const n=rest.length,j=((rest.indexOf(id)-shown*SIDE)%n+n)%n;return j<SIDE?j:-1};
+  for(const id of ids){const t=tiles.get(id),n=t.node,s=n.style;
+    t.node.classList.toggle('live',live(t));
+    if(id===main){n.classList.remove('side','off');n.classList.add('main');Object.assign(s,one?{left:'0',top:'0',width:'1920px',height:'1080px'}:{left:'0',top:'0',width:'1440px',height:'810px'});continue}
+    const at=slot(id);
+    n.classList.remove('main');n.classList.add('side');n.classList.toggle('off',one||at<0);
+    if(at>=0)Object.assign(s,{left:'1440px',top:at*270+'px',width:'480px',height:'270px'})}
+  document.querySelector('#band .name').textContent=main?tiles.get(main).label:'';
+  document.body.classList.toggle('empty',!main||!live(tiles.get(main)));
+  tell();
+}
+// the desk hears what is here whenever it changes (and after every pick), so its buttons match the screen
+function tell(force){
+  const m={pt:'field',k:'list',hub,main,layout:want.layout,stations:stations.filter(s=>tiles.has(s.stationId)).map(s=>({id:s.stationId,label:s.label,live:live(tiles.get(s.stationId))}))};
+  const j=JSON.stringify(m);if(j===told&&!force)return;told=j;obsSay(m);
+}
+
+async function handle(m){
+  if(m.type==='ready'){hub='ok';tell();return}
+  if(m.type==='roster'){
+    stations=m.stations.slice().sort((a,b)=>a.label.localeCompare(b.label,'th',{numeric:true}));
+    const ids=new Set(stations.map(s=>s.stationId));
+    for(const id of [...tiles.keys()])if(!ids.has(id))remove(id);
+    for(const s of stations)if(!tiles.has(s.stationId))tile(s);
+    draw();return}
+  if(m.type==='gone'){remove(m.stationId);draw();return}
+  const t=tiles.get(m.stationId);if(!t)return;
+  if(m.type==='source'){t.available=m.available===true;draw();return}
+  t.queue=t.queue.then(async()=>{
+    if(tiles.get(m.stationId)!==t)return;
+    if(m.type==='offer'){await t.pc.setRemoteDescription(m.description);for(const c of t.ice.splice(0))await t.pc.addIceCandidate(c);
+      await t.pc.setLocalDescription(await t.pc.createAnswer());send({type:'answer',stationId:m.stationId,description:t.pc.localDescription.toJSON()})}
+    else if(m.type==='ice'){if(t.pc.remoteDescription)await t.pc.addIceCandidate(m.candidate);else t.ice.push(m.candidate)}
+  }).catch(()=>{clearTimeout(t.retry);t.retry=setTimeout(()=>again(m.stationId),4000)});
+}
+// the hub: room code from the helper, then in as the one receiver. Off, wrong code, or someone else receiving
+// (their own monitor page open) all retry every 3 s, and the desk is told which
+let hubTimer=0;
+async function hubConnect(){
+  clearTimeout(hubTimer);let key='';
+  try{const d=await(await fetch(HELPER+'/fieldhub',{cache:'no-store'})).json();if(!d.on)throw 0;key=d.key}
+  catch(e){hub='off';tell();hubTimer=setTimeout(hubConnect,3000);return}
+  const ws=sig=new WebSocket(HELPER.replace('http','ws')+'/fieldsignal');
+  ws.onopen=()=>ws.send(JSON.stringify({type:'hello',role:'viewer',key}));
+  ws.onmessage=e=>{if(sig===ws)try{handle(JSON.parse(e.data))}catch(x){}};
+  ws.onclose=e=>{if(sig!==ws)return;sig=null;for(const id of [...tiles.keys()])remove(id);stations=[];
+    hub=e.code===4001?'key':e.code===4009?'busy':'off';draw();hubTimer=setTimeout(hubConnect,3000)};
+}
+// a field is live while its decoded-frame count climbs (counted from the connection, not from painting, which
+// stops when the page is not drawn); a picture that has stopped moving for 10 s is asked for again
+setInterval(async()=>{
+  for(const [id,t] of [...tiles]){let n=0;(await t.pc.getStats().catch(()=>new Map())).forEach(r=>{if(r.type==='inbound-rtp'&&r.kind==='video')n=r.framesDecoded||0});
+    if(n>t.frames){t.frames=n;t.lastFrame=Date.now()}
+    else if(t.lastFrame&&Date.now()-t.lastFrame>NO_FRAME&&tiles.get(id)===t)again(id)}
+  draw()},1000);
+
+// obs-websocket 5, as in overlay.html: the desk's picks come in, the list goes out
+const b64=buf=>btoa(String.fromCharCode(...new Uint8Array(buf)));
+const sha=async s=>b64(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)));
+let obs=null,obsOk=false;
+function obsSay(m){if(obsOk)obs.send(JSON.stringify({op:6,d:{requestType:'BroadcastCustomEvent',requestId:'f',requestData:{eventData:m}}}))}
+function obsConnect(){
+  let ws;try{ws=obs=new WebSocket(opt.ws||'ws://127.0.0.1:4455','obswebsocket.json')}catch(e){return}
+  ws.onmessage=async e=>{const m=JSON.parse(e.data);
+    if(m.op===0){const a=m.d.authentication;const d={rpcVersion:1,eventSubscriptions:1};
+      if(a)d.authentication=await sha(await sha((opt.pw||'')+a.salt)+a.challenge);ws.send(JSON.stringify({op:1,d}))}
+    else if(m.op===2){obsOk=true;tell(true)}
+    else if(m.op===5&&m.d.eventType==='CustomEvent'&&m.d.eventData?.pt==='field'&&m.d.eventData.k==='pick'){const p=m.d.eventData;
+      want={main:typeof p.main==='string'?p.main:want.main,layout:p.layout==='one'?'one':'big'};draw();tell(true)}};
+  ws.onclose=e=>{obsOk=false;if(e.code===4009){console.warn('OBS websocket password is wrong: run "ตั้งฉากให้ใน OBS" again');return}setTimeout(obsConnect,2000)};
+}
+obsConnect();hubConnect();
+</script>
+</body>
+</html>

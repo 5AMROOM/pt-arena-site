@@ -872,3 +872,11 @@ body.rxonly .app,body.rxonly #toast,body.rxonly #net{display:none!important}
 .oaal b{font-weight:700}
 .oaal span{flex:1;min-width:220px;font-size:13px;opacity:.9}
 
+/* FIELD: one big button per field; the picked one is blue (red stays for the scene on air), a green dot while its picture comes in */
+.oafld .row .btn.sm[data-act=oaflay]:first-of-type{margin-left:auto}
+.oafld [aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.oafb{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-top:10px}
+.oafb .btn{min-height:52px;font-size:16px;justify-content:center;white-space:nowrap}
+.oafb i{display:inline-block;margin-right:8px;width:9px;height:9px;border-radius:50%;background:var(--muted);opacity:.5;flex:none}
+.oafb i.on{background:var(--ok);opacity:1}
+.oafwhy{margin:10px 0 0;padding-left:20px;line-height:1.6}
